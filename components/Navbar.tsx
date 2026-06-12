@@ -21,7 +21,7 @@ export default function Navbar() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <a href="#topo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Image src="/logo.jpeg" alt="MFCT Estúdio" width={40} height={40} style={{ borderRadius: 6 }} />
+          <Image src="/logo.png" alt="MFCT Estúdio" width={61} height={40} style={{ objectFit: 'contain' }} />
           <span style={{
             fontFamily: 'Anton, sans-serif', fontSize: 20, letterSpacing: 1,
             color: 'var(--text)',

@@ -5,7 +5,7 @@ export default function Footer() {
     <footer style={{ borderTop: '1px solid var(--border)', padding: '2rem 1.25rem 1.5rem', marginTop: '2rem', background: 'var(--bg2)' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Image src="/logo.jpeg" alt="MFCT Estúdio" width={44} height={44} style={{ borderRadius: 6 }} />
+          <Image src="/logo.png" alt="MFCT Estúdio" width={67} height={44} style={{ objectFit: 'contain' }} />
           <div>
             <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 18, color: 'var(--text)' }}>
               MFCT <span style={{ color: 'var(--accent)' }}>ESTÚDIO</span>
