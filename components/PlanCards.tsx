@@ -39,14 +39,14 @@ export default function PlanCards() {
       {PLANOS.map(p => (
         <div key={p.nome} style={{
           background: 'var(--card)',
-          border: `1px solid ${p.destaque ? 'var(--accent)' : 'var(--border)'}`,
+          border: `1px solid ${p.destaque ? 'var(--accent2)' : 'var(--border)'}`,
           borderRadius: 6, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 12,
           position: 'relative',
         }}>
           {p.destaque && (
             <span style={{
               position: 'absolute', top: -10, left: '1.5rem',
-              background: 'var(--accent)', color: 'var(--bg)',
+              background: 'var(--accent2)', color: '#fff',
               fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 3,
               letterSpacing: '0.5px',
             }}>
@@ -67,9 +67,9 @@ export default function PlanCards() {
             rel="noopener noreferrer"
             style={{
               display: 'block', textAlign: 'center', padding: '10px 0',
-              background: p.destaque ? 'var(--accent)' : 'transparent',
-              color: p.destaque ? 'var(--bg)' : 'var(--text)',
-              border: `1px solid ${p.destaque ? 'var(--accent)' : 'var(--border2)'}`,
+              background: p.destaque ? 'var(--accent2)' : 'transparent',
+              color: p.destaque ? '#fff' : 'var(--text)',
+              border: `1px solid ${p.destaque ? 'var(--accent2)' : 'var(--border2)'}`,
               borderRadius: 4, fontWeight: 700, fontSize: 13, textDecoration: 'none',
               letterSpacing: '0.5px',
             }}

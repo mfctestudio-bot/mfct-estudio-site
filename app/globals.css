@@ -2,16 +2,16 @@
 @import "tailwindcss";
 
 :root {
-  --bg:       #0f0e0c;
-  --bg2:      #17150f;
-  --card:     #1c1a15;
-  --border:   #2c2820;
-  --border2:  #3a352a;
-  --text:     #f3efe6;
-  --text2:    #a39c8e;
-  --text3:    #6e6a5f;
-  --accent:   #c9a13b;   /* brass / academia de ferro */
-  --accent2:  #6b7b5e;   /* sage / recuperação */
+  --bg:       #0a0e10;
+  --bg2:      #11161a;
+  --card:     #161c20;
+  --border:   #232a2e;
+  --border2:  #353e43;
+  --text:     #f2f4f5;
+  --text2:    #9aa3a8;
+  --text3:    #5e676c;
+  --accent:   #cfd8dc;   /* prata/metalico - logo MFCT */
+  --accent2:  #c0392b;   /* vermelho de detalhe */
   --whatsapp: #25D366;
 }
 
