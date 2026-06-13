@@ -7,6 +7,7 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 ### ✅ Pronto e funcionando
 - Status granular de lead/aluno (lead, experimental_oferecida/agendada/realizada, faltou_experimental, em_negociacao, perdido, ativo, vencido, cancelado) — Eleniria transiciona automaticamente
 - Fluxo de aula experimental completo: lembrete 30min antes (cron) → follow-up pós-aula perguntando o que achou → marca experimental_realizada → Eleniria interpreta resposta (apresenta planos / marca perdido / oferece remarcar se faltou)
+- Distinguir ex-aluno/lead retornando: quando telefone já tem cadastro cancelado/vencido/perdido/faltou_experimental, Eleniria recebe contexto "EX-ALUNO/LEAD RETORNANDO" e o backend protege contra regressão de status (ex-aluno pagante não pode ser rebaixado para "experimental_oferecida")
 - Matrícula direta (planos, coleta de dados, link Mercado Pago, ativação)
 - Aluno ativo: agendar, cancelar, desmarcar, consultar vagas
 - Financeiro: cobrança Mercado Pago, webhook de confirmação, painel com caixa mensal + gráfico anual
@@ -17,11 +18,13 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Painel admin: agenda, alunos, financeiro, cancelamento de aula, grade de horários
 
 ### ⏳ Pendente (por prioridade sugerida)
-1. Distinguir lead novo vs ex-aluno (histórico) ao identificar telefone
-2. Cobranças escalonadas: 7 dias antes, 3 dias antes, no dia, +1/+7/+15 dias após vencimento, bloqueio
-3. Campanha de recuperação 30/60/90 dias para alunos vencidos/inativos com condições especiais
-4. Lista de espera na agenda quando horário está cheio
-5. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
+1. Cobranças escalonadas: 7 dias antes, 3 dias antes, no dia, +1/+7/+15 dias após vencimento, bloqueio
+2. Campanha de recuperação 30/60/90 dias para alunos vencidos/inativos com condições especiais
+3. Lista de espera na agenda quando horário está cheio
+4. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
+
+### Notas de qualidade do modelo
+- O modelo (Llama 3.3 70B via Groq/OpenRouter) segue a maior parte das instruções de tom/contexto, mas não 100% consistentemente (ex: nem sempre menciona explicitamente "você já foi aluno"). Onde a transição de status é crítica para não perder dados (ex: ex-aluno pagante não regredir para lead novo), há trava de segurança no backend (Executar Acoes Agenda) independente do texto gerado.
 
 ## Mapa de fluxos (original)
 
