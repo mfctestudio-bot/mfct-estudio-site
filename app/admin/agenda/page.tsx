@@ -50,11 +50,16 @@ function ProximasAulas() {
 
   async function load() {
     setLoading(true)
+    // Usa o fuso de São Paulo para "hoje", incluindo um dia antes como margem
+    const agoraSP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+    agoraSP.setDate(agoraSP.getDate() - 1)
+    const dataMin = agoraSP.toISOString().slice(0, 10)
+
     const { data } = await supabase
       .from('agendamentos')
       .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
       .eq('status', 'confirmado')
-      .gte('data', new Date().toISOString().slice(0, 10))
+      .gte('data', dataMin)
       .order('data')
       .limit(100)
     setRows((data as unknown as AgendamentoRow[]) || [])
