@@ -9,6 +9,7 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Fluxo de aula experimental completo: lembrete 30min antes (cron) → follow-up pós-aula perguntando o que achou → marca experimental_realizada → Eleniria interpreta resposta (apresenta planos / marca perdido / oferece remarcar se faltou)
 - Distinguir ex-aluno/lead retornando: quando telefone já tem cadastro cancelado/vencido/perdido/faltou_experimental, Eleniria recebe contexto "EX-ALUNO/LEAD RETORNANDO" e o backend protege contra regressão de status (ex-aluno pagante não pode ser rebaixado para "experimental_oferecida")
 - Cobranças escalonadas: lembrete -7 dias, lembrete -3 dias, cobrança no dia do vencimento (gera link MP), atraso +1/+7 dias (reenvia link existente), +15 dias marca aluno como "vencido" e alerta o Matheus
+- Campanha de recuperação 30/60/90 dias: aluno vencido/cancelado recebe mensagem de "sentimos sua falta" (30d), oferta de novos horários (60d), condição especial com desconto (90d) — controlado por status_desde (atualizado automaticamente por trigger) e etapa_recuperacao
 - Matrícula direta (planos, coleta de dados, link Mercado Pago, ativação)
 - Aluno ativo: agendar, cancelar, desmarcar, consultar vagas
 - Financeiro: cobrança Mercado Pago, webhook de confirmação, painel com caixa mensal + gráfico anual
@@ -19,9 +20,8 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Painel admin: agenda, alunos, financeiro, cancelamento de aula, grade de horários
 
 ### ⏳ Pendente (por prioridade sugerida)
-1. Campanha de recuperação 30/60/90 dias para alunos vencidos/inativos com condições especiais
-2. Lista de espera na agenda quando horário está cheio
-3. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
+1. Lista de espera na agenda quando horário está cheio
+2. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
 
 ### Notas de qualidade do modelo
 - O modelo (Llama 3.3 70B via Groq/OpenRouter) segue a maior parte das instruções de tom/contexto, mas não 100% consistentemente (ex: nem sempre menciona explicitamente "você já foi aluno"). Onde a transição de status é crítica para não perder dados (ex: ex-aluno pagante não regredir para lead novo), há trava de segurança no backend (Executar Acoes Agenda) independente do texto gerado.
