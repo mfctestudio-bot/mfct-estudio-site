@@ -8,8 +8,14 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Status granular de lead/aluno (lead, experimental_oferecida/agendada/realizada, faltou_experimental, em_negociacao, perdido, ativo, vencido, cancelado) — Eleniria transiciona automaticamente
 - Fluxo de aula experimental completo: lembrete 30min antes (cron) → follow-up pós-aula perguntando o que achou → marca experimental_realizada → Eleniria interpreta resposta (apresenta planos / marca perdido / oferece remarcar se faltou)
 - Distinguir ex-aluno/lead retornando: quando telefone já tem cadastro cancelado/vencido/perdido/faltou_experimental, Eleniria recebe contexto "EX-ALUNO/LEAD RETORNANDO" e o backend protege contra regressão de status (ex-aluno pagante não pode ser rebaixado para "experimental_oferecida")
+### ✅ Pronto e funcionando
+- Status granular de lead/aluno (lead, experimental_oferecida/agendada/realizada, faltou_experimental, em_negociacao, perdido, ativo, vencido, cancelado) — Eleniria transiciona automaticamente
+- Fluxo de aula experimental completo: lembrete 30min antes (cron) → follow-up pós-aula perguntando o que achou → marca experimental_realizada → Eleniria interpreta resposta (apresenta planos / marca perdido / oferece remarcar se faltou)
+- Distinguir ex-aluno/lead retornando: quando telefone já tem cadastro cancelado/vencido/perdido/faltou_experimental, Eleniria recebe contexto "EX-ALUNO/LEAD RETORNANDO" e o backend protege contra regressão de status (ex-aluno pagante não pode ser rebaixado para "experimental_oferecida")
 - Cobranças escalonadas: lembrete -7 dias, lembrete -3 dias, cobrança no dia do vencimento (gera link MP), atraso +1/+7 dias (reenvia link existente), +15 dias marca aluno como "vencido" e alerta o Matheus
 - Campanha de recuperação 30/60/90 dias: aluno vencido/cancelado recebe mensagem de "sentimos sua falta" (30d), oferta de novos horários (60d), condição especial com desconto (90d) — controlado por status_desde (atualizado automaticamente por trigger) e etapa_recuperacao
+- Lista de espera na agenda: se horário está cheio (capacidade real verificada no backend), aluno entra na lista_espera; ao cancelar uma aula, o primeiro da fila é notificado automaticamente
+- Detecção de "chamar humano": reclamação grave, cobrança errada, pedido de reembolso/desconto fora do padrão, ou pedido explícito de atendente → Eleniria responde com frase curta e empática (sem investigar/prometer), aciona pausa automática (30min, mesmo mecanismo do takeover manual) e avisa o Matheus via WhatsApp com o motivo
 - Matrícula direta (planos, coleta de dados, link Mercado Pago, ativação)
 - Aluno ativo: agendar, cancelar, desmarcar, consultar vagas
 - Financeiro: cobrança Mercado Pago, webhook de confirmação, painel com caixa mensal + gráfico anual
@@ -19,9 +25,12 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Site institucional com captação de leads, posts/notícias
 - Painel admin: agenda, alunos, financeiro, cancelamento de aula, grade de horários
 
-### ⏳ Pendente (por prioridade sugerida)
-1. Lista de espera na agenda quando horário está cheio
-2. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
+### ⏳ Pendente
+Nenhum item do roadmap original em aberto. Próximos passos ficam a critério de novas necessidades que surgirem no uso real.
+
+### Notas técnicas importantes
+- Há DOIS bancos distintos: Supabase (dados de negócio: alunos, agendamentos, pagamentos, lista_espera, etc.) e Postgres self-hosted da Cloudfy (apenas tabela bot_conversation_state, controla pausa humana — schema: bot_name, phone, last_human_reply_at, last_incoming_message, last_incoming_at). Não confundir os dois ao adicionar novas integrações.
+- Pausa automática (chamar_humano) usa o node Postgres "Marcar Pausa Automatica" conectado em paralelo após "Executar Acoes Agenda", acionado via campo _pausarTelefone.
 
 ### Notas de qualidade do modelo
 - O modelo (Llama 3.3 70B via Groq/OpenRouter) segue a maior parte das instruções de tom/contexto, mas não 100% consistentemente (ex: nem sempre menciona explicitamente "você já foi aluno"). Onde a transição de status é crítica para não perder dados (ex: ex-aluno pagante não regredir para lead novo), há trava de segurança no backend (Executar Acoes Agenda) independente do texto gerado.
