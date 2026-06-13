@@ -25,6 +25,7 @@ export type Aluno = {
   status_plano: 'lead' | 'experimental' | 'ativo' | 'vencido' | 'cancelado'
   data_matricula: string
   observacoes: string | null
+  dia_vencimento: number | null
   created_at: string
   planos?: Plano
 }

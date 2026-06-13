@@ -53,6 +53,7 @@ export default function AlunoPage() {
       plano_id: aluno.plano_id || null,
       status_plano: aluno.status_plano,
       observacoes: aluno.observacoes,
+      dia_vencimento: aluno.dia_vencimento || null,
     }).eq('id', id)
     setSaving(false)
     if (!error) {
@@ -101,6 +102,15 @@ export default function AlunoPage() {
           <select value={aluno.status_plano} onChange={e => update('status_plano', e.target.value as Aluno['status_plano'])} style={inputStyle}>
             {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
+        </Campo>
+        <Campo label="Dia do vencimento (1-31)">
+          <input
+            type="number" min={1} max={31}
+            value={aluno.dia_vencimento ?? ''}
+            onChange={e => update('dia_vencimento', e.target.value ? Number(e.target.value) : null)}
+            style={inputStyle}
+            placeholder="Ex: 5 (cobrança automática todo dia 5)"
+          />
         </Campo>
         <Campo label="Observações">
           <textarea value={aluno.observacoes || ''} onChange={e => update('observacoes', e.target.value)} style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
