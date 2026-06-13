@@ -12,7 +12,7 @@ export default function AdminHome() {
       const [{ count: total }, { count: ativos }, { count: leads }, { count: pendentes }] = await Promise.all([
         supabase.from('alunos').select('*', { count: 'exact', head: true }),
         supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('status_plano', 'ativo'),
-        supabase.from('alunos').select('*', { count: 'exact', head: true }).in('status_plano', ['lead', 'experimental']),
+        supabase.from('alunos').select('*', { count: 'exact', head: true }).in('status_plano', ['lead', 'experimental_oferecida', 'experimental_agendada', 'experimental_realizada', 'faltou_experimental', 'em_negociacao', 'experimental']),
         supabase.from('pagamentos').select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
       ])
       setStats({ alunos: total || 0, ativos: ativos || 0, leads: leads || 0, pendentes: pendentes || 0 })

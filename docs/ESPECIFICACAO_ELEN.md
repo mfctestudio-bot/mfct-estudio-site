@@ -5,6 +5,7 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 ## Status geral por bloco
 
 ### ✅ Pronto e funcionando
+- Status granular de lead/aluno (lead, experimental_oferecida/agendada/realizada, faltou_experimental, em_negociacao, perdido, ativo, vencido, cancelado) — Eleniria transiciona automaticamente
 - Matrícula direta (planos, coleta de dados, link Mercado Pago, ativação)
 - Aluno ativo: agendar, cancelar, desmarcar, consultar vagas
 - Financeiro: cobrança Mercado Pago, webhook de confirmação, painel com caixa mensal + gráfico anual
@@ -15,13 +16,12 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Painel admin: agenda, alunos, financeiro, cancelamento de aula, grade de horários
 
 ### ⏳ Pendente (por prioridade sugerida)
-1. Fluxo de aula experimental completo: oferecer → agendar → lembrete 30min antes → follow-up no mesmo dia perguntando o que achou → apresentar planos
+1. Fluxo de aula experimental completo: lembrete 30min antes → follow-up no mesmo dia perguntando o que achou → apresentar planos → marcar experimental_realizada / faltou_experimental
 2. Distinguir lead novo vs ex-aluno (histórico) ao identificar telefone
-3. Status mais granulares de lead (novo, experimental oferecida/agendada/realizada, em negociação, perdido)
-4. Cobranças escalonadas: 7 dias antes, 3 dias antes, no dia, +1/+7/+15 dias após vencimento, bloqueio
-5. Campanha de recuperação 30/60/90 dias para alunos vencidos/inativos com condições especiais
-6. Lista de espera na agenda quando horário está cheio
-7. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
+3. Cobranças escalonadas: 7 dias antes, 3 dias antes, no dia, +1/+7/+15 dias após vencimento, bloqueio
+4. Campanha de recuperação 30/60/90 dias para alunos vencidos/inativos com condições especiais
+5. Lista de espera na agenda quando horário está cheio
+6. Detecção de "chamar humano": reclamação, pedido de desconto, reembolso, negociação especial, aluno irritado
 
 ## Mapa de fluxos (original)
 

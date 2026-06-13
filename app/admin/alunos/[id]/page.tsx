@@ -6,8 +6,13 @@ import { supabase, Aluno, Plano } from '@/lib/supabase'
 import { waLink } from '@/lib/whatsapp'
 
 const STATUS_OPTIONS = [
-  { value: 'lead', label: 'Lead' },
-  { value: 'experimental', label: 'Experimental' },
+  { value: 'lead', label: 'Lead (novo)' },
+  { value: 'experimental_oferecida', label: 'Experimental oferecida' },
+  { value: 'experimental_agendada', label: 'Experimental agendada' },
+  { value: 'experimental_realizada', label: 'Experimental realizada' },
+  { value: 'faltou_experimental', label: 'Faltou experimental' },
+  { value: 'em_negociacao', label: 'Em negociação' },
+  { value: 'perdido', label: 'Perdido' },
   { value: 'ativo', label: 'Ativo' },
   { value: 'vencido', label: 'Vencido' },
   { value: 'cancelado', label: 'Cancelado' },

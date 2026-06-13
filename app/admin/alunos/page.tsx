@@ -6,6 +6,12 @@ import { supabase, Aluno, Plano } from '@/lib/supabase'
 
 const STATUS_LABEL: Record<string, string> = {
   lead: 'Lead',
+  experimental_oferecida: 'Exp. oferecida',
+  experimental_agendada: 'Exp. agendada',
+  experimental_realizada: 'Exp. realizada',
+  faltou_experimental: 'Faltou exp.',
+  em_negociacao: 'Em negociação',
+  perdido: 'Perdido',
   experimental: 'Experimental',
   ativo: 'Ativo',
   vencido: 'Vencido',
@@ -14,6 +20,12 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_COLOR: Record<string, string> = {
   lead: 'var(--text2)',
+  experimental_oferecida: 'var(--accent)',
+  experimental_agendada: 'var(--accent)',
+  experimental_realizada: 'var(--accent)',
+  faltou_experimental: 'var(--text3)',
+  em_negociacao: 'var(--accent)',
+  perdido: 'var(--text3)',
   experimental: 'var(--accent)',
   ativo: '#3fb950',
   vencido: 'var(--accent2)',
