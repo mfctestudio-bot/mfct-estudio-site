@@ -16,6 +16,8 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Campanha de recuperação 30/60/90 dias: aluno vencido/cancelado recebe mensagem de "sentimos sua falta" (30d), oferta de novos horários (60d), condição especial com desconto (90d) — controlado por status_desde (atualizado automaticamente por trigger) e etapa_recuperacao
 - Lista de espera na agenda: se horário está cheio (capacidade real verificada no backend), aluno entra na lista_espera; ao cancelar uma aula, o primeiro da fila é notificado automaticamente
 - Detecção de "chamar humano": reclamação grave, cobrança errada, pedido de reembolso/desconto fora do padrão, ou pedido explícito de atendente → Eleniria responde com frase curta e empática (sem investigar/prometer), aciona pausa automática (30min, mesmo mecanismo do takeover manual) e avisa o Matheus via WhatsApp com o motivo
+- Posts com imagem: upload de imagem no admin (aba Posts), exibida nos cards do site público
+- Cadastro completo ao agendar experimental: ao confirmar a aula experimental para um lead/visitante, Eleniria pede nome completo e foto de perfil. Qualquer imagem enviada por alguém em status de cadastro (lead/experimental_*/em_negociacao) sem foto_url ainda é detectada automaticamente como foto de perfil (sem precisar da palavra "perfil" na legenda) e salva no Supabase Storage, atualizando o cadastro. Exibida no painel do aluno.
 - Matrícula direta (planos, coleta de dados, link Mercado Pago, ativação)
 - Aluno ativo: agendar, cancelar, desmarcar, consultar vagas
 - Financeiro: cobrança Mercado Pago, webhook de confirmação, painel com caixa mensal + gráfico anual
