@@ -20,6 +20,7 @@ Documento de referência do sistema completo. Atualizado em 2026-06-13.
 - Aluno ativo: agendar, cancelar, desmarcar, consultar vagas
 - Financeiro: cobrança Mercado Pago, webhook de confirmação, painel com caixa mensal + gráfico anual
 - Bloqueio de agendamento por mensalidade vencida (com geração automática de link)
+- Bloqueio de agendamento de aula NORMAL para quem não tem plano ativo (status_plano != 'ativo'): Elen explica e oferece reativação/escolha de plano. Aula experimental nunca é bloqueada. Trava de segurança no backend independente da resposta do modelo (capacidade de 5 vagas por horário, valor padrão atualizado)
 - Alunos ausentes: aviso após 7 dias sem agendar
 - Horário fixo recorrente + lembrete de confirmação 2h antes
 - Site institucional com captação de leads, posts/notícias
