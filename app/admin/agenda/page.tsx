@@ -159,15 +159,26 @@ function GradeHorarios() {
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [data, setData] = useState(() => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).toISOString().slice(0, 10))
+  const [agendamentos, setAgendamentos] = useState<AgendamentoRow[]>([])
+  const [expandido, setExpandido] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('horarios').select('*').order('dia_semana').order('horario')
-    setHorarios(data || [])
+    const { data: hData } = await supabase.from('horarios').select('*').order('dia_semana').order('horario')
+    setHorarios(hData || [])
+
+    const { data: aData } = await supabase
+      .from('agendamentos')
+      .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
+      .eq('data', data)
+      .eq('status', 'confirmado')
+    setAgendamentos((aData as unknown as AgendamentoRow[]) || [])
+
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [data])
 
   async function toggle(h: Horario) {
     setUpdating(h.id)
@@ -178,47 +189,119 @@ function GradeHorarios() {
 
   if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
 
-  // Agrupar por dia da semana
-  const porDia = new Map<number, Horario[]>()
-  for (const h of horarios) {
-    if (!porDia.has(h.dia_semana)) porDia.set(h.dia_semana, [])
-    porDia.get(h.dia_semana)!.push(h)
+  // Diferenca de dia da semana entre a data selecionada e hoje, para filtrar horarios do dia certo
+  const diaSemanaData = new Date(data + 'T12:00:00').getDay()
+
+  const horariosDoDia = horarios.filter(h => h.dia_semana === diaSemanaData)
+
+  // Mapear agendamentos por horario_id
+  const porHorario = new Map<string, AgendamentoRow[]>()
+  for (const a of agendamentos) {
+    if (!porHorario.has(a.horario_id)) porHorario.set(a.horario_id, [])
+    porHorario.get(a.horario_id)!.push(a)
   }
 
   return (
     <div>
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
         Desativar um horário remove ele permanentemente da grade — a Eleniria deixa de oferecer esse horário pros alunos.
+        Selecione uma data para ver a ocupação de cada horário.
       </p>
-      <div style={{ display: 'grid', gap: 16 }}>
-        {[...porDia.entries()].map(([dia, lista]) => (
-          <div key={dia}>
-            <h3 style={{ fontSize: 13, color: 'var(--accent)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
-              {DIAS[dia]}
-            </h3>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {lista.map(h => (
-                <button
-                  key={h.id}
-                  onClick={() => toggle(h)}
-                  disabled={updating === h.id}
+
+      <div style={{ marginBottom: 16 }}>
+        <input
+          type="date"
+          value={data}
+          onChange={e => setData(e.target.value)}
+          style={{
+            background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)',
+            borderRadius: 6, padding: '8px 12px', fontSize: 13, fontFamily: 'inherit',
+          }}
+        />
+        <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>
+          {DIAS[diaSemanaData]}
+        </span>
+      </div>
+
+      {horariosDoDia.length === 0 ? (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13 }}>
+          Nenhum horário cadastrado para {DIAS[diaSemanaData]}.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {horariosDoDia.map(h => {
+            const lista = porHorario.get(h.id) || []
+            const ocupacao = lista.length
+            const cheio = ocupacao >= h.capacidade
+            const isExpandido = expandido === h.id
+
+            return (
+              <div key={h.id} style={{
+                background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+                borderRadius: 6, overflow: 'hidden',
+              }}>
+                <div
+                  onClick={() => setExpandido(isExpandido ? null : h.id)}
                   style={{
-                    background: h.ativo ? 'var(--card)' : 'transparent',
-                    border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
-                    color: h.ativo ? 'var(--text)' : 'var(--accent2)',
-                    borderRadius: 6, padding: '8px 14px', fontSize: 13, fontWeight: 700,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    textDecoration: h.ativo ? 'none' : 'line-through',
-                    opacity: updating === h.id ? 0.6 : 1,
+                    padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    gap: 12, flexWrap: 'wrap', cursor: 'pointer',
+                    opacity: h.ativo ? 1 : 0.55,
                   }}
                 >
-                  {h.horario.slice(0, 5)} {h.ativo ? '' : '(desativado)'}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
+                      {h.horario.slice(0, 5)}
+                    </span>
+                    {!h.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)' }}>(desativado)</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{
+                      fontSize: 12, fontWeight: 700,
+                      color: cheio ? 'var(--accent2)' : 'var(--text2)',
+                      background: 'var(--bg)', border: `1px solid ${cheio ? 'var(--accent2)' : 'var(--border)'}`,
+                      borderRadius: 4, padding: '4px 10px',
+                    }}>
+                      {ocupacao}/{h.capacidade} vaga{h.capacidade === 1 ? '' : 's'} {cheio ? '(cheio)' : ''}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggle(h) }}
+                      disabled={updating === h.id}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+                        color: h.ativo ? 'var(--text2)' : 'var(--accent2)',
+                        borderRadius: 4, padding: '6px 12px', fontSize: 12, fontWeight: 700,
+                        cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
+                      }}
+                    >
+                      {h.ativo ? 'Desativar' : 'Ativar'}
+                    </button>
+                  </div>
+                </div>
+
+                {isExpandido && (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '10px 16px', fontSize: 13 }}>
+                    {lista.length === 0 ? (
+                      <span style={{ color: 'var(--text2)' }}>Nenhum aluno agendado.</span>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 4 }}>
+                        {lista.map(a => (
+                          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text2)' }}>
+                            <span>{a.alunos?.nome || 'Sem nome'}</span>
+                            <span style={{ fontSize: 11 }}>
+                              {a.tipo === 'experimental' ? 'experimental' : 'aula'} · {a.alunos?.telefone || ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
