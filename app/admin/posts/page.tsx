@@ -7,6 +7,8 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true)
   const [titulo, setTitulo] = useState('')
   const [conteudo, setConteudo] = useState('')
+  const [imagemUrl, setImagemUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -23,21 +25,39 @@ export default function PostsPage() {
     setEditId(null)
     setTitulo('')
     setConteudo('')
+    setImagemUrl(null)
   }
 
   function editar(p: Post) {
     setEditId(p.id)
     setTitulo(p.titulo)
     setConteudo(p.conteudo)
+    setImagemUrl(p.imagem_url)
+  }
+
+  async function uploadImagem(file: File) {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error } = await supabase.storage.from('post-images').upload(path, file)
+    if (!error) {
+      const { data } = supabase.storage.from('post-images').getPublicUrl(path)
+      setImagemUrl(data.publicUrl)
+    }
+    setUploading(false)
+  }
+
+  function removerImagem() {
+    setImagemUrl(null)
   }
 
   async function salvarRascunho() {
     if (!titulo.trim() || !conteudo.trim()) return
     setSaving(true)
     if (editId) {
-      await supabase.from('posts').update({ titulo, conteudo }).eq('id', editId)
+      await supabase.from('posts').update({ titulo, conteudo, imagem_url: imagemUrl }).eq('id', editId)
     } else {
-      await supabase.from('posts').insert({ titulo, conteudo, publicado: false })
+      await supabase.from('posts').insert({ titulo, conteudo, imagem_url: imagemUrl, publicado: false })
     }
     setSaving(false)
     novo()
@@ -72,6 +92,26 @@ export default function PostsPage() {
           <label style={labelStyle}>Conteúdo</label>
           <textarea value={conteudo} onChange={e => setConteudo(e.target.value)} style={{ ...inputStyle, minHeight: 140, resize: 'vertical' }} placeholder="Escreva o texto aqui. Você pode revisar antes de publicar." />
         </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelStyle}>Imagem (opcional)</label>
+          {imagemUrl ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <img src={imagemUrl} alt="Preview" style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+              <button onClick={removerImagem} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', padding: '8px 14px' }}>
+                Remover imagem
+              </button>
+            </div>
+          ) : (
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadImagem(f) }}
+              style={{ ...inputStyle, padding: '8px 12px' }}
+            />
+          )}
+          {uploading && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>Enviando imagem...</p>}
+        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={salvarRascunho} disabled={saving || !titulo.trim() || !conteudo.trim()} style={{
             ...btnStyle, background: 'var(--accent2)', color: '#fff',
@@ -98,6 +138,9 @@ export default function PostsPage() {
               background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
               padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
+              {p.imagem_url && (
+                <img src={p.imagem_url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+              )}
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo}</div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>

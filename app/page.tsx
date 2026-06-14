@@ -139,12 +139,18 @@ export default async function Home() {
             {posts.map(post => (
               <div key={post.id} style={{
                 background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
-                padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 8,
+                overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 8,
               }}>
-                <h3 style={{ fontSize: 16, color: 'var(--text)' }}>{post.titulo}</h3>
-                <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
-                  {post.conteudo.slice(0, 140)}{post.conteudo.length > 140 ? '…' : ''}
-                </p>
+                {post.imagem_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={post.imagem_url} alt={post.titulo} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
+                )}
+                <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <h3 style={{ fontSize: 16, color: 'var(--text)' }}>{post.titulo}</h3>
+                  <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                    {post.conteudo.slice(0, 140)}{post.conteudo.length > 140 ? '…' : ''}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

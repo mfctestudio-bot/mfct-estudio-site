@@ -79,7 +79,20 @@ export default function AlunoPage() {
   return (
     <div style={{ maxWidth: 560 }}>
       <Link href="/admin/alunos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← Alunos</Link>
-      <h1 style={{ fontSize: 28, margin: '8px 0 20px' }}>{aluno.nome}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '8px 0 20px' }}>
+        {aluno.foto_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+        ) : (
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'var(--text2)',
+          }}>
+            {aluno.nome.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <h1 style={{ fontSize: 28, margin: 0 }}>{aluno.nome}</h1>
+      </div>
 
       <Secao titulo="Dados pessoais">
         <Campo label="Nome">

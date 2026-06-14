@@ -26,6 +26,7 @@ export type Aluno = {
   data_matricula: string
   observacoes: string | null
   dia_vencimento: number | null
+  foto_url: string | null
   created_at: string
   planos?: Plano
 }
