@@ -15,5 +15,17 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({ number: phone, text: msg }),
   })
 
+  // Aguardar 2 segundos e mandar link da anamnese
+  await new Promise(r => setTimeout(r, 2000))
+
+  await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
+    body: JSON.stringify({
+      number: phone,
+      text: `Antes de começar a treinar, preciso que você preencha nossa ficha de anamnese. É rápido e importante para personalizarmos seu treino! 📋\n\nhttps://docs.google.com/forms/d/e/1FAIpQLSeMXI_m6xNT-X147yyJaZhfzDpU0Cl_2efeOggjHz8CCrLKSw/viewform?usp=header`
+    }),
+  })
+
   return NextResponse.json({ ok: true })
 }
