@@ -111,19 +111,22 @@ export default function AlunoPage() {
   return (
     <div style={{ maxWidth: 560 }}>
       <Link href="/admin/alunos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← Alunos</Link>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '8px 0 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '8px 0 20px' }}>
         {aluno.foto_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+          <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)', flexShrink: 0 }} />
         ) : (
           <div style={{
-            width: 56, height: 56, borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'var(--text2)',
+            width: 80, height: 80, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: 'var(--text2)', flexShrink: 0,
           }}>
             {aluno.nome.charAt(0).toUpperCase()}
           </div>
         )}
-        <h1 style={{ fontSize: 28, margin: 0 }}>{aluno.nome}</h1>
+        <div>
+          <h1 style={{ fontSize: 24, margin: 0 }}>{aluno.nome}</h1>
+          <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>{aluno.telefone}</div>
+        </div>
       </div>
 
       {/* AÇÕES RÁPIDAS */}
