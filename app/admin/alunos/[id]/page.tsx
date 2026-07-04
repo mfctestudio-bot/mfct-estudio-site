@@ -112,17 +112,42 @@ export default function AlunoPage() {
     <div style={{ maxWidth: 560 }}>
       <Link href="/admin/alunos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← Alunos</Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '8px 0 20px' }}>
-        {aluno.foto_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)', flexShrink: 0 }} />
-        ) : (
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: 'var(--text2)', flexShrink: 0,
-          }}>
-            {aluno.nome.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          {aluno.foto_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
+          ) : (
+            <div style={{
+              width: 80, height: 80, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: 'var(--text2)',
+            }}>
+              {aluno.nome.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <label style={{
+            position: 'absolute', bottom: 0, right: 0, background: 'var(--accent)', border: 'none',
+            borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', fontSize: 13,
+          }} title="Trocar foto">
+            📷
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const { createClient } = await import('@supabase/supabase-js')
+              const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+              const ext = file.name.split('.').pop()
+              const path = `${aluno.id}-${Date.now()}.${ext}`
+              const { error } = await sb.storage.from('aluno-fotos').upload(path, file, { upsert: true })
+              if (!error) {
+                const { data } = sb.storage.from('aluno-fotos').getPublicUrl(path)
+                await supabase.from('alunos').update({ foto_url: data.publicUrl }).eq('id', aluno.id)
+                update('foto_url', data.publicUrl)
+                setToast('Foto atualizada!')
+                setTimeout(() => setToast(''), 2500)
+              }
+            }} />
+          </label>
+        </div>
         <div>
           <h1 style={{ fontSize: 24, margin: 0 }}>{aluno.nome}</h1>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>{aluno.telefone}</div>
