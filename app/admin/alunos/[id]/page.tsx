@@ -73,6 +73,38 @@ export default function AlunoPage() {
     router.push('/admin/alunos')
   }
 
+  async function ativarPlano(planoId?: string) {
+    if (!aluno) return
+    const updates: Record<string, unknown> = { status_plano: 'ativo' }
+    if (planoId) updates.plano_id = planoId
+    await supabase.from('alunos').update(updates).eq('id', id)
+    setAluno(prev => prev ? { ...prev, status_plano: 'ativo', plano_id: planoId || prev.plano_id } : prev)
+    // Notificar aluno
+    await fetch('/api/confirmar-pagamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: aluno.telefone, nomeAluno: aluno.nome })
+    })
+    setToast('Plano ativado! Aluno notificado.')
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  async function desativarPlano() {
+    if (!aluno || !confirm('Desativar o plano deste aluno?')) return
+    await supabase.from('alunos').update({ status_plano: 'cancelado' }).eq('id', id)
+    setAluno(prev => prev ? { ...prev, status_plano: 'cancelado' } : prev)
+    setToast('Plano desativado.')
+    setTimeout(() => setToast(''), 2500)
+  }
+
+  async function alterarVencimento(dia: number) {
+    if (!aluno) return
+    await supabase.from('alunos').update({ dia_vencimento: dia }).eq('id', id)
+    setAluno(prev => prev ? { ...prev, dia_vencimento: dia } : prev)
+    setToast('Vencimento alterado.')
+    setTimeout(() => setToast(''), 2500)
+  }
+
   if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
   if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
 
@@ -92,6 +124,62 @@ export default function AlunoPage() {
           </div>
         )}
         <h1 style={{ fontSize: 28, margin: 0 }}>{aluno.nome}</h1>
+      </div>
+
+      {/* AÇÕES RÁPIDAS */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>Ações rápidas</div>
+        
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          {aluno.status_plano !== 'ativo' ? (
+            <button onClick={() => ativarPlano()} style={{
+              background: '#3fb950', border: 'none', color: '#fff',
+              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>
+              ✅ Ativar plano
+            </button>
+          ) : (
+            <button onClick={desativarPlano} style={{
+              background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>
+              ❌ Desativar plano
+            </button>
+          )}
+        </div>
+
+        {/* Alterar plano */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: 'var(--text2)', alignSelf: 'center' }}>Alterar plano:</span>
+          {planos.filter(p => p.vezes_semana > 1).map(p => (
+            <button key={p.id} onClick={() => ativarPlano(p.id)} style={{
+              background: aluno.plano_id === p.id ? 'var(--accent)' : 'var(--card)',
+              border: `1px solid ${aluno.plano_id === p.id ? 'var(--accent)' : 'var(--border)'}`,
+              color: aluno.plano_id === p.id ? '#fff' : 'var(--text)',
+              borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>
+              {p.nome} — R$ {Number(p.valor).toFixed(2).replace('.', ',')}
+            </button>
+          ))}
+        </div>
+
+        {/* Alterar vencimento */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>Dia de vencimento:</span>
+          <select
+            value={aluno.dia_vencimento || ''}
+            onChange={e => alterarVencimento(Number(e.target.value))}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}
+          >
+            <option value="">-- selecionar --</option>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+              <option key={d} value={d}>Dia {d}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <Secao titulo="Dados pessoais">
