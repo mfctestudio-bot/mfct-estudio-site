@@ -181,11 +181,12 @@ export default function PagamentosPage() {
                     </div>
                     <button
                       onClick={() => confirmarPagamento(p.id)}
-                      disabled={confirmando === p.id}
+                      disabled={confirmando === p.id || (p.status as string) === 'pago'}
                       style={{
                         background: '#3fb950', border: 'none', color: '#fff',
                         borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        cursor: confirmando === p.id || (p.status as string) === 'pago' ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit', whiteSpace: 'nowrap',
                         opacity: confirmando === p.id ? 0.6 : 1, marginTop: 18,
                       }}
                     >
