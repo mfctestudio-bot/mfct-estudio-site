@@ -178,6 +178,7 @@ export default function AdminHome() {
         {[
           { label: '👥 Alunos', href: '/admin/alunos' },
           { label: '📅 Agenda', href: '/admin/agenda' },
+          { label: '🚴 Aeróbico', href: '/admin/aerobico' },
           { label: '💰 Pagamentos', href: '/admin/pagamentos' },
           { label: '📊 Financeiro', href: '/admin/financeiro' },
           { label: '📝 Posts', href: '/admin/posts' },

@@ -7,6 +7,7 @@ const MENU = [
   { href: '/admin', label: 'Início', icon: '⊞' },
   { href: '/admin/alunos', label: 'Alunos', icon: '👤' },
   { href: '/admin/agenda', label: 'Agenda', icon: '📅' },
+  { href: '/admin/aerobico', label: 'Aeróbico', icon: '🚴' },
   { href: '/admin/pagamentos', label: 'Pagamentos', icon: '💳' },
   { href: '/admin/financeiro', label: 'Financeiro', icon: '📊' },
   { href: '/admin/posts', label: 'Posts', icon: '📝' },
