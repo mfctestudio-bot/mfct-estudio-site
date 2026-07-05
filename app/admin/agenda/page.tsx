@@ -15,16 +15,17 @@ type AgendamentoRow = {
 const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
 
 export default function AgendaPage() {
-  const [tab, setTab] = useState<'aulas' | 'grade'>('aulas')
+  const [tab, setTab] = useState<'semana' | 'aulas' | 'grade'>('semana')
 
   return (
     <div>
       <h1 style={{ fontSize: 28, marginBottom: 8 }}>Agenda</h1>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <TabButton active={tab === 'semana'} onClick={() => setTab('semana')}>Semana</TabButton>
         <TabButton active={tab === 'aulas'} onClick={() => setTab('aulas')}>Próximas aulas</TabButton>
         <TabButton active={tab === 'grade'} onClick={() => setTab('grade')}>Grade de horários</TabButton>
       </div>
-      {tab === 'aulas' ? <ProximasAulas /> : <GradeHorarios />}
+      {tab === 'semana' ? <GradeSemanal /> : tab === 'aulas' ? <ProximasAulas /> : <GradeHorarios />}
     </div>
   )
 }
@@ -40,6 +41,188 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       {children}
     </button>
   )
+}
+
+function hojeSP() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+}
+
+function segundaDaSemana(ref: Date) {
+  const d = new Date(ref)
+  const diaSemana = d.getDay() // 0=dom..6=sáb
+  const diff = diaSemana === 0 ? -6 : 1 - diaSemana
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function fmtISO(d: Date) {
+  return d.toISOString().slice(0, 10)
+}
+
+function fmtBR(d: Date) {
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+const DIAS_ABREV = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+
+function GradeSemanal() {
+  const [refDate, setRefDate] = useState(() => hojeSP())
+  const [horarios, setHorarios] = useState<Horario[]>([])
+  const [agendamentos, setAgendamentos] = useState<AgendamentoRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [célulaAberta, setCélulaAberta] = useState<{ data: string; horarioId: string } | null>(null)
+
+  const monday = segundaDaSemana(refDate)
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+  const domingo = weekDates[6]
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      const { data: hData } = await supabase.from('horarios').select('*').eq('ativo', true).order('horario')
+      setHorarios(hData || [])
+
+      const { data: aData } = await supabase
+        .from('agendamentos')
+        .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
+        .eq('status', 'confirmado')
+        .gte('data', fmtISO(monday))
+        .lte('data', fmtISO(domingo))
+      setAgendamentos((aData as unknown as AgendamentoRow[]) || [])
+      setLoading(false)
+    }
+    load()
+  }, [fmtISO(monday)])
+
+  // Horários únicos (union de todos os dias ativos), ordenados
+  const horariosUnicos = Array.from(new Set(horarios.map(h => h.horario))).sort()
+
+  function horarioNoDia(diaSemana: number, horario: string) {
+    return horarios.find(h => h.dia_semana === diaSemana && h.horario === horario)
+  }
+
+  function agendamentosDaCelula(dataISO: string, horarioId: string) {
+    return agendamentos.filter(a => a.data === dataISO && a.horario_id === horarioId)
+  }
+
+  const célula = célulaAberta ? agendamentosDaCelula(célulaAberta.data, célulaAberta.horarioId) : []
+  const horarioCelula = célulaAberta ? horarios.find(h => h.id === célulaAberta.horarioId) : null
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })} style={navBtnStyle}>← Semana anterior</button>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtBR(monday)} a {fmtBR(domingo)}</span>
+        <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })} style={navBtnStyle}>Próxima semana →</button>
+        <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: 'var(--accent)', borderColor: 'var(--accent)' }}>Hoje</button>
+      </div>
+
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado.</p>
+
+      {loading ? (
+        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', background: 'var(--card)', border: '1px solid var(--border)' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Horário</th>
+                {weekDates.map((d, i) => (
+                  <th key={i} style={thStyle}>
+                    {DIAS_ABREV[d.getDay()]}<br />
+                    <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 400 }}>{fmtBR(d)}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {horariosUnicos.map(hr => (
+                <tr key={hr}>
+                  <td style={{ ...tdStyle, fontWeight: 700, color: 'var(--text2)' }}>{hr.slice(0, 5)}</td>
+                  {weekDates.map((d, i) => {
+                    const diaSemana = d.getDay()
+                    const h = horarioNoDia(diaSemana, hr)
+                    if (!h) return <td key={i} style={{ ...tdStyle, color: 'var(--text3)' }}>—</td>
+                    const dataISO = fmtISO(d)
+                    const lista = agendamentosDaCelula(dataISO, h.id)
+                    const ocupacao = lista.length
+                    const cheio = ocupacao >= h.capacidade
+                    return (
+                      <td
+                        key={i}
+                        onClick={() => setCélulaAberta({ data: dataISO, horarioId: h.id })}
+                        style={{
+                          ...tdStyle, cursor: 'pointer',
+                          background: ocupacao === 0 ? 'transparent' : cheio ? '#3fb95022' : 'var(--bg2)',
+                        }}
+                      >
+                        <span style={{
+                          fontSize: 12, fontWeight: 700,
+                          color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : 'var(--accent)',
+                        }}>
+                          {ocupacao}/{h.capacidade}
+                        </span>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {célulaAberta && (
+        <div onClick={() => setCélulaAberta(null)} style={{
+          position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380, maxHeight: '80vh', overflowY: 'auto' }}>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>
+              {new Date(célulaAberta.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
+              {horarioCelula?.horario.slice(0, 5)} · {célula.length}/{horarioCelula?.capacidade} vaga{horarioCelula?.capacidade === 1 ? '' : 's'}
+            </p>
+            {célula.length === 0 ? (
+              <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum aluno agendado nesse horário.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {célula.map(a => (
+                  <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{a.alunos?.nome || 'Sem nome'}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+                      {a.tipo === 'experimental' ? 'experimental' : 'aula'}{a.alunos?.telefone ? ` · ${a.alunos.telefone}` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setCélulaAberta(null)} style={{ ...navBtnStyle, marginTop: 16, width: '100%' }}>Fechar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const navBtnStyle: React.CSSProperties = {
+  background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
+  borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const thStyle: React.CSSProperties = {
+  border: '1px solid var(--border)', padding: '8px 6px', textAlign: 'center',
+  fontSize: 11, fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.5px',
+  background: 'var(--bg2)', textTransform: 'uppercase' as const,
+}
+
+const tdStyle: React.CSSProperties = {
+  border: '1px solid var(--border)', padding: '10px 6px', textAlign: 'center', fontSize: 13,
 }
 
 function ProximasAulas() {

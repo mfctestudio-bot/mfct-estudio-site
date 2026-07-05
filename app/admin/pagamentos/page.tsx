@@ -5,16 +5,24 @@ import { supabase } from '@/lib/supabase'
 type PagamentoRow = {
   id: string
   valor: number
+  valor_original: number | null
+  desconto: number | null
   status: string
   data_vencimento: string | null
+  data_pagamento: string | null
   comprovante_url: string | null
   comprovante_recebido_em: string | null
   confirmado_em: string | null
   metodo_pagamento: string | null
+  observacao: string | null
   created_at: string
+  aluno_id: string
   alunos: { nome: string; telefone: string } | null
   planos: { nome: string } | null
 }
+
+type AlunoOpt = { id: string; nome: string; plano_id: string | null }
+type PlanoOpt = { id: string; nome: string; valor: number }
 
 const STATUS_LABEL: Record<string, string> = {
   pendente: 'Pendente',
@@ -45,11 +53,28 @@ export default function PagamentosPage() {
   const [dataConfirm, setDataConfirm] = useState<Record<string, string>>({})
   const [imgModal, setImgModal] = useState<string | null>(null)
 
+  const [editando, setEditando] = useState<PagamentoRow | null>(null)
+  const [editValor, setEditValor] = useState('')
+  const [editDesconto, setEditDesconto] = useState('')
+  const [editStatus, setEditStatus] = useState('')
+  const [editData, setEditData] = useState('')
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false)
+
+  const [novoModal, setNovoModal] = useState(false)
+  const [alunosOpt, setAlunosOpt] = useState<AlunoOpt[]>([])
+  const [planosOpt, setPlanosOpt] = useState<PlanoOpt[]>([])
+  const [novoAlunoId, setNovoAlunoId] = useState('')
+  const [novoPlanoId, setNovoPlanoId] = useState('')
+  const [novoValor, setNovoValor] = useState('')
+  const [novoDesconto, setNovoDesconto] = useState('0')
+  const [novoData, setNovoData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [salvandoNovo, setSalvandoNovo] = useState(false)
+
   async function load() {
     setLoading(true)
     let q = supabase
       .from('pagamentos')
-      .select('id, valor, status, data_vencimento, comprovante_url, comprovante_recebido_em, confirmado_em, metodo_pagamento, created_at, alunos(nome, telefone), planos(nome)')
+      .select('id, valor, valor_original, desconto, status, data_vencimento, data_pagamento, comprovante_url, comprovante_recebido_em, confirmado_em, metodo_pagamento, observacao, created_at, aluno_id, alunos(nome, telefone), planos(nome)')
       .order('created_at', { ascending: false })
       .limit(100)
     if (filtro !== 'todos') q = q.eq('status', filtro)
@@ -59,6 +84,68 @@ export default function PagamentosPage() {
   }
 
   useEffect(() => { load() }, [filtro])
+
+  function abrirNovoModal() {
+    setNovoAlunoId(''); setNovoPlanoId(''); setNovoValor(''); setNovoDesconto('0')
+    setNovoData(new Date().toISOString().slice(0, 10))
+    if (alunosOpt.length === 0) {
+      supabase.from('alunos').select('id, nome, plano_id').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
+    }
+    if (planosOpt.length === 0) {
+      supabase.from('planos').select('id, nome, valor').order('valor').then(({ data }) => setPlanosOpt((data as PlanoOpt[]) || []))
+    }
+    setNovoModal(true)
+  }
+
+  async function salvarNovoPagamento() {
+    if (!novoAlunoId || !novoValor) return
+    setSalvandoNovo(true)
+    const plano = planosOpt.find(p => p.id === novoPlanoId)
+    await supabase.from('pagamentos').insert({
+      aluno_id: novoAlunoId,
+      plano_id: novoPlanoId || null,
+      valor: Number(novoValor),
+      valor_original: plano ? Number(plano.valor) : Number(novoValor),
+      desconto: Number(novoDesconto || 0),
+      status: 'pago',
+      metodo_pagamento: 'manual',
+      confirmado_em: new Date().toISOString(),
+      confirmado_por: 'admin',
+      data_pagamento: new Date(novoData + 'T12:00:00').toISOString(),
+    })
+    setSalvandoNovo(false)
+    setNovoModal(false)
+    load()
+  }
+
+  function abrirEdicao(p: PagamentoRow) {
+    setEditando(p)
+    setEditValor(String(p.valor))
+    setEditDesconto(String(p.desconto || 0))
+    setEditStatus(p.status)
+    setEditData(p.data_pagamento ? p.data_pagamento.slice(0, 10) : new Date().toISOString().slice(0, 10))
+  }
+
+  async function salvarEdicao() {
+    if (!editando) return
+    setSalvandoEdicao(true)
+    await supabase.from('pagamentos').update({
+      valor: Number(editValor),
+      desconto: Number(editDesconto || 0),
+      status: editStatus,
+      data_pagamento: editStatus === 'pago' ? new Date(editData + 'T12:00:00').toISOString() : editando.data_pagamento,
+    }).eq('id', editando.id)
+    setSalvandoEdicao(false)
+    setEditando(null)
+    load()
+  }
+
+  async function removerPagamento(id: string) {
+    if (!confirm('Remover este pagamento? Essa ação não pode ser desfeita.')) return
+    await supabase.from('pagamentos').delete().eq('id', id)
+    setEditando(null)
+    load()
+  }
 
   async function confirmarPagamento(id: string) {
     setConfirmando(id)
@@ -97,7 +184,15 @@ export default function PagamentosPage() {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <h1 style={{ fontSize: 28, marginBottom: 4 }}>Pagamentos</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <h1 style={{ fontSize: 28, marginBottom: 4 }}>Pagamentos</h1>
+        <button onClick={abrirNovoModal} style={{
+          background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
+          padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          + Registrar pagamento
+        </button>
+      </div>
       {pendentes > 0 && (
         <div style={{ background: '#f0a50022', border: '1px solid #f0a500', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f0a500', fontWeight: 700 }}>
           ⚠️ {pendentes} comprovante{pendentes > 1 ? 's' : ''} aguardando sua confirmação
@@ -136,6 +231,9 @@ export default function PagamentosPage() {
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{p.alunos?.nome || 'Sem nome'}</div>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                     {p.planos?.nome || 'Plano'} · R$ {Number(p.valor).toFixed(2).replace('.', ',')}
+                    {!!p.desconto && Number(p.desconto) > 0 && (
+                      <span style={{ color: '#f0a500' }}> (desconto de R$ {Number(p.desconto).toFixed(2).replace('.', ',')})</span>
+                    )}
                     {p.data_vencimento && ` · Vence ${new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}`}
                   </div>
                   {p.comprovante_recebido_em && (
@@ -149,13 +247,21 @@ export default function PagamentosPage() {
                     </div>
                   )}
                 </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-                  background: 'var(--bg)', border: `1px solid ${STATUS_COLOR[p.status] || 'var(--border)'}`,
-                  color: STATUS_COLOR[p.status] || 'var(--text2)',
-                }}>
-                  {STATUS_LABEL[p.status] || p.status}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
+                    background: 'var(--bg)', border: `1px solid ${STATUS_COLOR[p.status] || 'var(--border)'}`,
+                    color: STATUS_COLOR[p.status] || 'var(--text2)',
+                  }}>
+                    {STATUS_LABEL[p.status] || p.status}
+                  </span>
+                  <button onClick={() => abrirEdicao(p)} style={{
+                    background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
+                    borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    ✏️ Editar
+                  </button>
+                </div>
               </div>
 
               {/* Comprovante + Confirmação */}
@@ -197,6 +303,117 @@ export default function PagamentosPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal editar pagamento */}
+      {editando && (
+        <div onClick={() => !salvandoEdicao && setEditando(null)} style={{
+          position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380 }}>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Editar pagamento</h3>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>{editando.alunos?.nome} · {editando.planos?.nome || 'Plano'}</p>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor (R$)</label>
+              <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto (R$)</label>
+              <input type="number" step="0.01" value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Status</label>
+              <select value={editStatus} onChange={e => setEditStatus(e.target.value)} style={inputStyle}>
+                {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            {editStatus === 'pago' && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data do pagamento</label>
+                <input type="date" value={editData} onChange={e => setEditData(e.target.value)} style={inputStyle} />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={salvarEdicao} disabled={salvandoEdicao} style={{
+                flex: 1, background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
+                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvandoEdicao ? 0.6 : 1,
+              }}>
+                {salvandoEdicao ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button onClick={() => removerPagamento(editando.id)} disabled={salvandoEdicao} style={{
+                background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 6,
+                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                🗑️ Remover
+              </button>
+              <button onClick={() => setEditando(null)} disabled={salvandoEdicao} style={{
+                background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
+                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal novo pagamento manual */}
+      {novoModal && (
+        <div onClick={() => !salvandoNovo && setNovoModal(false)} style={{
+          position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380 }}>
+            <h3 style={{ fontSize: 16, marginBottom: 16 }}>Registrar pagamento manual</h3>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
+              <select value={novoAlunoId} onChange={e => setNovoAlunoId(e.target.value)} style={inputStyle}>
+                <option value="">-- selecionar --</option>
+                {alunosOpt.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Plano</label>
+              <select value={novoPlanoId} onChange={e => {
+                setNovoPlanoId(e.target.value)
+                const plano = planosOpt.find(p => p.id === e.target.value)
+                if (plano) setNovoValor(String(plano.valor))
+              }} style={inputStyle}>
+                <option value="">-- sem plano / avulsa --</option>
+                {planosOpt.map(p => <option key={p.id} value={p.id}>{p.nome} — R$ {Number(p.valor).toFixed(2)}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor cobrado (R$)</label>
+              <input type="number" step="0.01" value={novoValor} onChange={e => setNovoValor(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto (R$)</label>
+              <input type="number" step="0.01" value={novoDesconto} onChange={e => setNovoDesconto(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data do pagamento</label>
+              <input type="date" value={novoData} onChange={e => setNovoData(e.target.value)} style={inputStyle} />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={salvarNovoPagamento} disabled={salvandoNovo || !novoAlunoId || !novoValor} style={{
+                flex: 1, background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
+                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: (salvandoNovo || !novoAlunoId || !novoValor) ? 0.6 : 1,
+              }}>
+                {salvandoNovo ? 'Salvando...' : '✅ Registrar'}
+              </button>
+              <button onClick={() => setNovoModal(false)} disabled={salvandoNovo} style={{
+                background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
+                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

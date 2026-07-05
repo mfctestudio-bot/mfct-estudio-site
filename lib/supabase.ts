@@ -55,7 +55,10 @@ export type Pagamento = {
   aluno_id: string
   plano_id: string | null
   valor: number
-  status: 'pendente' | 'pago' | 'vencido' | 'cancelado'
+  valor_original: number | null
+  desconto: number | null
+  observacao: string | null
+  status: 'pendente' | 'aguardando_confirmacao' | 'pago' | 'vencido' | 'cancelado'
   mercado_pago_id: string | null
   mercado_pago_link: string | null
   data_vencimento: string | null

@@ -29,6 +29,11 @@ export default function AlunoPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [msgTexto, setMsgTexto] = useState('')
+  const [modalPlano, setModalPlano] = useState<Plano | null>(null)
+  const [modalValor, setModalValor] = useState('')
+  const [modalDesconto, setModalDesconto] = useState('')
+  const [modalData, setModalData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [modalSaving, setModalSaving] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -73,19 +78,54 @@ export default function AlunoPage() {
     router.push('/admin/alunos')
   }
 
-  async function ativarPlano(planoId?: string) {
+  function abrirModalAtivacao(planoId?: string) {
     if (!aluno) return
-    const updates: Record<string, unknown> = { status_plano: 'ativo' }
-    if (planoId) updates.plano_id = planoId
-    await supabase.from('alunos').update(updates).eq('id', id)
-    setAluno(prev => prev ? { ...prev, status_plano: 'ativo', plano_id: planoId || prev.plano_id } : prev)
-    // Notificar aluno
-    await fetch('/api/confirmar-pagamento', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: aluno.telefone, nomeAluno: aluno.nome })
+    const plano = planos.find(p => p.id === (planoId || aluno.plano_id)) || planos[0]
+    if (!plano) { setToast('Cadastre um plano antes de ativar.'); setTimeout(() => setToast(''), 2500); return }
+    setModalPlano(plano)
+    setModalValor(String(plano.valor))
+    setModalDesconto('0')
+    setModalData(new Date().toISOString().slice(0, 10))
+  }
+
+  async function confirmarAtivacao() {
+    if (!aluno || !modalPlano) return
+    setModalSaving(true)
+    const valorOriginal = Number(modalPlano.valor)
+    const desconto = Number(modalDesconto || 0)
+    const valorFinal = Number(modalValor || 0)
+
+    // Ativa o aluno com o plano escolhido
+    await supabase.from('alunos').update({ status_plano: 'ativo', plano_id: modalPlano.id }).eq('id', id)
+
+    // Registra o pagamento de fato — isso que faltava
+    await supabase.from('pagamentos').insert({
+      aluno_id: id,
+      plano_id: modalPlano.id,
+      valor: valorFinal,
+      valor_original: valorOriginal,
+      desconto,
+      status: 'pago',
+      metodo_pagamento: 'manual',
+      confirmado_em: new Date().toISOString(),
+      confirmado_por: 'admin',
+      data_pagamento: new Date(modalData + 'T12:00:00').toISOString(),
     })
-    setToast('Plano ativado! Aluno notificado.')
+
+    setAluno(prev => prev ? { ...prev, status_plano: 'ativo', plano_id: modalPlano.id } : prev)
+
+    // Notificar aluno
+    try {
+      await fetch('/api/confirmar-pagamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: aluno.telefone, nomeAluno: aluno.nome })
+      })
+    } catch {}
+
+    setModalSaving(false)
+    setModalPlano(null)
+    setToast('Plano ativado e pagamento registrado! Aluno notificado.')
     setTimeout(() => setToast(''), 3000)
   }
 
@@ -160,7 +200,7 @@ export default function AlunoPage() {
         
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           {aluno.status_plano !== 'ativo' ? (
-            <button onClick={() => ativarPlano()} style={{
+            <button onClick={() => abrirModalAtivacao()} style={{
               background: '#3fb950', border: 'none', color: '#fff',
               borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit'
@@ -182,7 +222,7 @@ export default function AlunoPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           <span style={{ fontSize: 12, color: 'var(--text2)', alignSelf: 'center' }}>Alterar plano:</span>
           {planos.filter(p => p.vezes_semana > 1).map(p => (
-            <button key={p.id} onClick={() => ativarPlano(p.id)} style={{
+            <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} style={{
               background: aluno.plano_id === p.id ? 'var(--accent)' : 'var(--card)',
               border: `1px solid ${aluno.plano_id === p.id ? 'var(--accent)' : 'var(--border)'}`,
               color: aluno.plano_id === p.id ? '#fff' : 'var(--text)',
@@ -287,6 +327,42 @@ export default function AlunoPage() {
           padding: '10px 20px', fontSize: 13, color: '#3fb950',
         }}>
           {toast}
+        </div>
+      )}
+
+      {modalPlano && (
+        <div
+          onClick={() => !modalSaving && setModalPlano(null)}
+          style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8,
+            padding: '20px', width: '100%', maxWidth: 380,
+          }}>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Ativar plano — registrar pagamento</h3>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>
+              {modalPlano.nome} · valor de tabela R$ {Number(modalPlano.valor).toFixed(2).replace('.', ',')}
+            </p>
+
+            <Campo label="Valor cobrado (R$)">
+              <input type="number" step="0.01" value={modalValor} onChange={e => setModalValor(e.target.value)} style={inputStyle} />
+            </Campo>
+            <Campo label="Desconto aplicado (R$)">
+              <input type="number" step="0.01" value={modalDesconto} onChange={e => setModalDesconto(e.target.value)} style={inputStyle} placeholder="0" />
+            </Campo>
+            <Campo label="Data do pagamento">
+              <input type="date" value={modalData} onChange={e => setModalData(e.target.value)} style={inputStyle} />
+            </Campo>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={confirmarAtivacao} disabled={modalSaving} style={{ ...btnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: modalSaving ? 0.6 : 1 }}>
+                {modalSaving ? 'Registrando...' : '✅ Confirmar'}
+              </button>
+              <button onClick={() => setModalPlano(null)} disabled={modalSaving} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
