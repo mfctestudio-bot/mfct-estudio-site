@@ -26,6 +26,8 @@ async function forward(req: NextRequest, path: string[]) {
     Authorization: `Bearer ${SERVICE_KEY}`,
     'Content-Type': req.headers.get('content-type') || 'application/json',
   }
+  const accept = req.headers.get('accept')
+  if (accept) headers['Accept'] = accept
   const prefer = req.headers.get('prefer')
   if (prefer) headers['Prefer'] = prefer
   const range = req.headers.get('range')
