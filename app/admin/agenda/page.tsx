@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, Horario } from '@/lib/supabase'
+import { supabase } from '@/lib/supabaseAdmin'
+import { Horario } from '@/lib/supabase'
 
 type AgendamentoRow = {
   id: string

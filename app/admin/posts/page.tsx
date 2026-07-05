@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, Post } from '@/lib/supabase'
+import { supabase } from '@/lib/supabaseAdmin'
+import { Post } from '@/lib/supabase'
 
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -41,8 +42,7 @@ export default function PostsPage() {
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error } = await supabase.storage.from('post-images').upload(path, file)
     if (!error) {
-      const { data } = supabase.storage.from('post-images').getPublicUrl(path)
-      setImagemUrl(data.publicUrl)
+      setImagemUrl(`https://tgpestsfhjrdahtzwodk.supabase.co/storage/v1/object/public/post-images/${path}`)
     }
     setUploading(false)
   }

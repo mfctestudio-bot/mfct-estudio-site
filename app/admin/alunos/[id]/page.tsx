@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { supabase, Aluno, Plano } from '@/lib/supabase'
+import { supabase } from '@/lib/supabaseAdmin'
+import { Aluno, Plano } from '@/lib/supabase'
 import { waLink } from '@/lib/whatsapp'
 
 const STATUS_OPTIONS = [
@@ -173,15 +174,13 @@ export default function AlunoPage() {
             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
               const file = e.target.files?.[0]
               if (!file) return
-              const { createClient } = await import('@supabase/supabase-js')
-              const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
               const ext = file.name.split('.').pop()
               const path = `${aluno.id}-${Date.now()}.${ext}`
-              const { error } = await sb.storage.from('aluno-fotos').upload(path, file, { upsert: true })
+              const { error } = await supabase.storage.from('aluno-fotos').upload(path, file, { upsert: true })
               if (!error) {
-                const { data } = sb.storage.from('aluno-fotos').getPublicUrl(path)
-                await supabase.from('alunos').update({ foto_url: data.publicUrl }).eq('id', aluno.id)
-                update('foto_url', data.publicUrl)
+                const publicUrl = `https://tgpestsfhjrdahtzwodk.supabase.co/storage/v1/object/public/aluno-fotos/${path}`
+                await supabase.from('alunos').update({ foto_url: publicUrl }).eq('id', aluno.id)
+                update('foto_url', publicUrl)
                 setToast('Foto atualizada!')
                 setTimeout(() => setToast(''), 2500)
               }

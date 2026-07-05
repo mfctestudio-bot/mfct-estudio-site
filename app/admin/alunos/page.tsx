@@ -2,7 +2,8 @@
 import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { supabase, Aluno, Plano } from '@/lib/supabase'
+import { supabase } from '@/lib/supabaseAdmin'
+import { Aluno, Plano } from '@/lib/supabase'
 
 const STATUS_LABEL: Record<string, string> = {
   lead: 'Lead',
