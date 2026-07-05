@@ -49,7 +49,9 @@ async function forward(req: NextRequest, path: string[]) {
   const contentRange = upstream.headers.get('content-range')
   if (contentRange) resHeaders.set('content-range', contentRange)
 
-  return new NextResponse(resBody, { status: upstream.status, headers: resHeaders })
+  // Respostas 204/205/304 não podem ter corpo, mesmo vazio, ou o Response() quebra
+  const semCorpo = [204, 205, 304].includes(upstream.status)
+  return new NextResponse(semCorpo ? null : resBody, { status: upstream.status, headers: resHeaders })
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {

@@ -45,7 +45,8 @@ async function forward(req: NextRequest, path: string[]) {
   const contentType = upstream.headers.get('content-type')
   if (contentType) resHeaders.set('content-type', contentType)
 
-  return new NextResponse(resBody, { status: upstream.status, headers: resHeaders })
+  const semCorpo = [204, 205, 304].includes(upstream.status)
+  return new NextResponse(semCorpo ? null : resBody, { status: upstream.status, headers: resHeaders })
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
