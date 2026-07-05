@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
 
   const supabase = createClient(SUPA_URL, SUPA_SERVICE_KEY)
 
-  // Buscar agendamentos confirmados desse dia/horário, com dados do aluno
+  // Buscar agendamentos confirmados desse dia/horário, com dados do aluno e o horário
   const { data: agendamentos, error } = await supabase
     .from('agendamentos')
-    .select('id, alunos(nome, telefone)')
+    .select('id, alunos(nome, telefone), horarios(horario)')
     .eq('data', data)
     .eq('horario_id', horario_id)
     .eq('status', 'confirmado')
@@ -41,15 +41,22 @@ export async function POST(req: NextRequest) {
       .eq('status', 'confirmado')
   }
 
-  // Enviar mensagem pra cada aluno via Evolution API
-  const textoBase = mensagem || 'Oi! Passando pra avisar que a aula de hoje nesse horário foi cancelada. Desculpa o transtorno, qualquer coisa é só chamar aqui 🙏'
+  // Data formatada em pt-BR, indicando "hoje" quando for o caso (fuso São Paulo)
+  const hojeSP = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }).slice(0, 10)
+  const hojeISO = new Date(hojeSP).toISOString().slice(0, 10)
+  const dataLabel = data === hojeISO ? 'hoje' : `dia ${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}`
 
   const resultados: { telefone: string; ok: boolean }[] = []
 
   for (const ag of lista) {
     const aluno = Array.isArray(ag.alunos) ? ag.alunos[0] : ag.alunos
+    const horarioObj = Array.isArray(ag.horarios) ? ag.horarios[0] : ag.horarios
+    const horarioTexto = horarioObj?.horario ? horarioObj.horario.slice(0, 5) : ''
     const telefone = aluno?.telefone
     if (!telefone) continue
+
+    const textoBase = mensagem ||
+      `Passando pra avisar que a aula de ${dataLabel}${horarioTexto ? ` às ${horarioTexto}` : ''} foi cancelada. Desculpa o transtorno! Podemos remarcar pra outro horário ou outro dia — me responde aqui que já ajeito com você 🙏`
 
     try {
       const resp = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
