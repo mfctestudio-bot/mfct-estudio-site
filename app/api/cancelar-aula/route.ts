@@ -55,6 +55,10 @@ export async function POST(req: NextRequest) {
     const telefone = aluno?.telefone
     if (!telefone) continue
 
+    // Avisa a Eleniria que a próxima mensagem "fromMe" pra esse número é automática,
+    // pra não pausar o bot por engano quando o aluno responder
+    await supabase.from('mensagens_automaticas').insert({ telefone, origem: 'cancelar-aula' })
+
     const textoBase = mensagem ||
       `Passando pra avisar que a aula de ${dataLabel}${horarioTexto ? ` às ${horarioTexto}` : ''} foi cancelada. Desculpa o transtorno! Podemos remarcar pra outro horário ou outro dia — me responde aqui que já ajeito com você 🙏`
 
