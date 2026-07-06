@@ -39,6 +39,17 @@ export async function POST(req: NextRequest) {
       .eq('data', data)
       .eq('horario_id', horario_id)
       .eq('status', 'confirmado')
+
+    // Cancela o evento correspondente no Google Calendar de cada aluno afetado
+    for (const ag of lista) {
+      try {
+        await fetch('https://ribbitingshoebill-n8n.cloudfy.live/webhook/mfct-sync-calendar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ acao: 'cancelar', agendamento_id: ag.id }),
+        })
+      } catch {}
+    }
   }
 
   // Data formatada em pt-BR, indicando "hoje" quando for o caso (fuso São Paulo)

@@ -78,6 +78,7 @@ function GradeSemanal() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [alunoEscolhido, setAlunoEscolhido] = useState('')
   const [repetirSemana, setRepetirSemana] = useState(false)
+  const [tipoAula, setTipoAula] = useState<'aula' | 'experimental'>('aula')
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
 
   const monday = segundaDaSemana(refDate)
@@ -121,6 +122,7 @@ function GradeSemanal() {
     setMostrarForm(false)
     setAlunoEscolhido('')
     setRepetirSemana(false)
+    setTipoAula('aula')
     if (alunosOpt.length === 0) {
       supabase.from('alunos').select('id, nome, status_plano').order('nome').then(({ data }) => setAlunosOpt(data || []))
     }
@@ -130,13 +132,13 @@ function GradeSemanal() {
     if (!célulaAberta || !alunoEscolhido) return
     setSalvandoAgendamento(true)
 
-    await supabase.from('agendamentos').insert({
+    const { data: novoAgendamento } = await supabase.from('agendamentos').insert({
       aluno_id: alunoEscolhido,
       horario_id: célulaAberta.horarioId,
       data: célulaAberta.data,
       status: 'confirmado',
-      tipo: 'aula',
-    })
+      tipo: tipoAula,
+    }).select('id').single()
 
     if (repetirSemana) {
       await supabase.from('horarios_fixos').insert({
@@ -146,11 +148,33 @@ function GradeSemanal() {
       })
     }
 
+    // Sincroniza com o Google Calendar
+    if (novoAgendamento) {
+      const aluno = alunosOpt.find(a => a.id === alunoEscolhido)
+      const horarioObj = horarios.find(h => h.id === célulaAberta.horarioId)
+      try {
+        await fetch('/api/sync-calendario', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            acao: 'criar',
+            agendamento_id: novoAgendamento.id,
+            aluno_nome: aluno?.nome || '',
+            data: célulaAberta.data,
+            horario: horarioObj?.horario?.slice(0, 5) || '',
+            tipo: tipoAula,
+            origem: 'admin (manual)',
+          }),
+        })
+      } catch {}
+    }
+
     await recarregarAgendamentos()
     setSalvandoAgendamento(false)
     setMostrarForm(false)
     setAlunoEscolhido('')
     setRepetirSemana(false)
+    setTipoAula('aula')
   }
 
   // Horários únicos (union de todos os dias ativos), ordenados
@@ -270,10 +294,17 @@ function GradeSemanal() {
                     <option key={a.id} value={a.id}>{a.nome}{a.status_plano !== 'ativo' ? ` (${a.status_plano})` : ''}</option>
                   ))}
                 </select>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: 'var(--text2)' }}>
-                  <input type="checkbox" checked={repetirSemana} onChange={e => setRepetirSemana(e.target.checked)} />
-                  Repetir toda semana (aula fixa)
-                </label>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo</label>
+                <select value={tipoAula} onChange={e => setTipoAula(e.target.value as 'aula' | 'experimental')} style={{ ...inputStyleGrade, marginBottom: 10 }}>
+                  <option value="aula">Aula normal</option>
+                  <option value="experimental">Aula experimental</option>
+                </select>
+                {tipoAula === 'aula' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: 'var(--text2)' }}>
+                    <input type="checkbox" checked={repetirSemana} onChange={e => setRepetirSemana(e.target.checked)} />
+                    Repetir toda semana (aula fixa)
+                  </label>
+                )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                   <button onClick={adicionarAlunoNoHorario} disabled={!alunoEscolhido || salvandoAgendamento} style={{
                     ...navBtnStyle, flex: 1, background: 'var(--accent)', color: '#fff', opacity: (!alunoEscolhido || salvandoAgendamento) ? 0.6 : 1,
