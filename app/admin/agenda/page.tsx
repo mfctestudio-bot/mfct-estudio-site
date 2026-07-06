@@ -74,6 +74,12 @@ function GradeSemanal() {
   const [loading, setLoading] = useState(true)
   const [célulaAberta, setCélulaAberta] = useState<{ data: string; horarioId: string } | null>(null)
 
+  const [alunosOpt, setAlunosOpt] = useState<{ id: string; nome: string; status_plano: string }[]>([])
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [alunoEscolhido, setAlunoEscolhido] = useState('')
+  const [repetirSemana, setRepetirSemana] = useState(false)
+  const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
+
   const monday = segundaDaSemana(refDate)
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
@@ -99,6 +105,53 @@ function GradeSemanal() {
     }
     load()
   }, [fmtISO(monday)])
+
+  async function recarregarAgendamentos() {
+    const { data: aData } = await supabase
+      .from('agendamentos')
+      .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
+      .eq('status', 'confirmado')
+      .gte('data', fmtISO(monday))
+      .lte('data', fmtISO(domingo))
+    setAgendamentos((aData as unknown as AgendamentoRow[]) || [])
+  }
+
+  function abrirCelula(data: string, horarioId: string) {
+    setCélulaAberta({ data, horarioId })
+    setMostrarForm(false)
+    setAlunoEscolhido('')
+    setRepetirSemana(false)
+    if (alunosOpt.length === 0) {
+      supabase.from('alunos').select('id, nome, status_plano').order('nome').then(({ data }) => setAlunosOpt(data || []))
+    }
+  }
+
+  async function adicionarAlunoNoHorario() {
+    if (!célulaAberta || !alunoEscolhido) return
+    setSalvandoAgendamento(true)
+
+    await supabase.from('agendamentos').insert({
+      aluno_id: alunoEscolhido,
+      horario_id: célulaAberta.horarioId,
+      data: célulaAberta.data,
+      status: 'confirmado',
+      tipo: 'aula',
+    })
+
+    if (repetirSemana) {
+      await supabase.from('horarios_fixos').insert({
+        aluno_id: alunoEscolhido,
+        horario_id: célulaAberta.horarioId,
+        ativo: true,
+      })
+    }
+
+    await recarregarAgendamentos()
+    setSalvandoAgendamento(false)
+    setMostrarForm(false)
+    setAlunoEscolhido('')
+    setRepetirSemana(false)
+  }
 
   // Horários únicos (union de todos os dias ativos), ordenados
   const horariosUnicos = Array.from(new Set(horarios.map(h => h.horario))).sort()
@@ -156,7 +209,7 @@ function GradeSemanal() {
                     return (
                       <td
                         key={i}
-                        onClick={() => setCélulaAberta({ data: dataISO, horarioId: h.id })}
+                        onClick={() => abrirCelula(dataISO, h.id)}
                         style={{
                           ...tdStyle, cursor: 'pointer',
                           background: ocupacao === 0 ? 'transparent' : cheio ? '#3fb95022' : 'var(--bg2)',
@@ -192,7 +245,7 @@ function GradeSemanal() {
             {célula.length === 0 ? (
               <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum aluno agendado nesse horário.</p>
             ) : (
-              <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
                 {célula.map(a => (
                   <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{a.alunos?.nome || 'Sem nome'}</span>
@@ -203,7 +256,36 @@ function GradeSemanal() {
                 ))}
               </div>
             )}
-            <button onClick={() => setCélulaAberta(null)} style={{ ...navBtnStyle, marginTop: 16, width: '100%' }}>Fechar</button>
+
+            {!mostrarForm ? (
+              <button onClick={() => setMostrarForm(true)} style={{ ...navBtnStyle, width: '100%', color: 'var(--accent)', borderColor: 'var(--accent)', marginBottom: 8 }}>
+                + Adicionar aluno manualmente
+              </button>
+            ) : (
+              <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: 12, marginBottom: 8 }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
+                <select value={alunoEscolhido} onChange={e => setAlunoEscolhido(e.target.value)} style={{ ...inputStyleGrade }}>
+                  <option value="">-- selecionar --</option>
+                  {alunosOpt.map(a => (
+                    <option key={a.id} value={a.id}>{a.nome}{a.status_plano !== 'ativo' ? ` (${a.status_plano})` : ''}</option>
+                  ))}
+                </select>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: 'var(--text2)' }}>
+                  <input type="checkbox" checked={repetirSemana} onChange={e => setRepetirSemana(e.target.checked)} />
+                  Repetir toda semana (aula fixa)
+                </label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button onClick={adicionarAlunoNoHorario} disabled={!alunoEscolhido || salvandoAgendamento} style={{
+                    ...navBtnStyle, flex: 1, background: 'var(--accent)', color: '#fff', opacity: (!alunoEscolhido || salvandoAgendamento) ? 0.6 : 1,
+                  }}>
+                    {salvandoAgendamento ? 'Salvando...' : '✅ Confirmar'}
+                  </button>
+                  <button onClick={() => setMostrarForm(false)} disabled={salvandoAgendamento} style={navBtnStyle}>Cancelar</button>
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => setCélulaAberta(null)} style={{ ...navBtnStyle, width: '100%' }}>Fechar</button>
           </div>
         </div>
       )}
@@ -214,6 +296,11 @@ function GradeSemanal() {
 const navBtnStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
   borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+}
+
+const inputStyleGrade: React.CSSProperties = {
+  width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+  padding: '8px 10px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit',
 }
 
 const thStyle: React.CSSProperties = {
