@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     // Cancela o evento correspondente no Google Calendar de cada aluno afetado
     for (const ag of lista) {
       try {
-        await fetch('https://ribbitingshoebill-n8n.cloudfy.live/webhook/mfct-sync-calendar', {
+        await fetch('https://primary-production-4716.up.railway.app/webhook/mfct-sync-calendar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ acao: 'cancelar', agendamento_id: ag.id }),

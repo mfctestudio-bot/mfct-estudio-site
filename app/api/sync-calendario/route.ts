@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SYNC_URL = 'https://ribbitingshoebill-n8n.cloudfy.live/webhook/mfct-sync-calendar'
+const SYNC_URL = 'https://primary-production-4716.up.railway.app/webhook/mfct-sync-calendar'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
