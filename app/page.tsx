@@ -6,7 +6,7 @@ import Sobre from '@/components/Sobre'
 import { waLink, WA_MESSAGES } from '@/lib/whatsapp'
 import { supabase, Post } from '@/lib/supabase'
 
-export const revalidate = 300
+export const revalidate = 0
 
 async function getPosts(): Promise<Post[]> {
   const { data } = await supabase
