@@ -1,3 +1,5 @@
+import { supabase, Horario } from '@/lib/supabase'
+
 const DIAS_SEMANA = [
   { key: 1, label: 'SEG' },
   { key: 2, label: 'TER' },
@@ -10,10 +12,20 @@ const DIAS_FIM = [
   { key: 0, label: 'DOM' },
 ]
 
-const HORARIOS_SEMANA = ['08:30', '09:30', '10:30', '17:00', '18:00', '19:00', '20:00', '21:00']
-const HORARIOS_FIM = ['08:00', '09:00', '10:00', '11:00']
-
-function GridTable({ dias, horarios, periodo }: { dias: { key: number; label: string }[]; horarios: string[]; periodo: string }) {
+function GridTable({ dias, horarios, periodo, porHorarioDia }: {
+  dias: { key: number; label: string }[]
+  horarios: string[]
+  periodo: string
+  porHorarioDia: Map<string, boolean>
+}) {
+  if (horarios.length === 0) {
+    return (
+      <div>
+        <h3 style={{ fontSize: 14, color: 'var(--accent)', letterSpacing: '1px', marginBottom: 10 }}>{periodo}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum horário disponível nesse período no momento.</p>
+      </div>
+    )
+  }
   return (
     <div>
       <h3 style={{ fontSize: 14, color: 'var(--accent)', letterSpacing: '1px', marginBottom: 10 }}>{periodo}</h3>
@@ -31,7 +43,9 @@ function GridTable({ dias, horarios, periodo }: { dias: { key: number; label: st
                 <td style={{ ...cellStyle(false), fontWeight: 700, color: 'var(--text2)' }}>{h}</td>
                 {dias.map(d => (
                   <td key={d.key} style={cellStyle(false)}>
-                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'var(--accent)' }} title="Aula" />
+                    {porHorarioDia.get(`${d.key}-${h}`) && (
+                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'var(--accent)' }} title="Aula" />
+                    )}
                   </td>
                 ))}
               </tr>
@@ -43,11 +57,37 @@ function GridTable({ dias, horarios, periodo }: { dias: { key: number; label: st
   )
 }
 
-export default function ScheduleGrid() {
+export default async function ScheduleGrid() {
+  const { data } = await supabase
+    .from('horarios')
+    .select('*')
+    .eq('ativo', true)
+    .order('horario')
+
+  const horarios: Horario[] = data || []
+
+  // Mapa "diaSemana-horario" -> existe e ativo
+  const porHorarioDia = new Map<string, boolean>()
+  for (const h of horarios) {
+    porHorarioDia.set(`${h.dia_semana}-${h.horario.slice(0, 5)}`, true)
+  }
+
+  // Union de horarios distintos, separados por periodo (seg-sex vs fim de semana)
+  const diasSemanaKeys = new Set(DIAS_SEMANA.map(d => d.key))
+  const diasFimKeys = new Set(DIAS_FIM.map(d => d.key))
+
+  const horariosSemana = Array.from(new Set(
+    horarios.filter(h => diasSemanaKeys.has(h.dia_semana)).map(h => h.horario.slice(0, 5))
+  )).sort()
+
+  const horariosFim = Array.from(new Set(
+    horarios.filter(h => diasFimKeys.has(h.dia_semana)).map(h => h.horario.slice(0, 5))
+  )).sort()
+
   return (
     <div style={{ display: 'grid', gap: 24 }}>
-      <GridTable dias={DIAS_SEMANA} horarios={HORARIOS_SEMANA} periodo="SEGUNDA A SEXTA" />
-      <GridTable dias={DIAS_FIM} horarios={HORARIOS_FIM} periodo="SÁBADO E DOMINGO" />
+      <GridTable dias={DIAS_SEMANA} horarios={horariosSemana} periodo="SEGUNDA A SEXTA" porHorarioDia={porHorarioDia} />
+      <GridTable dias={DIAS_FIM} horarios={horariosFim} periodo="SÁBADO E DOMINGO" porHorarioDia={porHorarioDia} />
       <p style={{ fontSize: 12, color: 'var(--text3)' }}>
         Aulas de 1 hora. Pra agendar seu horário, fale com a gente no WhatsApp.
       </p>
