@@ -199,7 +199,21 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
           <input value={cpf} onChange={e => setCpf(e.target.value)} style={inputStyle} placeholder="opcional" />
         </Campo>
         <Campo label="Telefone">
-          <input value={telefone} onChange={e => setTelefone(e.target.value)} style={inputStyle} placeholder="(21) 9XXXX-XXXX" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+              padding: '10px 12px', color: 'var(--text2)', fontSize: 14, fontWeight: 700, flexShrink: 0,
+            }}>
+              +55
+            </span>
+            <input
+              value={telefone}
+              onChange={e => setTelefone(e.target.value)}
+              style={inputStyle}
+              placeholder="21 98765-4321"
+              inputMode="numeric"
+            />
+          </div>
           {checando && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Checando se já existe cadastro com esse número...</p>}
           {possivelDuplicata && (
             <div style={{ background: 'var(--accent2)22', border: '1px solid var(--accent2)', borderRadius: 6, padding: '10px 12px', marginTop: 8 }}>
