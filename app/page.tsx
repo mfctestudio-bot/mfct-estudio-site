@@ -2,6 +2,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import PlanCards from '@/components/PlanCards'
 import ScheduleGrid from '@/components/ScheduleGrid'
+import Sobre from '@/components/Sobre'
 import { waLink, WA_MESSAGES } from '@/lib/whatsapp'
 import { supabase, Post } from '@/lib/supabase'
 
@@ -86,6 +87,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <Sobre />
 
       {/* AULA EXPERIMENTAL */}
       <section id="experimental" style={{ maxWidth: 1100, margin: '0 auto', padding: '3rem 1.25rem 3rem' }}>
