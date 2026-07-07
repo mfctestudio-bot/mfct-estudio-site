@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Aluno, Plano } from '@/lib/supabase'
 import { waLink } from '@/lib/whatsapp'
+import { normalizarTelefone } from '@/lib/phone'
 
 const STATUS_OPTIONS = [
   { value: 'lead', label: 'Lead (novo)' },
@@ -55,11 +56,22 @@ export default function AlunoPage() {
 
   async function salvar() {
     if (!aluno) return
+    const telNormalizado = normalizarTelefone(aluno.telefone || '')
+
+    if (telNormalizado.length >= 12) {
+      const { data: duplicata } = await supabase
+        .from('alunos').select('id, nome').eq('telefone', telNormalizado).neq('id', id).limit(1)
+      if (duplicata && duplicata.length > 0) {
+        const seguir = confirm(`Já existe outro aluno com esse telefone: ${duplicata[0].nome}.\n\nTem certeza que quer salvar mesmo assim? (pode ser duplicidade — considere unificar os cadastros em vez disso)`)
+        if (!seguir) return
+      }
+    }
+
     setSaving(true)
     const { error } = await supabase.from('alunos').update({
       nome: aluno.nome,
       cpf: aluno.cpf,
-      telefone: aluno.telefone,
+      telefone: telNormalizado || null,
       data_nascimento: aluno.data_nascimento,
       plano_id: aluno.plano_id || null,
       status_plano: aluno.status_plano,
