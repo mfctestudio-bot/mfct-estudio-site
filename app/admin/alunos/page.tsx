@@ -128,6 +128,18 @@ function AlunosContent() {
   )
 }
 
+function normalizarTelefone(raw: string): string {
+  let digitos = raw.replace(/\D/g, '')
+  if (!digitos) return ''
+  // Remove zero inicial de DDD, se tiver (ex: 021...)
+  if (digitos.length === 11 && digitos.startsWith('0')) digitos = digitos.slice(1)
+  // Se nao tem codigo do pais (55) e tem DDD+numero (10 ou 11 digitos), adiciona
+  if ((digitos.length === 10 || digitos.length === 11) && !digitos.startsWith('55')) {
+    digitos = '55' + digitos
+  }
+  return digitos
+}
+
 function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose: () => void; onSaved: () => void }) {
   const [nome, setNome] = useState('')
   const [cpf, setCpf] = useState('')
@@ -137,13 +149,34 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
   const [status, setStatus] = useState('ativo')
   const [saving, setSaving] = useState(false)
 
+  const [possivelDuplicata, setPossivelDuplicata] = useState<{ id: string; nome: string; telefone: string } | null>(null)
+  const [checando, setChecando] = useState(false)
+  const [forcarCriacao, setForcarCriacao] = useState(false)
+
+  useEffect(() => {
+    const telNormalizado = normalizarTelefone(telefone)
+    setForcarCriacao(false)
+    if (telNormalizado.length < 12) {
+      setPossivelDuplicata(null)
+      return
+    }
+    setChecando(true)
+    const timeout = setTimeout(async () => {
+      const { data } = await supabase.from('alunos').select('id, nome, telefone').eq('telefone', telNormalizado).limit(1)
+      setPossivelDuplicata(data && data.length > 0 ? data[0] : null)
+      setChecando(false)
+    }, 500)
+    return () => clearTimeout(timeout)
+  }, [telefone])
+
   async function salvar() {
     if (!nome.trim()) return
+    if (possivelDuplicata && !forcarCriacao) return
     setSaving(true)
     await supabase.from('alunos').insert({
       nome: nome.trim(),
       cpf: cpf.trim() || null,
-      telefone: telefone.trim() || null,
+      telefone: normalizarTelefone(telefone) || null,
       data_nascimento: dataNascimento || null,
       plano_id: planoId || null,
       status_plano: status,
@@ -167,6 +200,27 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
         </Campo>
         <Campo label="Telefone">
           <input value={telefone} onChange={e => setTelefone(e.target.value)} style={inputStyle} placeholder="(21) 9XXXX-XXXX" />
+          {checando && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Checando se já existe cadastro com esse número...</p>}
+          {possivelDuplicata && (
+            <div style={{ background: 'var(--accent2)22', border: '1px solid var(--accent2)', borderRadius: 6, padding: '10px 12px', marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--accent2)', fontWeight: 700, marginBottom: 6 }}>
+                ⚠️ Já existe um aluno com esse telefone: {possivelDuplicata.nome}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a href={`/admin/alunos/${possivelDuplicata.id}`} style={{
+                  fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'underline',
+                }}>
+                  Ver cadastro existente
+                </a>
+                <button onClick={() => setForcarCriacao(true)} style={{
+                  fontSize: 12, background: 'transparent', border: 'none', color: 'var(--text2)',
+                  textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  Não, é pessoa diferente — criar mesmo assim
+                </button>
+              </div>
+            </div>
+          )}
         </Campo>
         <Campo label="Data de nascimento">
           <input type="date" value={dataNascimento} onChange={e => setDataNascimento(e.target.value)} style={inputStyle} />
@@ -186,7 +240,7 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
           <button onClick={onClose} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text)' }}>
             Cancelar
           </button>
-          <button onClick={salvar} disabled={saving || !nome.trim()} style={{ ...btnStyle, background: 'var(--accent2)', color: '#fff', opacity: saving || !nome.trim() ? 0.6 : 1 }}>
+          <button onClick={salvar} disabled={saving || !nome.trim() || (!!possivelDuplicata && !forcarCriacao)} style={{ ...btnStyle, background: 'var(--accent2)', color: '#fff', opacity: (saving || !nome.trim() || (!!possivelDuplicata && !forcarCriacao)) ? 0.6 : 1 }}>
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
