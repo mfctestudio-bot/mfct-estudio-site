@@ -461,26 +461,26 @@ function GradeHorarios() {
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
-  const [data, setData] = useState(() => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).toISOString().slice(0, 10))
-  const [agendamentos, setAgendamentos] = useState<AgendamentoRow[]>([])
-  const [expandido, setExpandido] = useState<string | null>(null)
+  const [diaAtivo, setDiaAtivo] = useState(() => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).getDay())
+
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [novoHorario, setNovoHorario] = useState('18:00')
+  const [novaCapacidade, setNovaCapacidade] = useState('5')
+  const [diasEscolhidos, setDiasEscolhidos] = useState<number[]>([])
+  const [salvandoNovo, setSalvandoNovo] = useState(false)
+  const [erroForm, setErroForm] = useState('')
+
+  const [editandoCapacidade, setEditandoCapacidade] = useState<string | null>(null)
+  const [capacidadeTemp, setCapacidadeTemp] = useState('')
 
   async function load() {
     setLoading(true)
     const { data: hData } = await supabase.from('horarios').select('*').order('dia_semana').order('horario')
     setHorarios(hData || [])
-
-    const { data: aData } = await supabase
-      .from('agendamentos')
-      .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
-      .eq('data', data)
-      .eq('status', 'confirmado')
-    setAgendamentos((aData as unknown as AgendamentoRow[]) || [])
-
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [data])
+  useEffect(() => { load() }, [])
 
   async function toggle(h: Horario) {
     setUpdating(h.id)
@@ -489,119 +489,227 @@ function GradeHorarios() {
     setUpdating(null)
   }
 
+  async function apagar(h: Horario) {
+    if (!confirm(`Apagar de vez o horário das ${h.horario.slice(0, 5)} (${DIAS[h.dia_semana]})? Isso não pode ser desfeito. Se preferir só parar de oferecer, use "Desativar" em vez de apagar.`)) return
+    setUpdating(h.id)
+    const { error } = await supabase.from('horarios').delete().eq('id', h.id)
+    if (error) {
+      alert('Não consegui apagar — provavelmente já tem aluno agendado nesse horário (mesmo em datas passadas). Desative em vez de apagar, ou fale comigo pra investigar.')
+    } else {
+      setHorarios(prev => prev.filter(x => x.id !== h.id))
+    }
+    setUpdating(null)
+  }
+
+  function abrirEdicaoCapacidade(h: Horario) {
+    setEditandoCapacidade(h.id)
+    setCapacidadeTemp(String(h.capacidade))
+  }
+
+  async function salvarCapacidade(h: Horario) {
+    const nova = parseInt(capacidadeTemp, 10)
+    if (!nova || nova < 1) return
+    await supabase.from('horarios').update({ capacidade: nova }).eq('id', h.id)
+    setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, capacidade: nova } : x))
+    setEditandoCapacidade(null)
+  }
+
+  function toggleDiaEscolhido(dia: number) {
+    setDiasEscolhidos(prev => prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia])
+  }
+
+  async function criarHorarios() {
+    setErroForm('')
+    if (diasEscolhidos.length === 0) { setErroForm('Escolhe pelo menos um dia da semana.'); return }
+    if (!novoHorario) { setErroForm('Escolhe um horário.'); return }
+    const capacidade = parseInt(novaCapacidade, 10) || 5
+
+    // Nao deixar criar duplicado (mesmo dia + mesmo horario)
+    const jaExiste = diasEscolhidos.filter(dia =>
+      horarios.some(h => h.dia_semana === dia && h.horario.slice(0, 5) === novoHorario)
+    )
+    if (jaExiste.length > 0) {
+      setErroForm(`Já existe horário das ${novoHorario} em: ${jaExiste.map(d => DIAS[d]).join(', ')}. Desmarque esses dias ou edite o horário existente.`)
+      return
+    }
+
+    setSalvandoNovo(true)
+    const novasLinhas = diasEscolhidos.map(dia => ({
+      dia_semana: dia,
+      horario: novoHorario + ':00',
+      capacidade,
+      ativo: true,
+    }))
+    const { data: inseridos } = await supabase.from('horarios').insert(novasLinhas).select('*')
+    setHorarios(prev => [...prev, ...(inseridos || [])].sort((a, b) => a.dia_semana - b.dia_semana || a.horario.localeCompare(b.horario)))
+    setSalvandoNovo(false)
+    setMostrarForm(false)
+    setDiasEscolhidos([])
+    setNovoHorario('18:00')
+    setNovaCapacidade('5')
+  }
+
   if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
 
-  // Diferenca de dia da semana entre a data selecionada e hoje, para filtrar horarios do dia certo
-  const diaSemanaData = new Date(data + 'T12:00:00').getDay()
-
-  const horariosDoDia = horarios.filter(h => h.dia_semana === diaSemanaData)
-
-  // Mapear agendamentos por horario_id
-  const porHorario = new Map<string, AgendamentoRow[]>()
-  for (const a of agendamentos) {
-    if (!porHorario.has(a.horario_id)) porHorario.set(a.horario_id, [])
-    porHorario.get(a.horario_id)!.push(a)
-  }
+  const horariosDoDia = horarios.filter(h => h.dia_semana === diaAtivo)
 
   return (
     <div>
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
-        Desativar um horário remove ele permanentemente da grade — a Eleniria deixa de oferecer esse horário pros alunos.
-        Selecione uma data para ver a ocupação de cada horário.
+        Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez.
       </p>
 
-      <div style={{ marginBottom: 16 }}>
-        <input
-          type="date"
-          value={data}
-          onChange={e => setData(e.target.value)}
-          style={{
-            background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)',
-            borderRadius: 6, padding: '8px 12px', fontSize: 13, fontFamily: 'inherit',
-          }}
-        />
-        <span style={{ marginLeft: 10, fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>
-          {DIAS[diaSemanaData]}
-        </span>
+      {/* Abas de dia da semana */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+        {DIAS.map((nome, i) => (
+          <button
+            key={i}
+            onClick={() => setDiaAtivo(i)}
+            style={{
+              background: diaAtivo === i ? 'var(--accent)' : 'transparent',
+              color: diaAtivo === i ? '#fff' : 'var(--text2)',
+              border: `1px solid ${diaAtivo === i ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            {nome}
+          </button>
+        ))}
       </div>
 
       {horariosDoDia.length === 0 ? (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13 }}>
-          Nenhum horário cadastrado para {DIAS[diaSemanaData]}.
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13, marginBottom: 16 }}>
+          Nenhum horário cadastrado para {DIAS[diaAtivo]}.
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
-          {horariosDoDia.map(h => {
-            const lista = porHorario.get(h.id) || []
-            const ocupacao = lista.length
-            const cheio = ocupacao >= h.capacidade
-            const isExpandido = expandido === h.id
+        <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
+          {horariosDoDia.map(h => (
+            <div key={h.id} style={{
+              background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+              borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: h.ativo ? 1 : 0.55,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
+                  {h.horario.slice(0, 5)}
+                </span>
+                {!h.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)' }}>(desativado)</span>}
+              </div>
 
-            return (
-              <div key={h.id} style={{
-                background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
-                borderRadius: 6, overflow: 'hidden',
-              }}>
-                <div
-                  onClick={() => setExpandido(isExpandido ? null : h.id)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {editandoCapacidade === h.id ? (
+                  <>
+                    <input
+                      type="number" min={1} value={capacidadeTemp}
+                      onChange={e => setCapacidadeTemp(e.target.value)}
+                      style={{ width: 55, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                    />
+                    <button onClick={() => salvarCapacidade(h)} style={{ background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
+                  </>
+                ) : (
+                  <span
+                    onClick={() => abrirEdicaoCapacidade(h)}
+                    title="Clique pra editar"
+                    style={{
+                      fontSize: 12, fontWeight: 700, color: 'var(--text2)', background: 'var(--bg)',
+                      border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+                    }}
+                  >
+                    {h.capacidade} vaga{h.capacidade === 1 ? '' : 's'} ✏️
+                  </span>
+                )}
+
+                <button
+                  onClick={() => toggle(h)}
+                  disabled={updating === h.id}
                   style={{
-                    padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    gap: 12, flexWrap: 'wrap', cursor: 'pointer',
-                    opacity: h.ativo ? 1 : 0.55,
+                    background: 'transparent', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+                    color: h.ativo ? 'var(--text2)' : 'var(--accent2)', borderRadius: 4, padding: '6px 12px',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
-                      {h.horario.slice(0, 5)}
-                    </span>
-                    {!h.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)' }}>(desativado)</span>}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{
-                      fontSize: 12, fontWeight: 700,
-                      color: cheio ? 'var(--accent2)' : 'var(--text2)',
-                      background: 'var(--bg)', border: `1px solid ${cheio ? 'var(--accent2)' : 'var(--border)'}`,
-                      borderRadius: 4, padding: '4px 10px',
-                    }}>
-                      {ocupacao}/{h.capacidade} vaga{h.capacidade === 1 ? '' : 's'} {cheio ? '(cheio)' : ''}
-                    </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggle(h) }}
-                      disabled={updating === h.id}
-                      style={{
-                        background: 'transparent',
-                        border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
-                        color: h.ativo ? 'var(--text2)' : 'var(--accent2)',
-                        borderRadius: 4, padding: '6px 12px', fontSize: 12, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
-                      }}
-                    >
-                      {h.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
-                  </div>
-                </div>
+                  {h.ativo ? 'Desativar' : 'Ativar'}
+                </button>
 
-                {isExpandido && (
-                  <div style={{ borderTop: '1px solid var(--border)', padding: '10px 16px', fontSize: 13 }}>
-                    {lista.length === 0 ? (
-                      <span style={{ color: 'var(--text2)' }}>Nenhum aluno agendado.</span>
-                    ) : (
-                      <div style={{ display: 'grid', gap: 4 }}>
-                        {lista.map(a => (
-                          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text2)' }}>
-                            <span>{a.alunos?.nome || 'Sem nome'}</span>
-                            <span style={{ fontSize: 11 }}>
-                              {a.tipo === 'experimental' ? 'experimental' : 'aula'} · {a.alunos?.telefone || ''}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <button
+                  onClick={() => apagar(h)}
+                  disabled={updating === h.id}
+                  style={{
+                    background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                    borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
+                  }}
+                >
+                  🗑️
+                </button>
               </div>
-            )
-          })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!mostrarForm ? (
+        <button onClick={() => setMostrarForm(true)} style={{
+          background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)',
+          borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          + Criar novo horário
+        </button>
+      ) : (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+          <h4 style={{ fontSize: 14, marginBottom: 12 }}>Criar novo horário</h4>
+
+          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Em quais dias?</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {DIAS.map((nome, i) => (
+              <button
+                key={i}
+                onClick={() => toggleDiaEscolhido(i)}
+                style={{
+                  background: diasEscolhidos.includes(i) ? 'var(--accent)' : 'transparent',
+                  color: diasEscolhidos.includes(i) ? '#fff' : 'var(--text2)',
+                  border: `1px solid ${diasEscolhidos.includes(i) ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 6, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {nome}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Horário</label>
+              <input
+                type="time" value={novoHorario} onChange={e => setNovoHorario(e.target.value)}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
+              <input
+                type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)}
+                style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+            </div>
+          </div>
+
+          {erroForm && <p style={{ color: 'var(--accent2)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={criarHorarios} disabled={salvandoNovo} style={{
+              background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 6,
+              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvandoNovo ? 0.6 : 1,
+            }}>
+              {salvandoNovo ? 'Criando...' : '✅ Criar'}
+            </button>
+            <button onClick={() => { setMostrarForm(false); setErroForm(''); setDiasEscolhidos([]) }} disabled={salvandoNovo} style={{
+              background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
+              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
     </div>
