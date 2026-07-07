@@ -32,7 +32,7 @@ export default async function Home() {
       }}>
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(10,14,16,0.95) 30%, rgba(10,14,16,0.55) 100%)',
+          background: 'linear-gradient(90deg, rgba(10,14,16,0.88) 25%, rgba(10,14,16,0.25) 100%)',
         }} />
         <div style={{ position: 'relative', maxWidth: 1100, margin: '0 auto', padding: '4rem 1.25rem', width: '100%' }}>
           <span style={{
