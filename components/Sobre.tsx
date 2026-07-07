@@ -51,27 +51,36 @@ export default function Sobre() {
 
             <div style={{ display: 'grid', gap: 16, fontSize: 15, lineHeight: 1.75, color: 'var(--text2)' }}>
               <p>
-                Minha relação com o esporte de alto rendimento começa cedo — desde os 15 anos, atuando em centro
-                esportivo durante a época das Olimpíadas, tive contato direto com atletas de diversas modalidades.
-                Acompanhei de perto treinamento, alimentação, descanso e preparação de profissionais de alto nível.
-                Foi ali que comecei a entender o que separa o treino comum do treino de performance.
+                Minha paixão pelo fisiculturismo começou em 2014, aos 14 anos, numa academia de bairro. Sem
+                dinheiro pra curso ou treinador, estudava sozinho: baixava vídeos e artigos em inglês lá de fora,
+                traduzia como dava e tentava replicar os treinos. Aos 16, 17 anos, já tinha um físico que me
+                destacava bastante entre os da minha idade.
               </p>
               <p>
-                Meu sonho era competir na categoria físico de praia — um fisiculturismo natural e estético, focado
-                em proporção, definição e postura, bem diferente do fisiculturismo clássico "bolado". Treinei
-                pesado com esse objetivo — mas uma lesão no meio do caminho mudou minha trajetória. Em vez de
-                desistir, usei aquilo como estímulo pra estudar ainda mais: nutrição, metodologia de treino,
-                recuperação.
+                Foi nessa fase que me machuquei — não por erro no treino, mas por falta de segurança no
+                equipamento: faltava um grampo na barra, a anilha escorregou e lesionei o ombro. Essa lesão me
+                acompanhou por anos. Tentei voltar a treinar durante o tempo que servi na Marinha, mas a dor
+                persistia. Foi lá, por ironia do destino, que fui trabalhar num centro esportivo — e acabei tendo
+                contato direto com a preparação de atletas olímpicos durante as Olimpíadas, dando suporte aos
+                profissionais que aplicavam os treinos.
               </p>
               <p>
-                Depois de mais de 15 anos entre estudo, prática em estúdios de treinamento personalizado e
-                experiência de bastidores com esporte de alto rendimento, fundei o <strong style={{ color: 'var(--text)' }}>MFCT Estúdio</strong> pra
-                aplicar tudo isso numa metodologia própria.
+                Depois da Marinha, entrei no ramo de suplementação e nutrição — e foi ali que a paixão pelo
+                fisiculturismo voltou com força. Fui atrás de tratamento sério pro ombro (fisioterapia,
+                massoterapia, liberação miofascial) e, enquanto isso, comecei a faculdade de Educação Física
+                pra entender de verdade o que precisava mudar.
               </p>
               <p>
-                Aqui, cada aluno passa por uma fase de observação — postura, comportamento, evolução e
-                comprometimento — antes do treino se tornar individual, evoluindo dentro de um protocolo pensado
-                especificamente pra performance máxima daquela pessoa.
+                Com o ombro recuperado e prestes a me formar, apliquei tudo que tinha aprendido: uma preparação de
+                2 meses, focada em reduzir gordura e preservar o máximo de massa muscular no menor tempo possível.
+                Competi na categoria físico de praia, nível de entrada — um projeto que deu 100% certo. Decidi
+                pausar os palcos ali, num ponto de virada, pra me dedicar à carreira, terminar a faculdade e
+                construir algo maior.
+              </p>
+              <p>
+                Esse algo maior é o <strong style={{ color: 'var(--text)' }}>MFCT Estúdio</strong> — onde continuo
+                investindo em cursos, workshops e formações até hoje, aplicando todo esse conhecimento e método no
+                treino de cada aluno.
               </p>
             </div>
 
