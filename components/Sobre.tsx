@@ -1,9 +1,8 @@
 const GALERIA = [
-  '/sobre/IMG_3774.jpg',
+  '/sobre/IMG_3692.jpg',
   '/sobre/IMG_3821.jpg',
   '/sobre/IMG_6314.jpg',
   '/sobre/IMG_7669.jpg',
-  '/sobre/IMG_5128.jpg',
 ]
 
 export default function Sobre() {
@@ -19,7 +18,7 @@ export default function Sobre() {
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/sobre/IMG_3692.jpg"
+                src="/sobre/IMG_3774.jpg"
                 alt="Matheus Feitosa competindo em fisiculturismo"
                 style={{ width: '100%', display: 'block' }}
               />
@@ -58,9 +57,11 @@ export default function Sobre() {
                 Foi ali que comecei a entender o que separa o treino comum do treino de performance.
               </p>
               <p>
-                Meu sonho era competir como fisiculturista. Treinei pesado com esse objetivo — mas uma lesão no
-                meio do caminho mudou minha trajetória. Em vez de desistir, usei aquilo como estímulo pra estudar
-                ainda mais: nutrição, metodologia de treino, recuperação.
+                Meu sonho era competir na categoria físico de praia — um fisiculturismo natural e estético, focado
+                em proporção, definição e postura, bem diferente do fisiculturismo clássico "bolado". Treinei
+                pesado com esse objetivo — mas uma lesão no meio do caminho mudou minha trajetória. Em vez de
+                desistir, usei aquilo como estímulo pra estudar ainda mais: nutrição, metodologia de treino,
+                recuperação.
               </p>
               <p>
                 Depois de mais de 15 anos entre estudo, prática em estúdios de treinamento personalizado e
