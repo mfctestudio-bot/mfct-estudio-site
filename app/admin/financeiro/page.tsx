@@ -13,6 +13,16 @@ type PagamentoRow = {
   status: string
 }
 
+type VencimentoRow = {
+  id: string
+  nome: string
+  telefone: string | null
+  dia_vencimento: number | null
+  valor: number
+  proximaData: Date
+  diasRestantes: number
+}
+
 export default function FinanceiroPage() {
   const [loading, setLoading] = useState(true)
   const [totalMes, setTotalMes] = useState(0)
@@ -21,6 +31,7 @@ export default function FinanceiroPage() {
   const [alunosAtivos, setAlunosAtivos] = useState(0)
   const [pendentes, setPendentes] = useState(0)
   const [grafico, setGrafico] = useState<{ mes: string; total: number }[]>([])
+  const [vencimentos, setVencimentos] = useState<VencimentoRow[]>([])
 
   useEffect(() => {
     async function load() {
@@ -62,14 +73,33 @@ export default function FinanceiroPage() {
       // Receita prevista: soma dos planos dos alunos ativos
       const { data: ativos } = await supabase
         .from('alunos')
-        .select('id, planos(valor)')
+        .select('id, nome, telefone, dia_vencimento, planos(valor)')
         .eq('status_plano', 'ativo')
 
       let soma = 0
+      const hoje = new Date()
+      hoje.setHours(0, 0, 0, 0)
+      const projecao: VencimentoRow[] = []
+
       for (const a of ativos || []) {
         const p = Array.isArray(a.planos) ? a.planos[0] : a.planos
-        if (p?.valor) soma += Number(p.valor)
+        const valor = p?.valor ? Number(p.valor) : 0
+        if (valor) soma += valor
+
+        if (a.dia_vencimento) {
+          let proximaData = new Date(hoje.getFullYear(), hoje.getMonth(), a.dia_vencimento)
+          if (proximaData < hoje) {
+            proximaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, a.dia_vencimento)
+          }
+          const diasRestantes = Math.round((proximaData.getTime() - hoje.getTime()) / 86400000)
+          projecao.push({
+            id: a.id, nome: a.nome, telefone: a.telefone, dia_vencimento: a.dia_vencimento,
+            valor, proximaData, diasRestantes,
+          })
+        }
       }
+      projecao.sort((x, y) => x.proximaData.getTime() - y.proximaData.getTime())
+      setVencimentos(projecao)
       setPrevisto(soma)
       setAlunosAtivos(ativos?.length || 0)
 
@@ -119,6 +149,51 @@ export default function FinanceiroPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginTop: 20 }}>
+        <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 4 }}>
+          Próximos vencimentos
+        </h3>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
+          Baseado no dia de vencimento cadastrado de cada aluno ativo. Alunos sem dia de vencimento definido não aparecem aqui.
+        </p>
+
+        {vencimentos.length === 0 ? (
+          <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum vencimento com data cadastrada.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {vencimentos.map(v => {
+              const urgente = v.diasRestantes <= 3
+              const emBreve = v.diasRestantes <= 7
+              return (
+                <div key={v.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 4, flexWrap: 'wrap',
+                  background: urgente ? 'var(--accent2)15' : 'var(--bg)',
+                  border: `1px solid ${urgente ? 'var(--accent2)' : 'var(--border)'}`,
+                }}>
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{v.nome}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>
+                      {v.proximaData.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$ {v.valor.toFixed(2)}</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4,
+                      color: urgente ? 'var(--accent2)' : emBreve ? '#f0a500' : 'var(--text2)',
+                      background: 'var(--bg2)',
+                    }}>
+                      {v.diasRestantes === 0 ? 'vence hoje' : v.diasRestantes === 1 ? 'vence amanhã' : `em ${v.diasRestantes} dias`}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
