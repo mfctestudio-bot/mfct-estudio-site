@@ -48,7 +48,7 @@ const inputStyle = {
 export default function PagamentosPage() {
   const [rows, setRows] = useState<PagamentoRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState('aguardando_confirmacao')
+  const [filtro, setFiltro] = useState('todos')
   const [confirmando, setConfirmando] = useState<string | null>(null)
   const [dataConfirm, setDataConfirm] = useState<Record<string, string>>({})
   const [imgModal, setImgModal] = useState<string | null>(null)
