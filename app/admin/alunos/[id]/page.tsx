@@ -220,13 +220,22 @@ export default function AlunoPage() {
               ✅ Ativar plano
             </button>
           ) : (
-            <button onClick={desativarPlano} style={{
-              background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
-              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>
-              ❌ Desativar plano
-            </button>
+            <>
+              <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{
+                background: '#3fb950', border: 'none', color: '#fff',
+                borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit'
+              }}>
+                🔄 Renovar plano (registrar novo pagamento)
+              </button>
+              <button onClick={desativarPlano} style={{
+                background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit'
+              }}>
+                ❌ Desativar plano
+              </button>
+            </>
           )}
         </div>
 
