@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useState } from 'react'
+import NotificationBell from '@/components/admin/NotificationBell'
 
 const MENU = [
   { href: '/admin', label: 'Início', icon: '⊞' },
@@ -60,13 +61,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Image src="/logo.png" alt="MFCT" width={30} height={20} style={{ objectFit: 'contain' }} />
           <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 14, letterSpacing: 1 }}>ADMIN</span>
         </div>
-        <button
-          onClick={() => setMenuAberto(true)}
-          aria-label="Abrir menu"
-          style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', padding: 4 }}
-        >
-          ☰
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <NotificationBell />
+          <button
+            onClick={() => setMenuAberto(true)}
+            aria-label="Abrir menu"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', padding: 4 }}
+          >
+            ☰
+          </button>
+        </div>
       </div>
 
       {/* Overlay + menu deslizante — só no mobile, quando aberto */}
@@ -118,9 +122,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             position: 'sticky', top: 0, height: '100vh', flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0.5rem', marginBottom: '1.5rem' }}>
-            <Image src="/logo.png" alt="MFCT" width={36} height={24} style={{ objectFit: 'contain' }} />
-            <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 15, letterSpacing: 1 }}>ADMIN</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0.5rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Image src="/logo.png" alt="MFCT" width={36} height={24} style={{ objectFit: 'contain' }} />
+              <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 15, letterSpacing: 1 }}>ADMIN</span>
+            </div>
+            <NotificationBell />
           </div>
           <NavLinks />
           <div style={{ flex: 1 }} />
