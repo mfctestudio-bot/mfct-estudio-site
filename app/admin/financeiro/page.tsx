@@ -9,6 +9,7 @@ const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov'
 
 type PagamentoRow = {
   valor: string | number
+  desconto: string | number | null
   data_pagamento: string | null
   status: string
 }
@@ -44,7 +45,7 @@ export default function FinanceiroPage() {
       // Pagamentos pagos no ano (pra montar gráfico mensal)
       const { data: pagos } = await supabase
         .from('pagamentos')
-        .select('valor, data_pagamento, status')
+        .select('valor, desconto, data_pagamento, status')
         .eq('status', 'pago')
         .gte('data_pagamento', inicioAno)
         .lte('data_pagamento', fimAno)
@@ -58,10 +59,11 @@ export default function FinanceiroPage() {
         if (!p.data_pagamento) continue
         const d = new Date(p.data_pagamento)
         const idx = d.getMonth()
-        const valor = Number(p.valor)
-        porMes[idx] += valor
+        // Valor realmente recebido = valor cobrado menos o desconto dado (ex: cortesia de 100% = recebeu R$0)
+        const valorLiquido = Number(p.valor) - Number(p.desconto || 0)
+        porMes[idx] += valorLiquido
         if (idx === mesAtualIdx) {
-          totalDoMesAtual += valor
+          totalDoMesAtual += valorLiquido
           qtdDoMesAtual += 1
         }
       }
