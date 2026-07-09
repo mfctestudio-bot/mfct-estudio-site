@@ -58,6 +58,8 @@ export default function PagamentosPage() {
   const [editDesconto, setEditDesconto] = useState('')
   const [editStatus, setEditStatus] = useState('')
   const [editData, setEditData] = useState('')
+  const [editVencimento, setEditVencimento] = useState('')
+  const [editAlunoId, setEditAlunoId] = useState('')
   const [salvandoEdicao, setSalvandoEdicao] = useState(false)
 
   const [novoModal, setNovoModal] = useState(false)
@@ -124,6 +126,8 @@ export default function PagamentosPage() {
     setEditDesconto(String(p.desconto || 0))
     setEditStatus(p.status)
     setEditData(p.data_pagamento ? p.data_pagamento.slice(0, 10) : new Date().toISOString().slice(0, 10))
+    setEditVencimento(p.data_vencimento ? p.data_vencimento.slice(0, 10) : '')
+    setEditAlunoId(p.aluno_id)
   }
 
   async function salvarEdicao() {
@@ -134,6 +138,8 @@ export default function PagamentosPage() {
       desconto: Number(editDesconto || 0),
       status: editStatus,
       data_pagamento: editStatus === 'pago' ? new Date(editData + 'T12:00:00').toISOString() : editando.data_pagamento,
+      data_vencimento: editVencimento ? new Date(editVencimento + 'T12:00:00').toISOString() : null,
+      aluno_id: editAlunoId,
     }).eq('id', editando.id)
     setSalvandoEdicao(false)
     setEditando(null)
@@ -313,8 +319,14 @@ export default function PagamentosPage() {
         }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380 }}>
             <h3 style={{ fontSize: 16, marginBottom: 4 }}>Editar pagamento</h3>
-            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>{editando.alunos?.nome} · {editando.planos?.nome || 'Plano'}</p>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>{editando.planos?.nome || 'Plano'}</p>
 
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
+              <select value={editAlunoId} onChange={e => setEditAlunoId(e.target.value)} style={inputStyle}>
+                {alunosOpt.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              </select>
+            </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor (R$)</label>
               <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={inputStyle} />
@@ -328,6 +340,10 @@ export default function PagamentosPage() {
               <select value={editStatus} onChange={e => setEditStatus(e.target.value)} style={inputStyle}>
                 {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data de vencimento (desse pagamento)</label>
+              <input type="date" value={editVencimento} onChange={e => setEditVencimento(e.target.value)} style={inputStyle} />
             </div>
             {editStatus === 'pago' && (
               <div style={{ marginBottom: 12 }}>
