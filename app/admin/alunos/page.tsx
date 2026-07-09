@@ -109,6 +109,9 @@ function AlunosContent() {
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{a.nome}</div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                   {a.telefone || 'sem telefone'} {a.planos ? `· ${a.planos.nome}` : ''}
+                  {a.status_plano === 'ativo' && a.dia_vencimento && (
+                    <span style={{ color: 'var(--text3)' }}> · vence dia {a.dia_vencimento}</span>
+                  )}
                 </div>
               </div>
               <span style={{
