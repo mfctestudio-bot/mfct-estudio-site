@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import NotificationBell from '@/components/admin/NotificationBell'
 
 const MENU = [
@@ -16,10 +16,22 @@ const MENU = [
   { href: '/admin/posts', label: 'Posts', icon: '📝' },
 ]
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null)
+  useEffect(() => {
+    function checar() { setIsMobile(window.innerWidth < 768) }
+    checar()
+    window.addEventListener('resize', checar)
+    return () => window.removeEventListener('resize', checar)
+  }, [])
+  return isMobile
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [menuAberto, setMenuAberto] = useState(false)
+  const isMobile = useIsMobile()
 
   async function sair() {
     await fetch('/api/admin-auth', { method: 'DELETE' })
@@ -47,58 +59,93 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </>
   )
 
+  // Evita "flash" errado antes do JS descobrir o tamanho real da tela
+  if (isMobile === null) {
+    return <div style={{ minHeight: '100vh', background: 'var(--bg)' }} />
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Inter', sans-serif" }}>
-      {/* Barra superior — só aparece no mobile */}
-      <div
-        className="md:hidden"
-        style={{
-          position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg2)',
-          borderBottom: '1px solid var(--border)', padding: '0.75rem 1rem',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Image src="/logo.png" alt="MFCT" width={30} height={20} style={{ objectFit: 'contain' }} />
-          <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 14, letterSpacing: 1 }}>ADMIN</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <NotificationBell />
-          <button
-            onClick={() => setMenuAberto(true)}
-            aria-label="Abrir menu"
-            style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', padding: 4 }}
-          >
-            ☰
-          </button>
-        </div>
-      </div>
+      {isMobile ? (
+        <>
+          {/* Barra superior mobile */}
+          <div style={{
+            position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg2)',
+            borderBottom: '1px solid var(--border)', padding: '0.75rem 1rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Image src="/logo.png" alt="MFCT" width={30} height={20} style={{ objectFit: 'contain' }} />
+              <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 14, letterSpacing: 1 }}>ADMIN</span>
+            </div>
+            <button
+              onClick={() => setMenuAberto(true)}
+              aria-label="Abrir menu"
+              style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', padding: 4 }}
+            >
+              ☰
+            </button>
+          </div>
 
-      {/* Overlay + menu deslizante — só no mobile, quando aberto */}
-      {menuAberto && (
-        <div
-          className="md:hidden"
-          onClick={() => setMenuAberto(false)}
-          style={{ position: 'fixed', inset: 0, background: '#000c', zIndex: 50 }}
-        >
-          <aside
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: 250, maxWidth: '80vw', height: '100vh', background: 'var(--bg2)',
-              borderRight: '1px solid var(--border)', padding: '1.25rem 0.75rem',
-              display: 'flex', flexDirection: 'column', gap: 4,
-            }}
-          >
+          {/* Overlay + menu deslizante */}
+          {menuAberto && (
+            <div
+              onClick={() => setMenuAberto(false)}
+              style={{ position: 'fixed', inset: 0, background: '#000c', zIndex: 50 }}
+            >
+              <aside
+                onClick={e => e.stopPropagation()}
+                style={{
+                  width: 250, maxWidth: '80vw', height: '100vh', background: 'var(--bg2)',
+                  borderRight: '1px solid var(--border)', padding: '1.25rem 0.75rem',
+                  display: 'flex', flexDirection: 'column', gap: 4,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0.5rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Image src="/logo.png" alt="MFCT" width={36} height={24} style={{ objectFit: 'contain' }} />
+                    <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 15, letterSpacing: 1 }}>ADMIN</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <NotificationBell />
+                    <button onClick={() => setMenuAberto(false)} aria-label="Fechar menu" style={{ background: 'transparent', border: 'none', color: 'var(--text2)', fontSize: 20, cursor: 'pointer' }}>
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <NavLinks onNavigate={() => setMenuAberto(false)} />
+                <div style={{ flex: 1 }} />
+                <Link href="/" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none', padding: '10px 12px' }}>
+                  ← Ver site
+                </Link>
+                <button onClick={sair} style={{
+                  textAlign: 'left', background: 'transparent', border: 'none', color: 'var(--accent2)',
+                  fontSize: 12, fontWeight: 700, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  Sair
+                </button>
+              </aside>
+            </div>
+          )}
+
+          <main style={{ padding: '1rem' }}>{children}</main>
+        </>
+      ) : (
+        <div style={{ display: 'flex' }}>
+          {/* Menu lateral fixo desktop */}
+          <aside style={{
+            width: 220, background: 'var(--bg2)', borderRight: '1px solid var(--border)',
+            padding: '1.25rem 0.75rem', display: 'flex', flexDirection: 'column', gap: 4,
+            position: 'sticky', top: 0, height: '100vh', flexShrink: 0,
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0.5rem', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Image src="/logo.png" alt="MFCT" width={36} height={24} style={{ objectFit: 'contain' }} />
                 <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 15, letterSpacing: 1 }}>ADMIN</span>
               </div>
-              <button onClick={() => setMenuAberto(false)} aria-label="Fechar menu" style={{ background: 'transparent', border: 'none', color: 'var(--text2)', fontSize: 20, cursor: 'pointer' }}>
-                ✕
-              </button>
+              <NotificationBell />
             </div>
-            <NavLinks onNavigate={() => setMenuAberto(false)} />
+            <NavLinks />
             <div style={{ flex: 1 }} />
             <Link href="/" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none', padding: '10px 12px' }}>
               ← Ver site
@@ -110,43 +157,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Sair
             </button>
           </aside>
+
+          <main style={{ flex: 1, width: '100%', margin: '0 auto', maxWidth: 1100, padding: '1.75rem' }}>
+            {children}
+          </main>
         </div>
       )}
-
-      <div style={{ display: 'flex' }}>
-        {/* Menu lateral fixo — só aparece em telas maiores (md pra cima) */}
-        <aside
-          className="hidden md:flex"
-          style={{
-            width: 220, background: 'var(--bg2)', borderRight: '1px solid var(--border)',
-            padding: '1.25rem 0.75rem', flexDirection: 'column', gap: 4,
-            position: 'sticky', top: 0, height: '100vh', flexShrink: 0,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Image src="/logo.png" alt="MFCT" width={36} height={24} style={{ objectFit: 'contain' }} />
-              <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 15, letterSpacing: 1 }}>ADMIN</span>
-            </div>
-            <NotificationBell />
-          </div>
-          <NavLinks />
-          <div style={{ flex: 1 }} />
-          <Link href="/" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none', padding: '10px 12px' }}>
-            ← Ver site
-          </Link>
-          <button onClick={sair} style={{
-            textAlign: 'left', background: 'transparent', border: 'none', color: 'var(--accent2)',
-            fontSize: 12, fontWeight: 700, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-            Sair
-          </button>
-        </aside>
-
-        <main style={{ flex: 1, width: '100%', margin: '0 auto', maxWidth: 1100 }} className="p-4 md:p-7">
-          {children}
-        </main>
-      </div>
     </div>
   )
 }
