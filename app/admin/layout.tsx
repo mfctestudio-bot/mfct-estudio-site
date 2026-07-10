@@ -11,6 +11,7 @@ const MENU = [
   { href: '/admin/agenda', label: 'Agenda', icon: '📅' },
   { href: '/admin/aerobico', label: 'Aeróbico', icon: '🚴' },
   { href: '/admin/pagamentos', label: 'Pagamentos', icon: '💳' },
+  { href: '/admin/planos', label: 'Planos', icon: '🏷️' },
   { href: '/admin/financeiro', label: 'Financeiro', icon: '📊' },
   { href: '/admin/posts', label: 'Posts', icon: '📝' },
 ]
