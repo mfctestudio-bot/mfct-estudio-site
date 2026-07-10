@@ -81,7 +81,7 @@ export default function AdminHome() {
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div>
       <h1 style={{ fontSize: 28, marginBottom: 4 }}>Dashboard</h1>
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
         {diaSemana[hoje.getDay()]}, {hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}

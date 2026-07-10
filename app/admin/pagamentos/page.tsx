@@ -189,7 +189,7 @@ export default function PagamentosPage() {
   const pendentes = rows.filter(r => r.status === 'aguardando_confirmacao').length
 
   return (
-    <div style={{ maxWidth: 700 }}>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 28, marginBottom: 4 }}>Pagamentos</h1>
         <button onClick={abrirNovoModal} style={{

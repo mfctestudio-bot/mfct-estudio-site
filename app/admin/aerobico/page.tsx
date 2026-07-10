@@ -46,7 +46,7 @@ export default function AerobicoPage() {
   const aparelhos = ['esteira', 'eliptica', 'bicicleta']
 
   return (
-    <div style={{ maxWidth: 700 }}>
+    <div>
       <h1 style={{ fontSize: 28, marginBottom: 4 }}>Agenda Aeróbico</h1>
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
         Esteira, elíptica e bicicleta — agendamentos do dia

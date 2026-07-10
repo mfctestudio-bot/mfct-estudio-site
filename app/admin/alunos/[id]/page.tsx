@@ -163,7 +163,7 @@ export default function AlunoPage() {
   if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
 
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div>
       <Link href="/admin/alunos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← Alunos</Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '8px 0 20px' }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
