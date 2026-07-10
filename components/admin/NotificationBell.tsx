@@ -12,11 +12,11 @@ type Notificacao = {
   created_at: string
 }
 
-const ICONE_TIPO: Record<string, string> = {
-  cadastro_novo: '🆕',
-  agendamento_novo: '📅',
-  comprovante_recebido: '💰',
-  chamar_humano: '🚨',
+const COR_TIPO: Record<string, string> = {
+  cadastro_novo: '#3fb950',
+  agendamento_novo: 'var(--accent)',
+  comprovante_recebido: '#f0a500',
+  chamar_humano: 'var(--accent2)',
 }
 
 function tempoRelativo(iso: string): string {
@@ -79,11 +79,14 @@ export default function NotificationBell() {
         onClick={abrirDropdown}
         aria-label="Notificações"
         style={{
-          background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 19,
+          background: 'transparent', border: 'none', color: 'var(--text)',
           cursor: 'pointer', padding: 4, position: 'relative', display: 'flex', alignItems: 'center',
         }}
       >
-        🔔
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
         {naoLidas > 0 && (
           <span style={{
             position: 'absolute', top: -2, right: -2, background: 'var(--accent2)', color: '#fff',
@@ -116,7 +119,10 @@ export default function NotificationBell() {
                 display: 'flex', gap: 10, alignItems: 'flex-start',
                 background: n.lida ? 'transparent' : 'var(--accent2)0d',
               }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>{ICONE_TIPO[n.tipo] || '🔔'}</span>
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 5,
+                  background: COR_TIPO[n.tipo] || 'var(--text3)',
+                }} />
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 13, color: 'var(--text)', margin: 0, lineHeight: 1.4 }}>{n.mensagem}</p>
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>{tempoRelativo(n.created_at)}</span>
