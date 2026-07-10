@@ -44,9 +44,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <button
           onClick={() => setMenuAberto(true)}
           aria-label="Abrir menu"
-          style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0, width: 32 }}
         >
-          ☰
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -54,7 +58,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 14, letterSpacing: 1 }}>ADMIN</span>
         </div>
 
-        <NotificationBell />
+        <div style={{ width: 32, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+          <NotificationBell />
+        </div>
       </div>
 
       {/* Overlay + menu deslizante — a mesma coisa em qualquer tamanho de tela */}
@@ -105,7 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem 1.25rem' }}>
+      <main style={{ maxWidth: 1100, width: '100%', margin: '0 auto', padding: '1.5rem 1.25rem', boxSizing: 'border-box' }}>
         {children}
       </main>
     </div>
