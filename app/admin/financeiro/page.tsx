@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const MESES_LONGOS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 type PagamentoRow = {
   valor: string | number
@@ -24,7 +25,24 @@ type VencimentoRow = {
   diasRestantes: number
 }
 
+type PagamentoDetalhe = {
+  nome: string
+  valor: number
+  data: string
+}
+
+type MesHistorico = {
+  chave: string // "2026-07"
+  label: string // "Julho 2026"
+  total: number
+  qtd: number
+  ticketMedio: number
+  crescimento: number | null // % em relação ao mês anterior
+  pagamentos: PagamentoDetalhe[]
+}
+
 export default function FinanceiroPage() {
+  const [aba, setAba] = useState<'visao' | 'historico'>('visao')
   const [loading, setLoading] = useState(true)
   const [totalMes, setTotalMes] = useState(0)
   const [qtdMes, setQtdMes] = useState(0)
@@ -33,6 +51,8 @@ export default function FinanceiroPage() {
   const [pendentes, setPendentes] = useState(0)
   const [grafico, setGrafico] = useState<{ mes: string; total: number }[]>([])
   const [vencimentos, setVencimentos] = useState<VencimentoRow[]>([])
+  const [historico, setHistorico] = useState<MesHistorico[]>([])
+  const [mesAberto, setMesAberto] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -112,6 +132,43 @@ export default function FinanceiroPage() {
         .eq('status', 'pendente')
       setPendentes(count || 0)
 
+      // Histórico mensal completo (todos os meses que já tiveram pagamento, de qualquer ano)
+      const { data: todosPagos } = await supabase
+        .from('pagamentos')
+        .select('valor, desconto, data_pagamento, status, alunos(nome)')
+        .eq('status', 'pago')
+        .not('data_pagamento', 'is', null)
+        .order('data_pagamento', { ascending: true })
+
+      const porChave = new Map<string, MesHistorico>()
+      for (const p of (todosPagos as (PagamentoRow & { alunos: { nome: string } | { nome: string }[] | null })[] | null) || []) {
+        if (!p.data_pagamento) continue
+        const d = new Date(p.data_pagamento)
+        const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        const label = `${MESES_LONGOS[d.getMonth()]} ${d.getFullYear()}`
+        const valorLiquido = Number(p.valor) - Number(p.desconto || 0)
+        const alunoObj = Array.isArray(p.alunos) ? p.alunos[0] : p.alunos
+        const nome = alunoObj?.nome || 'Aluno'
+
+        if (!porChave.has(chave)) {
+          porChave.set(chave, { chave, label, total: 0, qtd: 0, ticketMedio: 0, crescimento: null, pagamentos: [] })
+        }
+        const mes = porChave.get(chave)!
+        mes.total += valorLiquido
+        mes.qtd += 1
+        mes.pagamentos.push({ nome, valor: valorLiquido, data: p.data_pagamento })
+      }
+
+      const mesesOrdenados = [...porChave.values()].sort((a, b) => a.chave.localeCompare(b.chave))
+      for (let i = 0; i < mesesOrdenados.length; i++) {
+        const m = mesesOrdenados[i]
+        m.ticketMedio = m.qtd > 0 ? m.total / m.qtd : 0
+        if (i > 0 && mesesOrdenados[i - 1].total > 0) {
+          m.crescimento = ((m.total - mesesOrdenados[i - 1].total) / mesesOrdenados[i - 1].total) * 100
+        }
+      }
+      setHistorico(mesesOrdenados.reverse()) // mais recente primeiro
+
       setLoading(false)
     }
     load()
@@ -123,8 +180,27 @@ export default function FinanceiroPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 20 }}>Financeiro</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 16 }}>Financeiro</h1>
 
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <button onClick={() => setAba('visao')} style={{
+          background: aba === 'visao' ? 'var(--accent)' : 'var(--card)',
+          border: '1px solid var(--border)', color: aba === 'visao' ? '#fff' : 'var(--text2)',
+          borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          Visão geral
+        </button>
+        <button onClick={() => setAba('historico')} style={{
+          background: aba === 'historico' ? 'var(--accent)' : 'var(--card)',
+          border: '1px solid var(--border)', color: aba === 'historico' ? '#fff' : 'var(--text2)',
+          borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          Histórico mensal
+        </button>
+      </div>
+
+      {aba === 'visao' ? (
+      <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         <Card label={`Recebido em ${mesAtualLabel}`} value={`R$ ${totalMes.toFixed(2)}`} />
         <Card label="Pagamentos no mês" value={String(qtdMes)} />
@@ -196,6 +272,83 @@ export default function FinanceiroPage() {
             })}
           </div>
         )}
+      </div>
+      </>
+      ) : (
+        <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} />
+      )}
+    </div>
+  )
+}
+
+function HistoricoMensal({ historico, mesAberto, setMesAberto }: {
+  historico: MesHistorico[]
+  mesAberto: string | null
+  setMesAberto: (v: string | null) => void
+}) {
+  if (historico.length === 0) {
+    return <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum pagamento confirmado ainda.</p>
+  }
+
+  const mediaTicketGeral = historico.reduce((s, m) => s + m.ticketMedio, 0) / historico.length
+
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+        Cada mês fecha automaticamente assim que vira o mês — os valores são calculados pela data real de cada pagamento, sempre editável se precisar corrigir algo na tela de Pagamentos.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <Card label="Ticket médio geral" value={`R$ ${mediaTicketGeral.toFixed(2)}`} />
+        <Card label="Meses registrados" value={String(historico.length)} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+        {historico.map(m => {
+          const aberto = mesAberto === m.chave
+          return (
+            <div key={m.chave} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+              <div
+                onClick={() => setMesAberto(aberto ? null : m.chave)}
+                style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, cursor: 'pointer' }}
+              >
+                <div>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{m.label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 10 }}>{m.qtd} pagamento{m.qtd === 1 ? '' : 's'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>Ticket médio: R$ {m.ticketMedio.toFixed(2)}</span>
+                  {m.crescimento !== null && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
+                      color: m.crescimento >= 0 ? '#3fb950' : 'var(--accent2)',
+                      background: 'var(--bg)',
+                    }}>
+                      {m.crescimento >= 0 ? '↑' : '↓'} {Math.abs(m.crescimento).toFixed(0)}%
+                    </span>
+                  )}
+                  <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 20, color: 'var(--accent)' }}>
+                    R$ {m.total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {aberto && (
+                <div style={{ borderTop: '1px solid var(--border)', padding: '10px 16px' }}>
+                  {m.pagamentos.map((p, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, borderBottom: i < m.pagamentos.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <span>{p.nome}</span>
+                      <span style={{ color: 'var(--text2)', display: 'flex', gap: 10 }}>
+                        <span>{new Date(p.data).toLocaleDateString('pt-BR')}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text)' }}>R$ {p.valor.toFixed(2)}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
