@@ -164,7 +164,7 @@ export default function FinanceiroPage() {
         {vencimentos.length === 0 ? (
           <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum vencimento com data cadastrada.</p>
         ) : (
-          <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
             {vencimentos.map(v => {
               const urgente = v.diasRestantes <= 3
               const emBreve = v.diasRestantes <= 7

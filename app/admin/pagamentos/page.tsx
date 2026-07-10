@@ -226,7 +226,7 @@ export default function PagamentosPage() {
           Nenhum pagamento encontrado.
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           {rows.map(p => (
             <div key={p.id} style={{
               background: 'var(--card)', border: `1px solid ${p.status === 'aguardando_confirmacao' ? '#f0a500' : 'var(--border)'}`,

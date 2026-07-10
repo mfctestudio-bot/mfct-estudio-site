@@ -269,7 +269,7 @@ function GradeSemanal() {
             {célula.length === 0 ? (
               <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum aluno agendado nesse horário.</p>
             ) : (
-              <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 12 }}>
                 {célula.map(a => (
                   <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{a.alunos?.nome || 'Sem nome'}</span>
@@ -414,7 +414,7 @@ function ProximasAulas() {
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
         Cancelar uma turma avisa por WhatsApp todos os alunos confirmados naquele dia/horário.
       </p>
-      <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
         {[...grupos.entries()].map(([key, items]) => {
           const first = items[0]
           const horario = first.horarios?.horario.slice(0, 5) || ''
@@ -583,7 +583,7 @@ function GradeHorarios() {
           Nenhum horário cadastrado para {DIAS[diaAtivo]}.
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 16 }}>
           {horariosDoDia.map(h => (
             <div key={h.id} style={{
               background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,

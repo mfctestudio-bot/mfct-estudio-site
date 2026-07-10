@@ -132,7 +132,7 @@ export default function PostsPage() {
       ) : posts.length === 0 ? (
         <p style={{ color: 'var(--text2)' }}>Nenhum post ainda.</p>
       ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
           {posts.map(p => (
             <div key={p.id} style={{
               background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,

@@ -81,7 +81,7 @@ export default function PlanosPage() {
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>
       ) : (
-        <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
           {planos.map(p => (
             <div key={p.id} style={{
               background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--accent2)'}`,
@@ -136,7 +136,7 @@ export default function PlanosPage() {
       ) : (
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
           <h3 style={{ fontSize: 14, marginBottom: 12 }}>Novo plano</h3>
-          <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nome</label>
               <input value={nome} onChange={e => setNome(e.target.value)} style={inputStyle} placeholder="Ex: Plano 5x semana" />

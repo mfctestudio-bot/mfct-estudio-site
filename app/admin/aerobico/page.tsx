@@ -71,7 +71,7 @@ export default function AerobicoPage() {
           Nenhum aeróbico agendado para este dia.
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           {/* Resumo por aparelho */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 8 }}>
             {aparelhos.map(ap => {

@@ -98,7 +98,7 @@ function AlunosContent() {
       ) : filtrados.length === 0 ? (
         <p style={{ color: 'var(--text2)' }}>Nenhum aluno encontrado.</p>
       ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
           {filtrados.map(a => (
             <Link key={a.id} href={`/admin/alunos/${a.id}`} style={{
               background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
