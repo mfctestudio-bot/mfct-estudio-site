@@ -291,7 +291,10 @@ export default function PagamentosPage() {
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                     {p.planos?.nome || 'Plano'} · R$ {Number(p.valor).toFixed(2).replace('.', ',')}
                     {!!p.desconto && Number(p.desconto) > 0 && (
-                      <span style={{ color: '#f0a500' }}> (desconto de R$ {Number(p.desconto).toFixed(2).replace('.', ',')})</span>
+                      <span style={{ color: '#f0a500' }}>
+                        {' '}(desconto de {p.valor_original ? `${((Number(p.desconto) / Number(p.valor_original)) * 100).toFixed(0)}% ` : ''}
+                        R$ {Number(p.desconto).toFixed(2).replace('.', ',')})
+                      </span>
                     )}
                     {p.data_vencimento && ` · Vence ${new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}`}
                   </div>
@@ -399,10 +402,17 @@ export default function PagamentosPage() {
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input type="number" step="0.01" value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                {editDescontoTipo === 'percentual' ? (
+                  <select value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+                    <option value="0">Sem desconto</option>
+                    {[5, 10, 15, 20, 25, 30, 40, 50].map(p => <option key={p} value={p}>{p}%</option>)}
+                  </select>
+                ) : (
+                  <input type="number" step="0.01" value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                )}
                 <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                   {(['valor', 'percentual'] as const).map(t => (
-                    <button key={t} type="button" onClick={() => setEditDescontoTipo(t)} style={{
+                    <button key={t} type="button" onClick={() => { setEditDescontoTipo(t); setEditDesconto('0') }} style={{
                       background: editDescontoTipo === t ? '#3fb95022' : 'transparent',
                       color: editDescontoTipo === t ? '#3fb950' : 'var(--text2)',
                       border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
@@ -487,23 +497,42 @@ export default function PagamentosPage() {
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="number" step="0.01" value={novoDesconto}
-                  onChange={e => {
-                    const novo = e.target.value
-                    setNovoDesconto(novo)
-                    const plano = planosOpt.find(p => p.id === novoPlanoId)
-                    if (plano) {
-                      const valorOriginal = Number(plano.valor)
-                      const descontoReais = novoDescontoTipo === 'percentual' ? valorOriginal * (Number(novo || 0) / 100) : Number(novo || 0)
-                      setNovoValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
-                    }
-                  }}
-                  style={{ ...inputStyle, flex: 1 }}
-                />
+                {novoDescontoTipo === 'percentual' ? (
+                  <select
+                    value={novoDesconto}
+                    onChange={e => {
+                      const novo = e.target.value
+                      setNovoDesconto(novo)
+                      const plano = planosOpt.find(p => p.id === novoPlanoId)
+                      if (plano) {
+                        const valorOriginal = Number(plano.valor)
+                        const descontoReais = valorOriginal * (Number(novo || 0) / 100)
+                        setNovoValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
+                      }
+                    }}
+                    style={{ ...inputStyle, flex: 1 }}
+                  >
+                    <option value="0">Sem desconto</option>
+                    {[5, 10, 15, 20, 25, 30, 40, 50].map(p => <option key={p} value={p}>{p}%</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="number" step="0.01" value={novoDesconto}
+                    onChange={e => {
+                      const novo = e.target.value
+                      setNovoDesconto(novo)
+                      const plano = planosOpt.find(p => p.id === novoPlanoId)
+                      if (plano) {
+                        const valorOriginal = Number(plano.valor)
+                        setNovoValor(String(Math.max(0, Math.round((valorOriginal - Number(novo || 0)) * 100) / 100)))
+                      }
+                    }}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                )}
                 <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                   {(['valor', 'percentual'] as const).map(t => (
-                    <button key={t} type="button" onClick={() => setNovoDescontoTipo(t)} style={{
+                    <button key={t} type="button" onClick={() => { setNovoDescontoTipo(t); setNovoDesconto('0') }} style={{
                       background: novoDescontoTipo === t ? '#3fb95022' : 'transparent',
                       color: novoDescontoTipo === t ? '#3fb950' : 'var(--text2)',
                       border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',

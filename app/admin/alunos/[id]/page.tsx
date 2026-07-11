@@ -398,22 +398,36 @@ export default function AlunoPage() {
             </Campo>
             <Campo label="Desconto aplicado">
               <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="number" step="0.01" value={modalDesconto}
-                  onChange={e => {
-                    const novoDesconto = e.target.value
-                    setModalDesconto(novoDesconto)
-                    const valorOriginal = Number(modalPlano.valor)
-                    const descontoReais = modalDescontoTipo === 'percentual'
-                      ? valorOriginal * (Number(novoDesconto || 0) / 100)
-                      : Number(novoDesconto || 0)
-                    setModalValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
-                  }}
-                  style={{ ...inputStyle, flex: 1 }} placeholder="0"
-                />
+                {modalDescontoTipo === 'percentual' ? (
+                  <select
+                    value={modalDesconto}
+                    onChange={e => {
+                      const novoDesconto = e.target.value
+                      setModalDesconto(novoDesconto)
+                      const valorOriginal = Number(modalPlano.valor)
+                      const descontoReais = valorOriginal * (Number(novoDesconto || 0) / 100)
+                      setModalValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
+                    }}
+                    style={{ ...inputStyle, flex: 1 }}
+                  >
+                    <option value="0">Sem desconto</option>
+                    {[5, 10, 15, 20, 25, 30, 40, 50].map(p => <option key={p} value={p}>{p}%</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="number" step="0.01" value={modalDesconto}
+                    onChange={e => {
+                      const novoDesconto = e.target.value
+                      setModalDesconto(novoDesconto)
+                      const valorOriginal = Number(modalPlano.valor)
+                      setModalValor(String(Math.max(0, Math.round((valorOriginal - Number(novoDesconto || 0)) * 100) / 100)))
+                    }}
+                    style={{ ...inputStyle, flex: 1 }} placeholder="0"
+                  />
+                )}
                 <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                   {(['valor', 'percentual'] as const).map(t => (
-                    <button key={t} type="button" onClick={() => setModalDescontoTipo(t)} style={{
+                    <button key={t} type="button" onClick={() => { setModalDescontoTipo(t); setModalDesconto('0'); setModalValor(String(modalPlano.valor)) }} style={{
                       background: modalDescontoTipo === t ? '#3fb95022' : 'transparent',
                       color: modalDescontoTipo === t ? '#3fb950' : 'var(--text2)',
                       border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
@@ -422,6 +436,7 @@ export default function AlunoPage() {
                     </button>
                   ))}
                 </div>
+
               </div>
             </Campo>
             <Campo label="Data do pagamento">
