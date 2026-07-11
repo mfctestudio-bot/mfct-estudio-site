@@ -13,6 +13,7 @@ type PagamentoRow = {
   desconto: string | number | null
   data_pagamento: string | null
   status: string
+  metodo_pagamento?: string | null
 }
 
 type VencimentoRow = {
@@ -55,6 +56,7 @@ export default function FinanceiroPage() {
   const [mesAberto, setMesAberto] = useState<string | null>(null)
   const [semanalData, setSemanalData] = useState<{ label: string; total: number }[]>([])
   const [anualData, setAnualData] = useState<{ label: string; total: number }[]>([])
+  const [porMetodo, setPorMetodo] = useState<{ metodo: string; total: number; qtd: number }[]>([])
 
   useEffect(() => {
     async function load() {
@@ -137,7 +139,7 @@ export default function FinanceiroPage() {
       // Histórico mensal completo (todos os meses que já tiveram pagamento, de qualquer ano)
       const { data: todosPagos } = await supabase
         .from('pagamentos')
-        .select('valor, desconto, data_pagamento, status, alunos(nome)')
+        .select('valor, desconto, data_pagamento, status, metodo_pagamento, alunos(nome)')
         .eq('status', 'pago')
         .not('data_pagamento', 'is', null)
         .order('data_pagamento', { ascending: true })
@@ -198,6 +200,22 @@ export default function FinanceiroPage() {
 
       const anosOrdenados = [...porAno.entries()].sort((a, b) => a[0].localeCompare(b[0]))
       setAnualData(anosOrdenados.map(([ano, total]) => ({ label: ano, total: Math.round(total * 100) / 100 })))
+
+      // Totais por forma de pagamento (Pix, Dinheiro, Cartão, Manual/outros)
+      const METODO_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', cartao: 'Cartão', manual: 'Manual (não informado)' }
+      const porMetodoMap = new Map<string, { total: number; qtd: number }>()
+      for (const p of (todosPagos as (PagamentoRow & { alunos: { nome: string } | { nome: string }[] | null })[] | null) || []) {
+        if (!p.data_pagamento) continue
+        const valorLiquido = Number(p.valor) - Number(p.desconto || 0)
+        const chave = p.metodo_pagamento || 'manual'
+        if (!porMetodoMap.has(chave)) porMetodoMap.set(chave, { total: 0, qtd: 0 })
+        const m = porMetodoMap.get(chave)!
+        m.total += valorLiquido
+        m.qtd += 1
+      }
+      setPorMetodo([...porMetodoMap.entries()]
+        .map(([chave, v]) => ({ metodo: METODO_LABEL[chave] || chave, total: Math.round(v.total * 100) / 100, qtd: v.qtd }))
+        .sort((a, b) => b.total - a.total))
 
       setLoading(false)
     }
@@ -305,18 +323,19 @@ export default function FinanceiroPage() {
       </div>
       </>
       ) : (
-        <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} semanalData={semanalData} anualData={anualData} />
+        <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} semanalData={semanalData} anualData={anualData} porMetodo={porMetodo} />
       )}
     </div>
   )
 }
 
-function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anualData }: {
+function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anualData, porMetodo }: {
   historico: MesHistorico[]
   mesAberto: string | null
   setMesAberto: (v: string | null) => void
   semanalData: { label: string; total: number }[]
   anualData: { label: string; total: number }[]
+  porMetodo: { metodo: string; total: number; qtd: number }[]
 }) {
   const [periodo, setPeriodo] = useState<'semana' | 'mes' | 'ano'>('mes')
 
@@ -372,6 +391,23 @@ function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anua
           </ResponsiveContainer>
         </div>
       </div>
+
+      {porMetodo.length > 0 && (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 24 }}>
+          <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14 }}>
+            Por forma de pagamento
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+            {porMetodo.map(m => (
+              <div key={m.metodo} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>{m.metodo}</div>
+                <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 20, color: 'var(--accent)' }}>R$ {m.total.toFixed(2)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{m.qtd} pagamento{m.qtd === 1 ? '' : 's'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
         {historico.map(m => {

@@ -51,6 +51,7 @@ export default function PagamentosPage() {
   const [filtro, setFiltro] = useState('todos')
   const [confirmando, setConfirmando] = useState<string | null>(null)
   const [dataConfirm, setDataConfirm] = useState<Record<string, string>>({})
+  const [metodoConfirm, setMetodoConfirm] = useState<Record<string, string>>({})
   const [imgModal, setImgModal] = useState<string | null>(null)
 
   const [editando, setEditando] = useState<PagamentoRow | null>(null)
@@ -165,6 +166,7 @@ export default function PagamentosPage() {
     const dataPagDate = new Date(dataPag + 'T12:00:00')
     const dataVencimento = new Date(dataPagDate)
     dataVencimento.setMonth(dataVencimento.getMonth() + 1)
+    const metodo = metodoConfirm[id] || 'pix'
 
     // Atualizar pagamento
     await supabase.from('pagamentos').update({
@@ -173,6 +175,7 @@ export default function PagamentosPage() {
       confirmado_por: 'admin',
       data_pagamento: dataPagDate.toISOString(),
       data_vencimento: dataVencimento.toISOString().slice(0, 10),
+      metodo_pagamento: metodo,
     }).eq('id', id)
 
     // Ativar aluno
@@ -291,8 +294,8 @@ export default function PagamentosPage() {
                       🖼️ Ver comprovante
                     </button>
                   )}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
-                    <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 130 }}>
                       <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Data do pagamento</div>
                       <input
                         type="date"
@@ -300,6 +303,18 @@ export default function PagamentosPage() {
                         onChange={e => setDataConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
                         style={inputStyle}
                       />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 110 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Como pagou</div>
+                      <select
+                        value={metodoConfirm[p.id] || 'pix'}
+                        onChange={e => setMetodoConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
+                        style={inputStyle}
+                      >
+                        <option value="pix">Pix</option>
+                        <option value="dinheiro">Dinheiro</option>
+                        <option value="cartao">Cartão</option>
+                      </select>
                     </div>
                     <button
                       onClick={() => confirmarPagamento(p.id)}
