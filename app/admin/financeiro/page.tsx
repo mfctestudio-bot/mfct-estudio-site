@@ -43,7 +43,7 @@ type MesHistorico = {
 }
 
 export default function FinanceiroPage() {
-  const [aba, setAba] = useState<'visao' | 'historico'>('visao')
+  const [aba, setAba] = useState<'visao' | 'historico' | 'caixa'>('visao')
   const [loading, setLoading] = useState(true)
   const [totalMes, setTotalMes] = useState(0)
   const [qtdMes, setQtdMes] = useState(0)
@@ -245,6 +245,13 @@ export default function FinanceiroPage() {
         }}>
           Histórico mensal
         </button>
+        <button onClick={() => setAba('caixa')} style={{
+          background: aba === 'caixa' ? '#3fb95022' : 'var(--card)',
+          border: `1.5px solid ${aba === 'caixa' ? '#3fb950' : 'var(--border)'}`, color: aba === 'caixa' ? '#3fb950' : 'var(--text2)',
+          borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          Controle de caixa
+        </button>
       </div>
 
       {aba === 'visao' ? (
@@ -322,9 +329,152 @@ export default function FinanceiroPage() {
         )}
       </div>
       </>
-      ) : (
+      ) : aba === 'historico' ? (
         <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} semanalData={semanalData} anualData={anualData} porMetodo={porMetodo} />
+      ) : (
+        <ControleDeCaixa totalMes={totalMes} vencimentos={vencimentos} />
       )}
+    </div>
+  )
+}
+
+function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimentos: VencimentoRow[] }) {
+  const [categorias, setCategorias] = useState<{ id: string; categoria: string; percentual: number; cor: string }[]>([])
+  const [loadingCat, setLoadingCat] = useState(true)
+  const [novaCategoria, setNovaCategoria] = useState('')
+  const [novoPercentual, setNovoPercentual] = useState('10')
+
+  async function carregar() {
+    setLoadingCat(true)
+    const { data } = await supabase.from('caixa_config').select('*').order('ordem')
+    setCategorias((data as { id: string; categoria: string; percentual: number; cor: string }[]) || [])
+    setLoadingCat(false)
+  }
+
+  useEffect(() => { carregar() }, [])
+
+  async function atualizarPercentual(id: string, valor: number) {
+    setCategorias(prev => prev.map(c => c.id === id ? { ...c, percentual: valor } : c))
+    await supabase.from('caixa_config').update({ percentual: valor }).eq('id', id)
+  }
+
+  async function removerCategoria(id: string) {
+    if (!confirm('Remover essa categoria?')) return
+    await supabase.from('caixa_config').delete().eq('id', id)
+    carregar()
+  }
+
+  async function adicionarCategoria() {
+    if (!novaCategoria.trim()) return
+    const cores = ['#e05656', '#4a90d9', '#f0a500', '#3fb950', '#9b59b6', '#e67e22']
+    await supabase.from('caixa_config').insert({
+      categoria: novaCategoria.trim(),
+      percentual: Number(novoPercentual) || 0,
+      cor: cores[categorias.length % cores.length],
+      ordem: categorias.length,
+    })
+    setNovaCategoria('')
+    setNovoPercentual('10')
+    carregar()
+  }
+
+  const totalPercentual = categorias.reduce((s, c) => s + Number(c.percentual), 0)
+  const lucroPercentual = Math.max(0, 100 - totalPercentual)
+  const lucroValor = totalMes * (lucroPercentual / 100)
+
+  // Melhor data pra tirar o dinheiro: baseado na distribuicao dos dias de vencimento dos alunos ativos,
+  // acha o dia em que a maior parte (85%) da receita esperada do mes ja deveria ter entrado.
+  const porDia = new Map<number, number>()
+  let totalEsperado = 0
+  for (const v of vencimentos) {
+    if (!v.dia_vencimento) continue
+    porDia.set(v.dia_vencimento, (porDia.get(v.dia_vencimento) || 0) + v.valor)
+    totalEsperado += v.valor
+  }
+  const diasOrdenados = [...porDia.entries()].sort((a, b) => a[0] - b[0])
+  let acumulado = 0
+  let melhorDia = null as number | null
+  for (const [dia, valor] of diasOrdenados) {
+    acumulado += valor
+    if (acumulado / (totalEsperado || 1) >= 0.85) { melhorDia = dia; break }
+  }
+  const diaSugerido = melhorDia ? Math.min(28, melhorDia + 3) : null
+
+  if (loadingCat) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+        Defina quanto (em %) da receita do mês deve ficar reservado pra cada categoria de despesa. O que sobrar é considerado lucro.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <Card label={`Receita do mês`} value={`R$ ${totalMes.toFixed(2)}`} />
+        <Card label={`Lucro estimado (${lucroPercentual.toFixed(0)}%)`} value={`R$ ${lucroValor.toFixed(2)}`} accent="#3fb950" />
+        {diaSugerido && (
+          <Card label="Melhor dia pra tirar o dinheiro" value={`Dia ${diaSugerido}`} sub="~85% da receita já deve ter entrado até lá" />
+        )}
+      </div>
+
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 20 }}>
+        <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14 }}>
+          Categorias de despesa
+        </h3>
+
+        <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+          {categorias.map(c => {
+            const valorCategoria = totalMes * (Number(c.percentual) / 100)
+            return (
+              <div key={c.id}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.cor, display: 'inline-block' }} />
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{c.categoria}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$ {valorCategoria.toFixed(2)}</span>
+                    <input
+                      type="number" min={0} max={100} value={c.percentual}
+                      onChange={e => atualizarPercentual(c.id, Number(e.target.value))}
+                      style={{ width: 60, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>%</span>
+                    <button onClick={() => removerCategoria(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
+                  </div>
+                </div>
+                <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, c.percentual)}%`, background: c.cor }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ fontSize: 12, color: totalPercentual > 100 ? 'var(--accent2)' : 'var(--text3)', marginBottom: 16 }}>
+          Total alocado: {totalPercentual.toFixed(0)}% {totalPercentual > 100 && '— passou de 100%, ajuste os percentuais'}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            placeholder="Nova categoria (ex: Aluguel)"
+            value={novaCategoria}
+            onChange={e => setNovaCategoria(e.target.value)}
+            style={{ flex: 1, minWidth: 160, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+          />
+          <input
+            type="number" min={0} max={100} value={novoPercentual}
+            onChange={e => setNovoPercentual(e.target.value)}
+            style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>%</span>
+          <button onClick={adicionarCategoria} style={{
+            background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
+            padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            + Adicionar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
