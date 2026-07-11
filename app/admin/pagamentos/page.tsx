@@ -222,8 +222,8 @@ export default function PagamentosPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {['aguardando_confirmacao', 'pendente', 'pago', 'vencido', 'todos'].map(s => (
           <button key={s} onClick={() => setFiltro(s)} style={{
-            background: filtro === s ? 'var(--accent)' : 'var(--card)',
-            border: '1px solid var(--border)', color: filtro === s ? '#fff' : 'var(--text2)',
+            background: filtro === s ? '#3fb95022' : 'var(--card)',
+            border: `1.5px solid ${filtro === s ? '#3fb950' : 'var(--border)'}`, color: filtro === s ? '#3fb950' : 'var(--text2)',
             borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'inherit',
           }}>

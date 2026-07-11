@@ -232,15 +232,15 @@ export default function FinanceiroPage() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <button onClick={() => setAba('visao')} style={{
-          background: aba === 'visao' ? 'var(--accent)' : 'var(--card)',
-          border: '1px solid var(--border)', color: aba === 'visao' ? '#fff' : 'var(--text2)',
+          background: aba === 'visao' ? '#3fb95022' : 'var(--card)',
+          border: `1.5px solid ${aba === 'visao' ? '#3fb950' : 'var(--border)'}`, color: aba === 'visao' ? '#3fb950' : 'var(--text2)',
           borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
         }}>
           Visão geral
         </button>
         <button onClick={() => setAba('historico')} style={{
-          background: aba === 'historico' ? 'var(--accent)' : 'var(--card)',
-          border: '1px solid var(--border)', color: aba === 'historico' ? '#fff' : 'var(--text2)',
+          background: aba === 'historico' ? '#3fb95022' : 'var(--card)',
+          border: `1.5px solid ${aba === 'historico' ? '#3fb950' : 'var(--border)'}`, color: aba === 'historico' ? '#3fb950' : 'var(--text2)',
           borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
         }}>
           Histórico mensal
@@ -366,8 +366,8 @@ function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anua
           <div style={{ display: 'flex', gap: 6 }}>
             {(['semana', 'mes', 'ano'] as const).map(p => (
               <button key={p} onClick={() => setPeriodo(p)} style={{
-                background: periodo === p ? 'var(--accent)' : 'transparent',
-                border: '1px solid var(--border)', color: periodo === p ? '#fff' : 'var(--text2)',
+                background: periodo === p ? '#3fb95022' : 'transparent',
+                border: `1.5px solid ${periodo === p ? '#3fb950' : 'var(--border)'}`, color: periodo === p ? '#3fb950' : 'var(--text2)',
                 borderRadius: 4, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 {p === 'semana' ? 'Semanal' : p === 'mes' ? 'Mensal' : 'Anual'}

@@ -566,9 +566,9 @@ function GradeHorarios() {
             key={i}
             onClick={() => setDiaAtivo(i)}
             style={{
-              background: diaAtivo === i ? 'var(--accent)' : 'transparent',
-              color: diaAtivo === i ? '#fff' : 'var(--text2)',
-              border: `1px solid ${diaAtivo === i ? 'var(--accent)' : 'var(--border)'}`,
+              background: diaAtivo === i ? '#3fb95022' : 'transparent',
+              color: diaAtivo === i ? '#3fb950' : 'var(--text2)',
+              border: `1.5px solid ${diaAtivo === i ? '#3fb950' : 'var(--border)'}`,
               borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
@@ -666,9 +666,9 @@ function GradeHorarios() {
                 key={i}
                 onClick={() => toggleDiaEscolhido(i)}
                 style={{
-                  background: diasEscolhidos.includes(i) ? 'var(--accent)' : 'transparent',
-                  color: diasEscolhidos.includes(i) ? '#fff' : 'var(--text2)',
-                  border: `1px solid ${diasEscolhidos.includes(i) ? 'var(--accent)' : 'var(--border)'}`,
+                  background: diasEscolhidos.includes(i) ? '#3fb95022' : 'transparent',
+                  color: diasEscolhidos.includes(i) ? '#3fb950' : 'var(--text2)',
+                  border: `1.5px solid ${diasEscolhidos.includes(i) ? '#3fb950' : 'var(--border)'}`,
                   borderRadius: 6, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >

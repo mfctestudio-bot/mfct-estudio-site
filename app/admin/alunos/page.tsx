@@ -15,6 +15,7 @@ const STATUS_LABEL: Record<string, string> = {
   perdido: 'Perdido',
   experimental: 'Experimental',
   ativo: 'Ativo',
+  pausado: 'Pausado',
   vencido: 'Vencido',
   cancelado: 'Cancelado',
 }
@@ -29,6 +30,7 @@ const STATUS_COLOR: Record<string, string> = {
   perdido: 'var(--text3)',
   experimental: 'var(--accent)',
   ativo: '#3fb950',
+  pausado: '#f0a500',
   vencido: 'var(--accent2)',
   cancelado: 'var(--text3)',
 }

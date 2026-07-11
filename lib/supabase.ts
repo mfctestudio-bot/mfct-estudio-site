@@ -22,7 +22,7 @@ export type Aluno = {
   telefone: string | null
   email: string | null
   plano_id: string | null
-  status_plano: 'lead' | 'experimental_oferecida' | 'experimental_agendada' | 'experimental_realizada' | 'faltou_experimental' | 'em_negociacao' | 'perdido' | 'experimental' | 'ativo' | 'vencido' | 'cancelado'
+  status_plano: 'lead' | 'experimental_oferecida' | 'experimental_agendada' | 'experimental_realizada' | 'faltou_experimental' | 'em_negociacao' | 'perdido' | 'experimental' | 'ativo' | 'pausado' | 'vencido' | 'cancelado'
   data_matricula: string
   observacoes: string | null
   dia_vencimento: number | null

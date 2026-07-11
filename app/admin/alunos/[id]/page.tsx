@@ -16,6 +16,7 @@ const STATUS_OPTIONS = [
   { value: 'em_negociacao', label: 'Em negociação' },
   { value: 'perdido', label: 'Perdido' },
   { value: 'ativo', label: 'Ativo' },
+  { value: 'pausado', label: 'Pausado' },
   { value: 'vencido', label: 'Vencido' },
   { value: 'cancelado', label: 'Cancelado' },
 ]
@@ -147,11 +148,19 @@ export default function AlunoPage() {
     setTimeout(() => setToast(''), 3000)
   }
 
-  async function desativarPlano() {
-    if (!aluno || !confirm('Desativar o plano deste aluno?')) return
+  async function cancelarPlano() {
+    if (!aluno || !confirm('Cancelar o plano deste aluno? Isso encerra a relação — se for algo temporário, use "Pausar" em vez disso.')) return
     await supabase.from('alunos').update({ status_plano: 'cancelado' }).eq('id', id)
     setAluno(prev => prev ? { ...prev, status_plano: 'cancelado' } : prev)
-    setToast('Plano desativado.')
+    setToast('Plano cancelado.')
+    setTimeout(() => setToast(''), 2500)
+  }
+
+  async function pausarPlano() {
+    if (!aluno || !confirm('Pausar o plano deste aluno? Ele fica temporariamente suspenso, sem cancelar de vez.')) return
+    await supabase.from('alunos').update({ status_plano: 'pausado' }).eq('id', id)
+    setAluno(prev => prev ? { ...prev, status_plano: 'pausado' } : prev)
+    setToast('Plano pausado.')
     setTimeout(() => setToast(''), 2500)
   }
 
@@ -212,10 +221,11 @@ export default function AlunoPage() {
 
       {/* AÇÕES RÁPIDAS */}
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>Ações rápidas</div>
-        
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          {aluno.status_plano !== 'ativo' ? (
+        <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Ações rápidas</div>
+
+        <SubLabel>Status do plano</SubLabel>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {aluno.status_plano !== 'ativo' && aluno.status_plano !== 'pausado' && (
             <button onClick={() => abrirModalAtivacao()} style={{
               background: '#3fb950', border: 'none', color: '#fff',
               borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
@@ -223,34 +233,46 @@ export default function AlunoPage() {
             }}>
               ✅ Ativar plano
             </button>
-          ) : (
-            <>
-              <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{
-                background: '#3fb950', border: 'none', color: '#fff',
-                borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit'
-              }}>
-                🔄 Renovar plano (registrar novo pagamento)
-              </button>
-              <button onClick={desativarPlano} style={{
-                background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
-                borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit'
-              }}>
-                ❌ Desativar plano
-              </button>
-            </>
+          )}
+
+          {(aluno.status_plano === 'ativo' || aluno.status_plano === 'pausado') && (
+            <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{
+              background: '#3fb950', border: 'none', color: '#fff',
+              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>
+              🔄 {aluno.status_plano === 'pausado' ? 'Reativar (registrar pagamento)' : 'Renovar plano (registrar novo pagamento)'}
+            </button>
+          )}
+
+          {aluno.status_plano === 'ativo' && (
+            <button onClick={pausarPlano} style={{
+              background: 'transparent', border: '1.5px solid #f0a500', color: '#f0a500',
+              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>
+              ⏸️ Pausar plano
+            </button>
+          )}
+
+          {aluno.status_plano !== 'cancelado' && (
+            <button onClick={cancelarPlano} style={{
+              background: 'transparent', border: '1.5px solid var(--accent2)', color: 'var(--accent2)',
+              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}>
+              ❌ Cancelar plano
+            </button>
           )}
         </div>
 
-        {/* Alterar plano */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--text2)', alignSelf: 'center' }}>Alterar plano:</span>
+        <SubLabel>Tipo de plano</SubLabel>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           {planos.filter(p => p.vezes_semana > 1).map(p => (
             <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} style={{
-              background: aluno.plano_id === p.id ? 'var(--accent)' : 'var(--card)',
-              border: `1px solid ${aluno.plano_id === p.id ? 'var(--accent)' : 'var(--border)'}`,
-              color: aluno.plano_id === p.id ? '#fff' : 'var(--text)',
+              background: aluno.plano_id === p.id ? '#3fb95022' : 'var(--card)',
+              border: `1.5px solid ${aluno.plano_id === p.id ? '#3fb950' : 'var(--border)'}`,
+              color: aluno.plano_id === p.id ? '#3fb950' : 'var(--text)',
               borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit'
             }}>
@@ -259,9 +281,8 @@ export default function AlunoPage() {
           ))}
         </div>
 
-        {/* Alterar vencimento */}
+        <SubLabel>Vencimento</SubLabel>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text2)' }}>Dia de vencimento:</span>
           <select
             value={aluno.dia_vencimento || ''}
             onChange={e => alterarVencimento(Number(e.target.value))}
@@ -390,6 +411,14 @@ export default function AlunoPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function SubLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>
+      {children}
     </div>
   )
 }
