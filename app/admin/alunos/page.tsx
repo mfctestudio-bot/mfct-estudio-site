@@ -41,6 +41,7 @@ function AlunosContent() {
   const [planos, setPlanos] = useState<Plano[]>([])
   const [busca, setBusca] = useState('')
   const [statusFiltro, setStatusFiltro] = useState(params.get('status') || 'todos')
+  const [ordenacao, setOrdenacao] = useState('nome_az')
   const [loading, setLoading] = useState(true)
   const [novoOpen, setNovoOpen] = useState(false)
 
@@ -62,7 +63,14 @@ function AlunosContent() {
     a.nome.toLowerCase().includes(busca.toLowerCase()) ||
     (a.cpf || '').includes(busca) ||
     (a.telefone || '').includes(busca)
-  )
+  ).sort((a, b) => {
+    if (ordenacao === 'nome_az') return a.nome.localeCompare(b.nome)
+    if (ordenacao === 'nome_za') return b.nome.localeCompare(a.nome)
+    if (ordenacao === 'recentes') return (b.data_matricula || '').localeCompare(a.data_matricula || '')
+    if (ordenacao === 'antigos') return (a.data_matricula || '').localeCompare(b.data_matricula || '')
+    if (ordenacao === 'vencimento') return (a.dia_vencimento || 99) - (b.dia_vencimento || 99)
+    return 0
+  })
 
   return (
     <div>
@@ -92,6 +100,16 @@ function AlunosContent() {
         }}>
           <option value="todos">Todos os status</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)} style={{
+          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+          padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none',
+        }}>
+          <option value="nome_az">Nome (A-Z)</option>
+          <option value="nome_za">Nome (Z-A)</option>
+          <option value="recentes">Mais recentes</option>
+          <option value="antigos">Mais antigos</option>
+          <option value="vencimento">Vencimento mais próximo</option>
         </select>
       </div>
 

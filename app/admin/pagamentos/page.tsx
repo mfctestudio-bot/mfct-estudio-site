@@ -47,6 +47,7 @@ const inputStyle = {
 
 export default function PagamentosPage() {
   const [rows, setRows] = useState<PagamentoRow[]>([])
+  const [ordenacao, setOrdenacao] = useState('recentes')
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('todos')
   const [confirmando, setConfirmando] = useState<string | null>(null)
@@ -211,6 +212,15 @@ export default function PagamentosPage() {
   }
 
   const pendentes = rows.filter(r => r.status === 'aguardando_confirmacao').length
+  const rowsOrdenadas = [...rows].sort((a, b) => {
+    if (ordenacao === 'recentes') return (b.created_at || '').localeCompare(a.created_at || '')
+    if (ordenacao === 'antigos') return (a.created_at || '').localeCompare(b.created_at || '')
+    if (ordenacao === 'maior_valor') return Number(b.valor) - Number(a.valor)
+    if (ordenacao === 'menor_valor') return Number(a.valor) - Number(b.valor)
+    if (ordenacao === 'nome') return (a.alunos?.nome || '').localeCompare(b.alunos?.nome || '')
+    if (ordenacao === 'vencimento') return (a.data_vencimento || '').localeCompare(b.data_vencimento || '')
+    return 0
+  })
 
   return (
     <div>
@@ -241,6 +251,17 @@ export default function PagamentosPage() {
             {s === 'aguardando_confirmacao' ? '⚠️ Aguardando' : s === 'todos' ? 'Todos' : STATUS_LABEL[s]}
           </button>
         ))}
+        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)} style={{
+          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+          padding: '6px 12px', color: 'var(--text)', fontSize: 12, outline: 'none', fontFamily: 'inherit',
+        }}>
+          <option value="recentes">Mais recentes</option>
+          <option value="antigos">Mais antigos</option>
+          <option value="maior_valor">Maior valor</option>
+          <option value="menor_valor">Menor valor</option>
+          <option value="nome">Nome (A-Z)</option>
+          <option value="vencimento">Vencimento mais próximo</option>
+        </select>
       </div>
 
       {loading ? (
@@ -251,7 +272,7 @@ export default function PagamentosPage() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-          {rows.map(p => (
+          {rowsOrdenadas.map(p => (
             <div key={p.id} style={{
               background: 'var(--card)', border: `1px solid ${p.status === 'aguardando_confirmacao' ? '#f0a500' : 'var(--border)'}`,
               borderRadius: 6, padding: '14px 16px',
