@@ -57,6 +57,7 @@ export default function PagamentosPage() {
   const [editando, setEditando] = useState<PagamentoRow | null>(null)
   const [editValor, setEditValor] = useState('')
   const [editDesconto, setEditDesconto] = useState('')
+  const [editDescontoTipo, setEditDescontoTipo] = useState<'valor' | 'percentual'>('valor')
   const [editStatus, setEditStatus] = useState('')
   const [editData, setEditData] = useState('')
   const [editVencimento, setEditVencimento] = useState('')
@@ -70,6 +71,7 @@ export default function PagamentosPage() {
   const [novoPlanoId, setNovoPlanoId] = useState('')
   const [novoValor, setNovoValor] = useState('')
   const [novoDesconto, setNovoDesconto] = useState('0')
+  const [novoDescontoTipo, setNovoDescontoTipo] = useState<'valor' | 'percentual'>('valor')
   const [novoData, setNovoData] = useState(() => new Date().toISOString().slice(0, 10))
   const [salvandoNovo, setSalvandoNovo] = useState(false)
 
@@ -104,6 +106,10 @@ export default function PagamentosPage() {
     if (!novoAlunoId || !novoValor) return
     setSalvandoNovo(true)
     const plano = planosOpt.find(p => p.id === novoPlanoId)
+    const valorOriginalPlano = plano ? Number(plano.valor) : Number(novoValor)
+    const descontoReais = novoDescontoTipo === 'percentual'
+      ? Math.round(valorOriginalPlano * (Number(novoDesconto || 0) / 100) * 100) / 100
+      : Number(novoDesconto || 0)
     const dataPagDate = new Date(novoData + 'T12:00:00')
     const dataVencimento = new Date(dataPagDate)
     dataVencimento.setMonth(dataVencimento.getMonth() + 1)
@@ -111,8 +117,8 @@ export default function PagamentosPage() {
       aluno_id: novoAlunoId,
       plano_id: novoPlanoId || null,
       valor: Number(novoValor),
-      valor_original: plano ? Number(plano.valor) : Number(novoValor),
-      desconto: Number(novoDesconto || 0),
+      valor_original: valorOriginalPlano,
+      desconto: descontoReais,
       status: 'pago',
       metodo_pagamento: 'manual',
       confirmado_em: new Date().toISOString(),
@@ -129,6 +135,7 @@ export default function PagamentosPage() {
     setEditando(p)
     setEditValor(String(p.valor))
     setEditDesconto(String(p.desconto || 0))
+    setEditDescontoTipo('valor')
     setEditStatus(p.status)
     setEditData(p.data_pagamento ? p.data_pagamento.slice(0, 10) : new Date().toISOString().slice(0, 10))
     setEditVencimento(p.data_vencimento ? p.data_vencimento.slice(0, 10) : '')
@@ -138,9 +145,13 @@ export default function PagamentosPage() {
   async function salvarEdicao() {
     if (!editando) return
     setSalvandoEdicao(true)
+    const valorRef = editando.valor_original ? Number(editando.valor_original) : Number(editValor)
+    const descontoReais = editDescontoTipo === 'percentual'
+      ? Math.round(valorRef * (Number(editDesconto || 0) / 100) * 100) / 100
+      : Number(editDesconto || 0)
     await supabase.from('pagamentos').update({
       valor: Number(editValor),
-      desconto: Number(editDesconto || 0),
+      desconto: descontoReais,
       status: editStatus,
       data_pagamento: editStatus === 'pago' ? new Date(editData + 'T12:00:00').toISOString() : editando.data_pagamento,
       data_vencimento: editVencimento ? new Date(editVencimento + 'T12:00:00').toISOString() : null,
@@ -357,8 +368,21 @@ export default function PagamentosPage() {
               <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={inputStyle} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto (R$)</label>
-              <input type="number" step="0.01" value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={inputStyle} />
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input type="number" step="0.01" value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                  {(['valor', 'percentual'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setEditDescontoTipo(t)} style={{
+                      background: editDescontoTipo === t ? '#3fb95022' : 'transparent',
+                      color: editDescontoTipo === t ? '#3fb950' : 'var(--text2)',
+                      border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                      {t === 'valor' ? 'R$' : '%'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Status</label>
@@ -432,8 +456,34 @@ export default function PagamentosPage() {
               <input type="number" step="0.01" value={novoValor} onChange={e => setNovoValor(e.target.value)} style={inputStyle} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto (R$)</label>
-              <input type="number" step="0.01" value={novoDesconto} onChange={e => setNovoDesconto(e.target.value)} style={inputStyle} />
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="number" step="0.01" value={novoDesconto}
+                  onChange={e => {
+                    const novo = e.target.value
+                    setNovoDesconto(novo)
+                    const plano = planosOpt.find(p => p.id === novoPlanoId)
+                    if (plano) {
+                      const valorOriginal = Number(plano.valor)
+                      const descontoReais = novoDescontoTipo === 'percentual' ? valorOriginal * (Number(novo || 0) / 100) : Number(novo || 0)
+                      setNovoValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
+                    }
+                  }}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                  {(['valor', 'percentual'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setNovoDescontoTipo(t)} style={{
+                      background: novoDescontoTipo === t ? '#3fb95022' : 'transparent',
+                      color: novoDescontoTipo === t ? '#3fb950' : 'var(--text2)',
+                      border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                      {t === 'valor' ? 'R$' : '%'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data do pagamento</label>

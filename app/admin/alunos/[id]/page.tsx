@@ -35,6 +35,7 @@ export default function AlunoPage() {
   const [modalPlano, setModalPlano] = useState<Plano | null>(null)
   const [modalValor, setModalValor] = useState('')
   const [modalDesconto, setModalDesconto] = useState('')
+  const [modalDescontoTipo, setModalDescontoTipo] = useState<'valor' | 'percentual'>('valor')
   const [modalData, setModalData] = useState(() => new Date().toISOString().slice(0, 10))
   const [modalSaving, setModalSaving] = useState(false)
 
@@ -106,7 +107,9 @@ export default function AlunoPage() {
     if (!aluno || !modalPlano) return
     setModalSaving(true)
     const valorOriginal = Number(modalPlano.valor)
-    const desconto = Number(modalDesconto || 0)
+    const desconto = modalDescontoTipo === 'percentual'
+      ? Math.round(valorOriginal * (Number(modalDesconto || 0) / 100) * 100) / 100
+      : Number(modalDesconto || 0)
     const valorFinal = Number(modalValor || 0)
 
     // Ativa o aluno com o plano escolhido — o dia de vencimento passa a ser o dia do pagamento (recorrente todo mês)
@@ -393,8 +396,33 @@ export default function AlunoPage() {
             <Campo label="Valor cobrado (R$)">
               <input type="number" step="0.01" value={modalValor} onChange={e => setModalValor(e.target.value)} style={inputStyle} />
             </Campo>
-            <Campo label="Desconto aplicado (R$)">
-              <input type="number" step="0.01" value={modalDesconto} onChange={e => setModalDesconto(e.target.value)} style={inputStyle} placeholder="0" />
+            <Campo label="Desconto aplicado">
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="number" step="0.01" value={modalDesconto}
+                  onChange={e => {
+                    const novoDesconto = e.target.value
+                    setModalDesconto(novoDesconto)
+                    const valorOriginal = Number(modalPlano.valor)
+                    const descontoReais = modalDescontoTipo === 'percentual'
+                      ? valorOriginal * (Number(novoDesconto || 0) / 100)
+                      : Number(novoDesconto || 0)
+                    setModalValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
+                  }}
+                  style={{ ...inputStyle, flex: 1 }} placeholder="0"
+                />
+                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                  {(['valor', 'percentual'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setModalDescontoTipo(t)} style={{
+                      background: modalDescontoTipo === t ? '#3fb95022' : 'transparent',
+                      color: modalDescontoTipo === t ? '#3fb950' : 'var(--text2)',
+                      border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                      {t === 'valor' ? 'R$' : '%'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </Campo>
             <Campo label="Data do pagamento">
               <input type="date" value={modalData} onChange={e => setModalData(e.target.value)} style={inputStyle} />
