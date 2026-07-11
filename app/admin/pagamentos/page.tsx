@@ -91,6 +91,11 @@ export default function PagamentosPage() {
 
   useEffect(() => { load() }, [filtro])
 
+  useEffect(() => {
+    supabase.from('alunos').select('id, nome, plano_id').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
+    supabase.from('planos').select('id, nome, valor').order('valor').then(({ data }) => setPlanosOpt((data as PlanoOpt[]) || []))
+  }, [])
+
   function abrirNovoModal() {
     setNovoAlunoId(''); setNovoPlanoId(''); setNovoValor(''); setNovoDesconto('0')
     setNovoData(new Date().toISOString().slice(0, 10))
@@ -141,6 +146,9 @@ export default function PagamentosPage() {
     setEditData(p.data_pagamento ? p.data_pagamento.slice(0, 10) : new Date().toISOString().slice(0, 10))
     setEditVencimento(p.data_vencimento ? p.data_vencimento.slice(0, 10) : '')
     setEditAlunoId(p.aluno_id)
+    if (alunosOpt.length === 0) {
+      supabase.from('alunos').select('id, nome, plano_id').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
+    }
   }
 
   async function salvarEdicao() {
