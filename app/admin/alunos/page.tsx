@@ -44,11 +44,15 @@ function AlunosContent() {
   const [ordenacao, setOrdenacao] = useState('nome_az')
   const [loading, setLoading] = useState(true)
   const [novoOpen, setNovoOpen] = useState(false)
+  const [comAvulsa, setComAvulsa] = useState<Set<string>>(new Set())
 
   async function load() {
     setLoading(true)
     const { data: planosData } = await supabase.from('planos').select('*').order('valor')
     setPlanos(planosData || [])
+
+    const { data: avulsasData } = await supabase.from('creditos_avulsos').select('aluno_id').in('status', ['disponivel', 'agendado'])
+    setComAvulsa(new Set((avulsasData || []).map(a => a.aluno_id)))
 
     let query = supabase.from('alunos').select('*, planos(*)').order('nome')
     if (statusFiltro !== 'todos') query = query.eq('status_plano', statusFiltro)
@@ -134,13 +138,24 @@ function AlunosContent() {
                   )}
                 </div>
               </div>
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-                color: STATUS_COLOR[a.status_plano], border: `1px solid ${STATUS_COLOR[a.status_plano]}`,
-                textTransform: 'uppercase', letterSpacing: '0.5px',
-              }}>
-                {STATUS_LABEL[a.status_plano]}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {comAvulsa.has(a.id) && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
+                    color: '#f0a500', border: '1px solid #f0a500',
+                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                  }}>
+                    🎫 Avulsa
+                  </span>
+                )}
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
+                  color: STATUS_COLOR[a.status_plano], border: `1px solid ${STATUS_COLOR[a.status_plano]}`,
+                  textTransform: 'uppercase', letterSpacing: '0.5px',
+                }}>
+                  {STATUS_LABEL[a.status_plano]}
+                </span>
+              </div>
             </Link>
           ))}
         </div>

@@ -46,6 +46,7 @@ const GRUPOS = [
     titulo: 'Financeiro',
     itens: [
       { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
+      { href: '/admin/avulsas', label: 'Aulas Avulsas', icon: 'tag' },
       { href: '/admin/planos', label: 'Planos', icon: 'tag' },
       { href: '/admin/financeiro', label: 'Financeiro', icon: 'chart' },
     ],
