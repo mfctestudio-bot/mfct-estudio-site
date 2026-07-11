@@ -103,6 +103,9 @@ export default function PagamentosPage() {
     if (!novoAlunoId || !novoValor) return
     setSalvandoNovo(true)
     const plano = planosOpt.find(p => p.id === novoPlanoId)
+    const dataPagDate = new Date(novoData + 'T12:00:00')
+    const dataVencimento = new Date(dataPagDate)
+    dataVencimento.setMonth(dataVencimento.getMonth() + 1)
     await supabase.from('pagamentos').insert({
       aluno_id: novoAlunoId,
       plano_id: novoPlanoId || null,
@@ -113,7 +116,8 @@ export default function PagamentosPage() {
       metodo_pagamento: 'manual',
       confirmado_em: new Date().toISOString(),
       confirmado_por: 'admin',
-      data_pagamento: new Date(novoData + 'T12:00:00').toISOString(),
+      data_pagamento: dataPagDate.toISOString(),
+      data_vencimento: dataVencimento.toISOString().slice(0, 10),
     })
     setSalvandoNovo(false)
     setNovoModal(false)
@@ -153,16 +157,22 @@ export default function PagamentosPage() {
     load()
   }
 
+
+
   async function confirmarPagamento(id: string) {
     setConfirmando(id)
     const dataPag = dataConfirm[id] || new Date().toISOString().slice(0, 10)
-    
+    const dataPagDate = new Date(dataPag + 'T12:00:00')
+    const dataVencimento = new Date(dataPagDate)
+    dataVencimento.setMonth(dataVencimento.getMonth() + 1)
+
     // Atualizar pagamento
     await supabase.from('pagamentos').update({
       status: 'pago',
       confirmado_em: new Date().toISOString(),
       confirmado_por: 'admin',
-      data_pagamento: new Date(dataPag + 'T12:00:00').toISOString(),
+      data_pagamento: dataPagDate.toISOString(),
+      data_vencimento: dataVencimento.toISOString().slice(0, 10),
     }).eq('id', id)
 
     // Ativar aluno

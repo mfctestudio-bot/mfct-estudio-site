@@ -113,6 +113,9 @@ export default function AlunoPage() {
     await supabase.from('alunos').update({ status_plano: 'ativo', plano_id: modalPlano.id, dia_vencimento: diaVencimentoNovo }).eq('id', id)
 
     // Registra o pagamento de fato — isso que faltava
+    const dataPagDateAtiv = new Date(modalData + 'T12:00:00')
+    const dataVencimentoAtiv = new Date(dataPagDateAtiv)
+    dataVencimentoAtiv.setMonth(dataVencimentoAtiv.getMonth() + 1)
     await supabase.from('pagamentos').insert({
       aluno_id: id,
       plano_id: modalPlano.id,
@@ -123,7 +126,8 @@ export default function AlunoPage() {
       metodo_pagamento: 'manual',
       confirmado_em: new Date().toISOString(),
       confirmado_por: 'admin',
-      data_pagamento: new Date(modalData + 'T12:00:00').toISOString(),
+      data_pagamento: dataPagDateAtiv.toISOString(),
+      data_vencimento: dataVencimentoAtiv.toISOString().slice(0, 10),
     })
 
     setAluno(prev => prev ? { ...prev, status_plano: 'ativo', plano_id: modalPlano.id, dia_vencimento: diaVencimentoNovo } : prev)
