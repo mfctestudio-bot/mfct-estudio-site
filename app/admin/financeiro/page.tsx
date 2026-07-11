@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -53,6 +53,8 @@ export default function FinanceiroPage() {
   const [vencimentos, setVencimentos] = useState<VencimentoRow[]>([])
   const [historico, setHistorico] = useState<MesHistorico[]>([])
   const [mesAberto, setMesAberto] = useState<string | null>(null)
+  const [semanalData, setSemanalData] = useState<{ label: string; total: number }[]>([])
+  const [anualData, setAnualData] = useState<{ label: string; total: number }[]>([])
 
   useEffect(() => {
     async function load() {
@@ -167,7 +169,35 @@ export default function FinanceiroPage() {
           m.crescimento = ((m.total - mesesOrdenados[i - 1].total) / mesesOrdenados[i - 1].total) * 100
         }
       }
-      setHistorico(mesesOrdenados.reverse()) // mais recente primeiro
+      setHistorico([...mesesOrdenados].reverse()) // mais recente primeiro
+
+      // Dados semanais (ultimas 12 semanas) e anuais, a partir dos mesmos pagamentos
+      const porSemana = new Map<string, number>()
+      const porAno = new Map<string, number>()
+      for (const p of (todosPagos as (PagamentoRow & { alunos: { nome: string } | { nome: string }[] | null })[] | null) || []) {
+        if (!p.data_pagamento) continue
+        const d = new Date(p.data_pagamento)
+        const valorLiquido = Number(p.valor) - Number(p.desconto || 0)
+
+        // Semana: segunda-feira da semana como chave
+        const diaSemana = (d.getDay() + 6) % 7 // 0 = segunda
+        const inicioSemana = new Date(d)
+        inicioSemana.setDate(d.getDate() - diaSemana)
+        const chaveSemana = inicioSemana.toISOString().slice(0, 10)
+        porSemana.set(chaveSemana, (porSemana.get(chaveSemana) || 0) + valorLiquido)
+
+        const chaveAno = String(d.getFullYear())
+        porAno.set(chaveAno, (porAno.get(chaveAno) || 0) + valorLiquido)
+      }
+
+      const semanasOrdenadas = [...porSemana.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-12)
+      setSemanalData(semanasOrdenadas.map(([chave, total]) => ({
+        label: new Date(chave + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        total: Math.round(total * 100) / 100,
+      })))
+
+      const anosOrdenados = [...porAno.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+      setAnualData(anosOrdenados.map(([ano, total]) => ({ label: ano, total: Math.round(total * 100) / 100 })))
 
       setLoading(false)
     }
@@ -275,22 +305,28 @@ export default function FinanceiroPage() {
       </div>
       </>
       ) : (
-        <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} />
+        <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} semanalData={semanalData} anualData={anualData} />
       )}
     </div>
   )
 }
 
-function HistoricoMensal({ historico, mesAberto, setMesAberto }: {
+function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anualData }: {
   historico: MesHistorico[]
   mesAberto: string | null
   setMesAberto: (v: string | null) => void
+  semanalData: { label: string; total: number }[]
+  anualData: { label: string; total: number }[]
 }) {
+  const [periodo, setPeriodo] = useState<'semana' | 'mes' | 'ano'>('mes')
+
   if (historico.length === 0) {
     return <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum pagamento confirmado ainda.</p>
   }
 
   const mediaTicketGeral = historico.reduce((s, m) => s + m.ticketMedio, 0) / historico.length
+  const mensalData = [...historico].reverse().map(m => ({ label: m.label.split(' ')[0].slice(0, 3), total: Math.round(m.total * 100) / 100 }))
+  const dadosGrafico = periodo === 'semana' ? semanalData : periodo === 'ano' ? anualData : mensalData
 
   return (
     <div>
@@ -301,6 +337,40 @@ function HistoricoMensal({ historico, mesAberto, setMesAberto }: {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
         <Card label="Ticket médio geral" value={`R$ ${mediaTicketGeral.toFixed(2)}`} />
         <Card label="Meses registrados" value={String(historico.length)} />
+      </div>
+
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+          <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            Crescimento
+          </h3>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['semana', 'mes', 'ano'] as const).map(p => (
+              <button key={p} onClick={() => setPeriodo(p)} style={{
+                background: periodo === p ? 'var(--accent)' : 'transparent',
+                border: '1px solid var(--border)', color: periodo === p ? '#fff' : 'var(--text2)',
+                borderRadius: 4, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                {p === 'semana' ? 'Semanal' : p === 'mes' ? 'Mensal' : 'Anual'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ width: '100%', height: 240 }}>
+          <ResponsiveContainer>
+            <LineChart data={dadosGrafico}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="label" stroke="var(--text2)" fontSize={12} />
+              <YAxis stroke="var(--text2)" fontSize={12} tickFormatter={(v) => `R$${v}`} />
+              <Tooltip
+                formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Recebido']}
+                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
+                labelStyle={{ color: 'var(--text)' }}
+              />
+              <Line type="monotone" dataKey="total" stroke="var(--accent2)" strokeWidth={2.5} dot={{ fill: 'var(--accent2)', r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
