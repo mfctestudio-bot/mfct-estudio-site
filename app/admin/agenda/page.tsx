@@ -9,6 +9,8 @@ type AgendamentoRow = {
   status: string
   tipo: string
   horario_id: string
+  aluno_id: string
+  google_event_id: string | null
   alunos: { nome: string; telefone: string | null } | null
   horarios: { dia_semana: number; horario: string } | null
 }
@@ -78,6 +80,11 @@ function GradeSemanal() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [alunoEscolhido, setAlunoEscolhido] = useState('')
   const [repetirSemana, setRepetirSemana] = useState(false)
+  const [movendoId, setMovendoId] = useState<string | null>(null)
+  const [novaDataMover, setNovaDataMover] = useState('')
+  const [novoHorarioMover, setNovoHorarioMover] = useState('')
+  const [salvandoMover, setSalvandoMover] = useState(false)
+  const [toast, setToast] = useState('')
   const [tipoAula, setTipoAula] = useState<'aula' | 'experimental'>('aula')
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
 
@@ -97,7 +104,7 @@ function GradeSemanal() {
 
       const { data: aData } = await supabase
         .from('agendamentos')
-        .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
+        .select('id, data, status, tipo, horario_id, aluno_id, google_event_id, alunos(nome, telefone), horarios(dia_semana, horario)')
         .eq('status', 'confirmado')
         .gte('data', fmtISO(monday))
         .lte('data', fmtISO(domingo))
@@ -110,7 +117,7 @@ function GradeSemanal() {
   async function recarregarAgendamentos() {
     const { data: aData } = await supabase
       .from('agendamentos')
-      .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
+      .select('id, data, status, tipo, horario_id, aluno_id, google_event_id, alunos(nome, telefone), horarios(dia_semana, horario)')
       .eq('status', 'confirmado')
       .gte('data', fmtISO(monday))
       .lte('data', fmtISO(domingo))
@@ -175,6 +182,47 @@ function GradeSemanal() {
     setAlunoEscolhido('')
     setRepetirSemana(false)
     setTipoAula('aula')
+  }
+
+  function abrirMoverAgendamento(a: AgendamentoRow) {
+    setMovendoId(a.id)
+    setNovaDataMover(a.data)
+    setNovoHorarioMover(a.horario_id)
+  }
+
+  async function confirmarMoverAgendamento(agendamento: AgendamentoRow) {
+    if (!novaDataMover || !novoHorarioMover) return
+    setSalvandoMover(true)
+
+    await supabase.from('agendamentos').update({
+      data: novaDataMover,
+      horario_id: novoHorarioMover,
+    }).eq('id', agendamento.id)
+
+    // Sincroniza com o Google Calendar (mesmo padrão do "remarcar" da Elen — atualiza o evento existente)
+    const horarioObj = horarios.find(h => h.id === novoHorarioMover)
+    try {
+      await fetch('/api/sync-calendario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          acao: 'criar',
+          agendamento_id: agendamento.id,
+          aluno_nome: agendamento.alunos?.nome || '',
+          telefone: agendamento.alunos?.telefone || '',
+          data: novaDataMover,
+          horario: horarioObj?.horario?.slice(0, 5) || '',
+          tipo: agendamento.tipo,
+          origem: 'admin (mudança de horário manual)',
+        }),
+      })
+    } catch {}
+
+    setMovendoId(null)
+    setSalvandoMover(false)
+    setToast('Horário atualizado.')
+    setTimeout(() => setToast(''), 2500)
+    await recarregarAgendamentos()
   }
 
   // Horários únicos (union de todos os dias ativos), ordenados
@@ -271,15 +319,48 @@ function GradeSemanal() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 12 }}>
                 {célula.map(a => (
-                  <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{a.alunos?.nome || 'Sem nome'}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>
-                      {a.tipo === 'experimental' ? 'experimental' : 'aula'}{a.alunos?.telefone ? ` · ${a.alunos.telefone}` : ''}
-                    </span>
+                  <div key={a.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: 13 }}>{a.alunos?.nome || 'Sem nome'}</span>
+                        <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+                          {a.tipo === 'experimental' ? 'experimental' : 'aula'}{a.alunos?.telefone ? ` · ${a.alunos.telefone}` : ''}
+                        </div>
+                      </div>
+                      {movendoId !== a.id && (
+                        <button onClick={() => abrirMoverAgendamento(a)} style={{
+                          background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
+                          borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        }}>
+                          ✏️ Mudar horário
+                        </button>
+                      )}
+                    </div>
+
+                    {movendoId === a.id && (
+                      <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: 10, marginTop: 8 }}>
+                        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Nova data</label>
+                        <input type="date" value={novaDataMover} onChange={e => setNovaDataMover(e.target.value)} style={{ ...inputStyleGrade, marginBottom: 8 }} />
+                        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Novo horário</label>
+                        <select value={novoHorarioMover} onChange={e => setNovoHorarioMover(e.target.value)} style={{ ...inputStyleGrade, marginBottom: 10 }}>
+                          {horarios.map(h => <option key={h.id} value={h.id}>{h.horario.slice(0, 5)}</option>)}
+                        </select>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => confirmarMoverAgendamento(a)} disabled={salvandoMover} style={{
+                            ...navBtnStyle, flex: 1, background: 'var(--accent)', color: '#fff', opacity: salvandoMover ? 0.6 : 1,
+                          }}>
+                            {salvandoMover ? 'Salvando...' : '✅ Confirmar mudança'}
+                          </button>
+                          <button onClick={() => setMovendoId(null)} disabled={salvandoMover} style={navBtnStyle}>Cancelar</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+
+            {toast && <p style={{ fontSize: 12, color: '#3fb950', marginBottom: 10 }}>{toast}</p>}
 
             {!mostrarForm ? (
               <button onClick={() => setMostrarForm(true)} style={{ ...navBtnStyle, width: '100%', color: 'var(--accent)', borderColor: 'var(--accent)', marginBottom: 8 }}>
@@ -359,7 +440,7 @@ function ProximasAulas() {
 
     const { data } = await supabase
       .from('agendamentos')
-      .select('id, data, status, tipo, horario_id, alunos(nome, telefone), horarios(dia_semana, horario)')
+      .select('id, data, status, tipo, horario_id, aluno_id, google_event_id, alunos(nome, telefone), horarios(dia_semana, horario)')
       .eq('status', 'confirmado')
       .gte('data', dataMin)
       .order('data')
