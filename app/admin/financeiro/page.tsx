@@ -339,23 +339,23 @@ export default function FinanceiroPage() {
 }
 
 function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimentos: VencimentoRow[] }) {
-  const [categorias, setCategorias] = useState<{ id: string; categoria: string; percentual: number; cor: string }[]>([])
+  const [categorias, setCategorias] = useState<{ id: string; categoria: string; valor: number; cor: string }[]>([])
   const [loadingCat, setLoadingCat] = useState(true)
   const [novaCategoria, setNovaCategoria] = useState('')
-  const [novoPercentual, setNovoPercentual] = useState('10')
+  const [novoValor, setNovoValor] = useState('')
 
   async function carregar() {
     setLoadingCat(true)
     const { data } = await supabase.from('caixa_config').select('*').order('ordem')
-    setCategorias((data as { id: string; categoria: string; percentual: number; cor: string }[]) || [])
+    setCategorias((data as { id: string; categoria: string; valor: number; cor: string }[]) || [])
     setLoadingCat(false)
   }
 
   useEffect(() => { carregar() }, [])
 
-  async function atualizarPercentual(id: string, valor: number) {
-    setCategorias(prev => prev.map(c => c.id === id ? { ...c, percentual: valor } : c))
-    await supabase.from('caixa_config').update({ percentual: valor }).eq('id', id)
+  async function atualizarValor(id: string, valor: number) {
+    setCategorias(prev => prev.map(c => c.id === id ? { ...c, valor } : c))
+    await supabase.from('caixa_config').update({ valor }).eq('id', id)
   }
 
   async function removerCategoria(id: string) {
@@ -369,18 +369,19 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
     const cores = ['#e05656', '#4a90d9', '#f0a500', '#3fb950', '#9b59b6', '#e67e22']
     await supabase.from('caixa_config').insert({
       categoria: novaCategoria.trim(),
-      percentual: Number(novoPercentual) || 0,
+      valor: Number(novoValor) || 0,
       cor: cores[categorias.length % cores.length],
       ordem: categorias.length,
     })
     setNovaCategoria('')
-    setNovoPercentual('10')
+    setNovoValor('')
     carregar()
   }
 
-  const totalPercentual = categorias.reduce((s, c) => s + Number(c.percentual), 0)
-  const lucroPercentual = Math.max(0, 100 - totalPercentual)
-  const lucroValor = totalMes * (lucroPercentual / 100)
+  const totalDespesas = categorias.reduce((s, c) => s + Number(c.valor), 0)
+  const totalPercentual = totalMes > 0 ? (totalDespesas / totalMes) * 100 : 0
+  const lucroValor = totalMes - totalDespesas
+  const lucroPercentual = totalMes > 0 ? (lucroValor / totalMes) * 100 : 0
 
   // Melhor data pra tirar o dinheiro: baseado na distribuicao dos dias de vencimento dos alunos ativos,
   // acha o dia em que a maior parte (85%) da receita esperada do mes ja deveria ter entrado.
@@ -405,12 +406,12 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
   return (
     <div>
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-        Defina quanto (em %) da receita do mês deve ficar reservado pra cada categoria de despesa. O que sobrar é considerado lucro.
+        Informe em R$ quanto você gasta em cada categoria de despesa. O sistema calcula automaticamente a porcentagem sobre a receita do mês. O que sobrar é considerado lucro.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         <Card label={`Receita do mês`} value={`R$ ${totalMes.toFixed(2)}`} />
-        <Card label={`Lucro estimado (${lucroPercentual.toFixed(0)}%)`} value={`R$ ${lucroValor.toFixed(2)}`} accent="#3fb950" />
+        <Card label={`Lucro estimado (${lucroPercentual.toFixed(0)}%)`} value={`R$ ${lucroValor.toFixed(2)}`} accent={lucroValor >= 0 ? '#3fb950' : 'var(--accent2)'} />
         {diaSugerido && (
           <Card label="Melhor dia pra tirar o dinheiro" value={`Dia ${diaSugerido}`} sub="~85% da receita já deve ter entrado até lá" />
         )}
@@ -423,7 +424,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
 
         <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
           {categorias.map(c => {
-            const valorCategoria = totalMes * (Number(c.percentual) / 100)
+            const percentualCategoria = totalMes > 0 ? (Number(c.valor) / totalMes) * 100 : 0
             return (
               <div key={c.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
@@ -432,18 +433,18 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
                     <span style={{ fontSize: 13, fontWeight: 700 }}>{c.categoria}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$ {valorCategoria.toFixed(2)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>{percentualCategoria.toFixed(1)}%</span>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$</span>
                     <input
-                      type="number" min={0} max={100} value={c.percentual}
-                      onChange={e => atualizarPercentual(c.id, Number(e.target.value))}
-                      style={{ width: 60, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                      type="number" min={0} step="0.01" value={c.valor}
+                      onChange={e => atualizarValor(c.id, Number(e.target.value))}
+                      style={{ width: 90, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
                     />
-                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>%</span>
                     <button onClick={() => removerCategoria(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
                   </div>
                 </div>
                 <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, c.percentual)}%`, background: c.cor }} />
+                  <div style={{ height: '100%', width: `${Math.min(100, percentualCategoria)}%`, background: c.cor }} />
                 </div>
               </div>
             )
@@ -451,7 +452,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
         </div>
 
         <div style={{ fontSize: 12, color: totalPercentual > 100 ? 'var(--accent2)' : 'var(--text3)', marginBottom: 16 }}>
-          Total alocado: {totalPercentual.toFixed(0)}% {totalPercentual > 100 && '— passou de 100%, ajuste os percentuais'}
+          Total de despesas: R$ {totalDespesas.toFixed(2)} ({totalPercentual.toFixed(1)}% da receita do mês) {totalPercentual > 100 && '— as despesas passaram da receita do mês'}
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -461,12 +462,12 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
             onChange={e => setNovaCategoria(e.target.value)}
             style={{ flex: 1, minWidth: 160, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
           />
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$</span>
           <input
-            type="number" min={0} max={100} value={novoPercentual}
-            onChange={e => setNovoPercentual(e.target.value)}
-            style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+            type="number" min={0} step="0.01" placeholder="0,00" value={novoValor}
+            onChange={e => setNovoValor(e.target.value)}
+            style={{ width: 90, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
           />
-          <span style={{ fontSize: 12, color: 'var(--text2)' }}>%</span>
           <button onClick={adicionarCategoria} style={{
             background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
             padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
