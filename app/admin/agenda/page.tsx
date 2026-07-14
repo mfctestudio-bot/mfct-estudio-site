@@ -76,7 +76,7 @@ function GradeSemanal() {
   const [loading, setLoading] = useState(true)
   const [célulaAberta, setCélulaAberta] = useState<{ data: string; horarioId: string } | null>(null)
 
-  const [alunosOpt, setAlunosOpt] = useState<{ id: string; nome: string; status_plano: string }[]>([])
+  const [alunosOpt, setAlunosOpt] = useState<{ id: string; nome: string; status_plano: string; telefone: string | null }[]>([])
   const [mostrarForm, setMostrarForm] = useState(false)
   const [alunoEscolhido, setAlunoEscolhido] = useState('')
   const [repetirSemana, setRepetirSemana] = useState(false)
@@ -132,7 +132,7 @@ function GradeSemanal() {
     setRepetirSemana(false)
     setTipoAula('aula')
     if (alunosOpt.length === 0) {
-      supabase.from('alunos').select('id, nome, status_plano').order('nome').then(({ data }) => setAlunosOpt(data || []))
+      supabase.from('alunos').select('id, nome, status_plano, telefone').order('nome').then(({ data }) => setAlunosOpt(data || []))
     }
   }
 
@@ -175,6 +175,23 @@ function GradeSemanal() {
           }),
         })
       } catch {}
+
+      // Avisa o aluno que foi marcado
+      if (aluno?.telefone) {
+        try {
+          await fetch('/api/notificar-agendamento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              telefone: aluno.telefone,
+              nome: aluno.nome,
+              tipo: 'criado',
+              data: célulaAberta.data,
+              horario: horarioObj?.horario?.slice(0, 5) || '',
+            }),
+          })
+        } catch {}
+      }
     }
 
     await recarregarAgendamentos()
@@ -218,6 +235,23 @@ function GradeSemanal() {
         }),
       })
     } catch {}
+
+    // Avisa o aluno da mudança
+    if (agendamento.alunos?.telefone) {
+      try {
+        await fetch('/api/notificar-agendamento', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telefone: agendamento.alunos.telefone,
+            nome: agendamento.alunos.nome,
+            tipo: 'movido',
+            data: novaDataMover,
+            horario: horarioObj?.horario?.slice(0, 5) || '',
+          }),
+        })
+      } catch {}
+    }
 
     setMovendoId(null)
     setSalvandoMover(false)
