@@ -43,7 +43,7 @@ type MesHistorico = {
 }
 
 export default function FinanceiroPage() {
-  const [aba, setAba] = useState<'visao' | 'historico' | 'caixa'>('visao')
+  const [aba, setAba] = useState<'visao' | 'historico' | 'caixa' | 'horas'>('visao')
   const [loading, setLoading] = useState(true)
   const [totalMes, setTotalMes] = useState(0)
   const [qtdMes, setQtdMes] = useState(0)
@@ -252,6 +252,13 @@ export default function FinanceiroPage() {
         }}>
           Controle de caixa
         </button>
+        <button onClick={() => setAba('horas')} style={{
+          background: aba === 'horas' ? '#3fb95022' : 'var(--card)',
+          border: `1.5px solid ${aba === 'horas' ? '#3fb950' : 'var(--border)'}`, color: aba === 'horas' ? '#3fb950' : 'var(--text2)',
+          borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          Horas trabalhadas
+        </button>
       </div>
 
       {aba === 'visao' ? (
@@ -331,8 +338,10 @@ export default function FinanceiroPage() {
       </>
       ) : aba === 'historico' ? (
         <HistoricoMensal historico={historico} mesAberto={mesAberto} setMesAberto={setMesAberto} semanalData={semanalData} anualData={anualData} porMetodo={porMetodo} />
-      ) : (
+      ) : aba === 'caixa' ? (
         <ControleDeCaixa totalMes={totalMes} vencimentos={vencimentos} />
+      ) : (
+        <HorasTrabalhadas />
       )}
     </div>
   )
@@ -607,6 +616,154 @@ function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anua
           )
         })}
       </div>
+    </div>
+  )
+}
+
+type LinhaHoras = {
+  professorId: string
+  nome: string
+  ativo: boolean
+  valorPorAula: number
+  aulasSemana: number
+  aulasMes: number
+}
+
+function segundaDaSemanaHoras(ref: Date) {
+  const d = new Date(ref)
+  const diaSemana = d.getDay() // 0=dom..6=sáb
+  const diff = diaSemana === 0 ? -6 : 1 - diaSemana
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function HorasTrabalhadas() {
+  const [loading, setLoading] = useState(true)
+  const [linhas, setLinhas] = useState<LinhaHoras[]>([])
+  const [semProfessor, setSemProfessor] = useState({ aulasSemana: 0, aulasMes: 0 })
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+      hoje.setHours(0, 0, 0, 0)
+
+      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      const inicioSemana = segundaDaSemanaHoras(hoje)
+      const inicioBusca = inicioSemana < inicioMes ? inicioSemana : inicioMes
+
+      const fmtISO = (d: Date) => d.toISOString().slice(0, 10)
+
+      const [{ data: profData }, { data: horData }, { data: agData }] = await Promise.all([
+        supabase.from('professores').select('id, nome, ativo, valor_por_aula'),
+        supabase.from('horarios').select('id, professor_id'),
+        supabase
+          .from('agendamentos')
+          .select('data, status, tipo, horario_id')
+          .eq('status', 'confirmado')
+          .in('tipo', ['aula', 'experimental'])
+          .gte('data', fmtISO(inicioBusca))
+          .lte('data', fmtISO(hoje)),
+      ])
+
+      const mapaProfessorPorHorario = new Map<string, string | null>()
+      for (const h of horData || []) {
+        mapaProfessorPorHorario.set(h.id, h.professor_id)
+      }
+
+      const contagem = new Map<string, { aulasSemana: number; aulasMes: number }>()
+      let semProfSemana = 0
+      let semProfMes = 0
+
+      const inicioMesISO = fmtISO(inicioMes)
+      const inicioSemanaISO = fmtISO(inicioSemana)
+
+      for (const a of agData || []) {
+        const professorId = mapaProfessorPorHorario.get(a.horario_id)
+        const naSemana = a.data >= inicioSemanaISO
+        const noMes = a.data >= inicioMesISO
+
+        if (!professorId) {
+          if (naSemana) semProfSemana += 1
+          if (noMes) semProfMes += 1
+          continue
+        }
+        if (!contagem.has(professorId)) contagem.set(professorId, { aulasSemana: 0, aulasMes: 0 })
+        const c = contagem.get(professorId)!
+        if (naSemana) c.aulasSemana += 1
+        if (noMes) c.aulasMes += 1
+      }
+
+      const resultado: LinhaHoras[] = (profData || []).map(p => ({
+        professorId: p.id,
+        nome: p.nome,
+        ativo: p.ativo,
+        valorPorAula: Number(p.valor_por_aula),
+        aulasSemana: contagem.get(p.id)?.aulasSemana || 0,
+        aulasMes: contagem.get(p.id)?.aulasMes || 0,
+      }))
+
+      setLinhas(resultado)
+      setSemProfessor({ aulasSemana: semProfSemana, aulasMes: semProfMes })
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+
+  const totalValorMes = linhas.reduce((s, l) => s + l.aulasMes * l.valorPorAula, 0)
+  const totalValorSemana = linhas.reduce((s, l) => s + l.aulasSemana * l.valorPorAula, 0)
+
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+        Calculado a partir das aulas confirmadas e já realizadas (não canceladas). Cada aula conta como 1 hora. Cadastre professores e o valor por aula em Professores, e atribua o professor a cada horário em Agenda → Grade de horários.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <Card label="A pagar essa semana" value={`R$ ${totalValorSemana.toFixed(2)}`} />
+        <Card label="A pagar esse mês" value={`R$ ${totalValorMes.toFixed(2)}`} accent="var(--accent2)" />
+      </div>
+
+      {linhas.length === 0 ? (
+        <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum professor cadastrado ainda.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {linhas.map(l => (
+            <div key={l.professorId} style={{
+              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+              padding: '14px 16px', opacity: l.ativo ? 1 : 0.55,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>
+                  {l.nome}{!l.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)', marginLeft: 6 }}>(inativo)</span>}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>R$ {l.valorPorAula.toFixed(2)}/aula</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Essa semana</div>
+                  <div style={{ fontSize: 13 }}>{l.aulasSemana} aula{l.aulasSemana === 1 ? '' : 's'} · {l.aulasSemana}h</div>
+                  <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 18, color: 'var(--accent)', marginTop: 2 }}>R$ {(l.aulasSemana * l.valorPorAula).toFixed(2)}</div>
+                </div>
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Esse mês</div>
+                  <div style={{ fontSize: 13 }}>{l.aulasMes} aula{l.aulasMes === 1 ? '' : 's'} · {l.aulasMes}h</div>
+                  <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 18, color: 'var(--accent)', marginTop: 2 }}>R$ {(l.aulasMes * l.valorPorAula).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(semProfessor.aulasMes > 0) && (
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 16 }}>
+          {semProfessor.aulasMes} aula{semProfessor.aulasMes === 1 ? '' : 's'} esse mês {semProfessor.aulasMes === 1 ? 'está' : 'estão'} em horário sem professor atribuído e não {semProfessor.aulasMes === 1 ? 'entra' : 'entram'} nesse cálculo. Atribua um professor em Agenda → Grade de horários pra incluir.
+        </p>
+      )}
     </div>
   )
 }

@@ -609,6 +609,7 @@ function GradeHorarios() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [novoHorario, setNovoHorario] = useState('18:00')
   const [novaCapacidade, setNovaCapacidade] = useState('5')
+  const [novoProfessorId, setNovoProfessorId] = useState('')
   const [diasEscolhidos, setDiasEscolhidos] = useState<number[]>([])
   const [salvandoNovo, setSalvandoNovo] = useState(false)
   const [erroForm, setErroForm] = useState('')
@@ -616,14 +617,29 @@ function GradeHorarios() {
   const [editandoCapacidade, setEditandoCapacidade] = useState<string | null>(null)
   const [capacidadeTemp, setCapacidadeTemp] = useState('')
 
+  const [professoresOpt, setProfessoresOpt] = useState<{ id: string; nome: string }[]>([])
+
   async function load() {
     setLoading(true)
-    const { data: hData } = await supabase.from('horarios').select('*').order('dia_semana').order('horario')
+    const [{ data: hData }, { data: pData }] = await Promise.all([
+      supabase.from('horarios').select('*, professores(nome)').order('dia_semana').order('horario'),
+      supabase.from('professores').select('id, nome').eq('ativo', true).order('created_at'),
+    ])
     setHorarios(hData || [])
+    setProfessoresOpt(pData || [])
+    if (pData && pData.length > 0) setNovoProfessorId(pData[0].id)
     setLoading(false)
   }
 
   useEffect(() => { load() }, [])
+
+  async function mudarProfessor(h: Horario, professorId: string) {
+    setUpdating(h.id)
+    await supabase.from('horarios').update({ professor_id: professorId || null }).eq('id', h.id)
+    const prof = professoresOpt.find(p => p.id === professorId)
+    setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, professor_id: professorId || null, professores: prof ? { ...prof, valor_por_aula: 0, ativo: true, created_at: '' } : null } : x))
+    setUpdating(null)
+  }
 
   async function toggle(h: Horario) {
     setUpdating(h.id)
@@ -682,6 +698,7 @@ function GradeHorarios() {
       horario: novoHorario + ':00',
       capacidade,
       ativo: true,
+      professor_id: novoProfessorId || null,
     }))
     const { data: inseridos } = await supabase.from('horarios').insert(novasLinhas).select('*')
     setHorarios(prev => [...prev, ...(inseridos || [])].sort((a, b) => a.dia_semana - b.dia_semana || a.horario.localeCompare(b.horario)))
@@ -763,6 +780,23 @@ function GradeHorarios() {
                   </span>
                 )}
 
+                <select
+                  value={h.professor_id || ''}
+                  onChange={e => mudarProfessor(h, e.target.value)}
+                  disabled={updating === h.id}
+                  title="Professor responsável por este horário"
+                  style={{
+                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                    padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit',
+                    maxWidth: 130,
+                  }}
+                >
+                  <option value="">— sem professor —</option>
+                  {professoresOpt.map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+
                 <button
                   onClick={() => toggle(h)}
                   disabled={updating === h.id}
@@ -834,6 +868,18 @@ function GradeHorarios() {
                 type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)}
                 style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
               />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Professor</label>
+              <select
+                value={novoProfessorId} onChange={e => setNovoProfessorId(e.target.value)}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+              >
+                <option value="">— sem professor —</option>
+                {professoresOpt.map(p => (
+                  <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
             </div>
           </div>
 

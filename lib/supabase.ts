@@ -31,12 +31,22 @@ export type Aluno = {
   planos?: Plano
 }
 
+export type Professor = {
+  id: string
+  nome: string
+  valor_por_aula: number
+  ativo: boolean
+  created_at: string
+}
+
 export type Horario = {
   id: string
   dia_semana: number
   horario: string
   capacidade: number
   ativo: boolean
+  professor_id: string | null
+  professores?: Professor | null
 }
 
 export type Agendamento = {
