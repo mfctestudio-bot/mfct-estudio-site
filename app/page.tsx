@@ -4,6 +4,7 @@ import PlanCards from '@/components/PlanCards'
 import ScheduleGrid from '@/components/ScheduleGrid'
 import Sobre from '@/components/Sobre'
 import Metodologia from '@/components/Metodologia'
+import AvaliacaoFisica from '@/components/AvaliacaoFisica'
 import { waLink, WA_MESSAGES } from '@/lib/whatsapp'
 import { supabase, Post } from '@/lib/supabase'
 
@@ -92,6 +93,7 @@ export default async function Home() {
       <Sobre />
 
       <Metodologia />
+      <AvaliacaoFisica />
 
       {/* AULA EXPERIMENTAL */}
       <section id="experimental" style={{ maxWidth: 1100, margin: '0 auto', padding: '3rem 1.25rem 3rem' }}>
