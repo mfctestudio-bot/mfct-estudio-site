@@ -84,6 +84,7 @@ function GradeSemanal() {
   const [novaDataMover, setNovaDataMover] = useState('')
   const [novoHorarioMover, setNovoHorarioMover] = useState('')
   const [salvandoMover, setSalvandoMover] = useState(false)
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [tipoAula, setTipoAula] = useState<'aula' | 'experimental'>('aula')
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
@@ -225,6 +226,24 @@ function GradeSemanal() {
     await recarregarAgendamentos()
   }
 
+  async function cancelarAgendamentoIndividual(a: AgendamentoRow) {
+    if (!confirm(`Cancelar a aula de ${a.alunos?.nome || 'esse aluno'}? Ele vai receber um aviso pelo WhatsApp.`)) return
+    setCancelandoId(a.id)
+    try {
+      await fetch('/api/cancelar-agendamento-individual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agendamento_id: a.id }),
+      })
+      setToast('Aula cancelada e aluno avisado.')
+      setTimeout(() => setToast(''), 2500)
+      await recarregarAgendamentos()
+    } catch {
+      setToast('Erro ao cancelar.')
+    }
+    setCancelandoId(null)
+  }
+
   // Horários únicos (union de todos os dias ativos), ordenados
   const horariosUnicos = Array.from(new Set(horarios.map(h => h.horario))).sort()
 
@@ -328,12 +347,21 @@ function GradeSemanal() {
                         </div>
                       </div>
                       {movendoId !== a.id && (
-                        <button onClick={() => abrirMoverAgendamento(a)} style={{
-                          background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
-                          borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                        }}>
-                          ✏️ Mudar horário
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button onClick={() => abrirMoverAgendamento(a)} style={{
+                            background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
+                            borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                          }}>
+                            ✏️ Mudar
+                          </button>
+                          <button onClick={() => cancelarAgendamentoIndividual(a)} disabled={cancelandoId === a.id} style={{
+                            background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                            borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                            opacity: cancelandoId === a.id ? 0.6 : 1,
+                          }}>
+                            {cancelandoId === a.id ? '...' : '❌ Cancelar'}
+                          </button>
+                        </div>
                       )}
                     </div>
 
