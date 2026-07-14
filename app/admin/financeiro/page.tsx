@@ -347,16 +347,53 @@ export default function FinanceiroPage() {
   )
 }
 
+async function carregarFolhaProfessoresMes(): Promise<number> {
+  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  hoje.setHours(0, 0, 0, 0)
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+  const fmtISO = (d: Date) => d.toISOString().slice(0, 10)
+
+  const [{ data: profData }, { data: horData }, { data: agData }] = await Promise.all([
+    supabase.from('professores').select('id, valor_por_aula'),
+    supabase.from('horarios').select('id, professor_id'),
+    supabase
+      .from('agendamentos')
+      .select('data, status, tipo, horario_id')
+      .eq('status', 'confirmado')
+      .in('tipo', ['aula', 'experimental'])
+      .gte('data', fmtISO(inicioMes))
+      .lte('data', fmtISO(hoje)),
+  ])
+
+  const mapaValor = new Map<string, number>()
+  for (const p of profData || []) mapaValor.set(p.id, Number(p.valor_por_aula))
+  const mapaProfessorPorHorario = new Map<string, string | null>()
+  for (const h of horData || []) mapaProfessorPorHorario.set(h.id, h.professor_id)
+
+  let total = 0
+  for (const a of agData || []) {
+    const professorId = mapaProfessorPorHorario.get(a.horario_id)
+    if (!professorId) continue
+    total += mapaValor.get(professorId) || 0
+  }
+  return total
+}
+
 function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimentos: VencimentoRow[] }) {
   const [categorias, setCategorias] = useState<{ id: string; categoria: string; valor: number; cor: string }[]>([])
   const [loadingCat, setLoadingCat] = useState(true)
   const [novaCategoria, setNovaCategoria] = useState('')
   const [novoValor, setNovoValor] = useState('')
+  const [folhaProfessores, setFolhaProfessores] = useState(0)
 
   async function carregar() {
     setLoadingCat(true)
-    const { data } = await supabase.from('caixa_config').select('*').order('ordem')
+    const [{ data }, folha] = await Promise.all([
+      supabase.from('caixa_config').select('*').order('ordem'),
+      carregarFolhaProfessoresMes(),
+    ])
     setCategorias((data as { id: string; categoria: string; valor: number; cor: string }[]) || [])
+    setFolhaProfessores(folha)
     setLoadingCat(false)
   }
 
@@ -387,7 +424,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
     carregar()
   }
 
-  const totalDespesas = categorias.reduce((s, c) => s + Number(c.valor), 0)
+  const totalDespesas = categorias.reduce((s, c) => s + Number(c.valor), 0) + folhaProfessores
   const totalPercentual = totalMes > 0 ? (totalDespesas / totalMes) * 100 : 0
   const lucroValor = totalMes - totalDespesas
   const lucroPercentual = totalMes > 0 ? (lucroValor / totalMes) * 100 : 0
@@ -415,7 +452,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
   return (
     <div>
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-        Informe em R$ quanto você gasta em cada categoria de despesa. O sistema calcula automaticamente a porcentagem sobre a receita do mês. O que sobrar é considerado lucro.
+        Informe em R$ quanto você gasta em cada categoria de despesa. O que os professores têm a receber (aba Horas trabalhadas) já entra automaticamente aqui. O sistema calcula a porcentagem sobre a receita do mês. O que sobrar é considerado lucro.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
@@ -432,6 +469,25 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
         </h3>
 
         <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+          {folhaProfessores > 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#4a90d9', display: 'inline-block' }} />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Professores (folha do mês)</span>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px' }}>🔒 automático</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>{totalMes > 0 ? ((folhaProfessores / totalMes) * 100).toFixed(1) : '0'}%</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>R$ {folhaProfessores.toFixed(2)}</span>
+                </div>
+              </div>
+              <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', marginBottom: 4 }}>
+                <div style={{ height: '100%', width: `${Math.min(100, totalMes > 0 ? (folhaProfessores / totalMes) * 100 : 0)}%`, background: '#4a90d9' }} />
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text3)' }}>Calculado a partir das aulas dadas esse mês × valor por aula de cada professor. Pra mudar, ajuste em Professores ou na atribuição de horários — não dá pra editar aqui.</p>
+            </div>
+          )}
           {categorias.map(c => {
             const percentualCategoria = totalMes > 0 ? (Number(c.valor) / totalMes) * 100 : 0
             return (
