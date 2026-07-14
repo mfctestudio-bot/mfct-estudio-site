@@ -710,7 +710,7 @@ type LinhaHoras = {
   valorPorAula: number
   sessoesSemana: Sessao[]
   sessoesMes: Sessao[]
-  faltasMes: Set<string> // chave "data_horarioId"
+  faltasMesDetalhe: Sessao[]
 }
 
 const DIAS_ABREV_HORAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -800,6 +800,7 @@ function HorasTrabalhadas() {
       const todasSessoes = [...(sessoesPorProfessor.get(p.id)?.values() || [])]
       const faltas = faltasPorProfessor.get(p.id) || new Set<string>()
       const sessoesValidas = todasSessoes.filter(s => !faltas.has(`${s.data}_${s.horarioId}`))
+      const faltasDetalhe = todasSessoes.filter(s => faltas.has(`${s.data}_${s.horarioId}`) && s.data >= inicioMesISO)
       return {
         professorId: p.id,
         nome: p.nome,
@@ -807,7 +808,7 @@ function HorasTrabalhadas() {
         valorPorAula: Number(p.valor_por_aula),
         sessoesMes: sessoesValidas.filter(s => s.data >= inicioMesISO).sort((a, b) => b.data.localeCompare(a.data)),
         sessoesSemana: sessoesValidas.filter(s => s.data >= inicioSemanaISO),
-        faltasMes: new Set([...faltas].filter(k => k.split('_')[0] >= inicioMesISO)),
+        faltasMesDetalhe: faltasDetalhe.sort((a, b) => b.data.localeCompare(a.data)),
       }
     })
 
@@ -828,6 +829,18 @@ function HorasTrabalhadas() {
       horario_id: sessao.horarioId,
       data: sessao.data,
     })
+    await load()
+    setMarcando(null)
+  }
+
+  async function desmarcarFalta(professorId: string, sessao: Sessao) {
+    setMarcando(`${sessao.data}_${sessao.horarioId}`)
+    await supabase
+      .from('professor_faltas')
+      .delete()
+      .eq('professor_id', professorId)
+      .eq('horario_id', sessao.horarioId)
+      .eq('data', sessao.data)
     await load()
     setMarcando(null)
   }
@@ -885,7 +898,7 @@ function HorasTrabalhadas() {
                     borderRadius: 4, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
-                  {aberto ? '▲ Esconder aulas do mês' : `▼ Ver aulas do mês (${l.sessoesMes.length}${l.faltasMes.size > 0 ? ` + ${l.faltasMes.size} falta(s)` : ''})`}
+                  {aberto ? '▲ Esconder aulas do mês' : `▼ Ver aulas do mês (${l.sessoesMes.length}${l.faltasMesDetalhe.length > 0 ? ` + ${l.faltasMesDetalhe.length} falta(s)` : ''})`}
                 </button>
 
                 {aberto && (
@@ -914,6 +927,36 @@ function HorasTrabalhadas() {
                             </div>
                           )
                         })}
+                      </div>
+                    )}
+
+                    {l.faltasMesDetalhe.length > 0 && (
+                      <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px dashed var(--border)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--accent2)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Faltas marcadas (não contam no pagamento)
+                        </div>
+                        <div style={{ display: 'grid', gap: 6 }}>
+                          {l.faltasMesDetalhe.map(s => {
+                            const chave = `${s.data}_${s.horarioId}`
+                            const dataFmt = new Date(s.data + 'T12:00:00').toLocaleDateString('pt-BR')
+                            return (
+                              <div key={chave} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '4px 0', opacity: 0.75 }}>
+                                <span style={{ textDecoration: 'line-through' }}>{s.diaSemanaLabel} {dataFmt} às {s.horarioLabel}</span>
+                                <button
+                                  onClick={() => desmarcarFalta(l.professorId, s)}
+                                  disabled={marcando === chave}
+                                  style={{
+                                    background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)',
+                                    borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+                                    opacity: marcando === chave ? 0.6 : 1,
+                                  }}
+                                >
+                                  {marcando === chave ? '...' : 'Desfazer'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
