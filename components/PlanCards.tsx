@@ -17,7 +17,7 @@ const PLANOS = [
   },
   {
     nome: 'Aula avulsa',
-    valor: '10',
+    valor: '15',
     periodo: '/aula (Pix)',
     desc: 'Sem plano fixo. Pague apenas pelos dias que vier treinar.',
     destaque: false,

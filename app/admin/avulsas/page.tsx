@@ -53,7 +53,7 @@ export default function AvulsasPage() {
   const [novoModal, setNovoModal] = useState(false)
   const [alunosOpt, setAlunosOpt] = useState<AlunoOpt[]>([])
   const [novoAlunoId, setNovoAlunoId] = useState('')
-  const [novoValor, setNovoValor] = useState('10')
+  const [novoValor, setNovoValor] = useState('15')
   const [salvandoNovo, setSalvandoNovo] = useState(false)
 
   async function load() {
