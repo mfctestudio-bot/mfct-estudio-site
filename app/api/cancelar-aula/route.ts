@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const hojeISO = new Date(hojeSP).toISOString().slice(0, 10)
   const dataLabel = data === hojeISO ? 'hoje' : `dia ${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}`
 
-  const resultados: { telefone: string; ok: boolean }[] = []
+  const resultados: { telefone: string; ok: boolean; erro: string | null }[] = []
 
   for (const ag of lista) {
     const aluno = Array.isArray(ag.alunos) ? ag.alunos[0] : ag.alunos
@@ -85,9 +85,14 @@ export async function POST(req: NextRequest) {
           text: `Oi ${aluno?.nome?.split(' ')[0] || ''}! ${textoBase}`,
         }),
       })
-      resultados.push({ telefone, ok: resp.ok })
-    } catch {
-      resultados.push({ telefone, ok: false })
+      let erro: string | null = null
+      if (!resp.ok) {
+        const corpo = await resp.text().catch(() => '')
+        erro = `Evolution API respondeu ${resp.status}: ${corpo.slice(0, 300)}`
+      }
+      resultados.push({ telefone, ok: resp.ok, erro })
+    } catch (e) {
+      resultados.push({ telefone, ok: false, erro: e instanceof Error ? e.message : 'Falha desconhecida ao enviar WhatsApp' })
     }
   }
 

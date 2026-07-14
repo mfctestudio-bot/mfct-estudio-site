@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
   const aluno = (Array.isArray(agendamento.alunos) ? agendamento.alunos[0] : agendamento.alunos) as AlunoInfo | null
   const horarioObj = (Array.isArray(agendamento.horarios) ? agendamento.horarios[0] : agendamento.horarios) as HorarioInfo | null
 
+  let whatsappEnviado = false
+  let whatsappErro: string | null = null
+
   if (aluno?.telefone) {
     const dataFmt = new Date(agendamento.data + 'T12:00:00').toLocaleDateString('pt-BR')
     const horaFmt = horarioObj?.horario?.slice(0, 5) || ''
@@ -46,13 +49,22 @@ export async function POST(req: NextRequest) {
     await supabase.from('mensagens_automaticas').insert({ telefone: aluno.telefone, origem: 'cancelar-agendamento-individual' })
 
     try {
-      await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+      const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
         body: JSON.stringify({ number: aluno.telefone, text: msg }),
       })
-    } catch {}
+      whatsappEnviado = resp.ok
+      if (!resp.ok) {
+        const corpo = await resp.text().catch(() => '')
+        whatsappErro = `Evolution API respondeu ${resp.status}: ${corpo.slice(0, 300)}`
+      }
+    } catch (e) {
+      whatsappErro = e instanceof Error ? e.message : 'Falha desconhecida ao enviar WhatsApp'
+    }
+  } else {
+    whatsappErro = 'Aluno sem telefone cadastrado'
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, whatsappEnviado, whatsappErro })
 }

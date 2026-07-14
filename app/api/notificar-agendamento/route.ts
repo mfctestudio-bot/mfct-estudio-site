@@ -27,13 +27,22 @@ export async function POST(req: NextRequest) {
 
   await supabase.from('mensagens_automaticas').insert({ telefone, origem: `notificar-agendamento-${tipo}` })
 
+  let whatsappEnviado = false
+  let whatsappErro: string | null = null
   try {
-    await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+    const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
       body: JSON.stringify({ number: telefone, text: msg }),
     })
-  } catch {}
+    whatsappEnviado = resp.ok
+    if (!resp.ok) {
+      const corpo = await resp.text().catch(() => '')
+      whatsappErro = `Evolution API respondeu ${resp.status}: ${corpo.slice(0, 300)}`
+    }
+  } catch (e) {
+    whatsappErro = e instanceof Error ? e.message : 'Falha desconhecida ao enviar WhatsApp'
+  }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, whatsappEnviado, whatsappErro })
 }

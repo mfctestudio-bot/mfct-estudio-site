@@ -212,10 +212,18 @@ function GradeSemanal() {
     if (!novaDataMover || !novoHorarioMover) return
     setSalvandoMover(true)
 
-    await supabase.from('agendamentos').update({
+    const { error: erroUpdate } = await supabase.from('agendamentos').update({
       data: novaDataMover,
       horario_id: novoHorarioMover,
     }).eq('id', agendamento.id)
+
+    if (erroUpdate) {
+      setToast(`Erro ao remarcar: ${erroUpdate.message || 'já existe uma aula desse aluno nesse horário/data'}`)
+      setTimeout(() => setToast(''), 4000)
+      setMovendoId(null)
+      setSalvandoMover(false)
+      return
+    }
 
     // Sincroniza com o Google Calendar (mesmo padrão do "remarcar" da Elen — atualiza o evento existente)
     const horarioObj = horarios.find(h => h.id === novoHorarioMover)
@@ -237,9 +245,10 @@ function GradeSemanal() {
     } catch {}
 
     // Avisa o aluno da mudança
+    let avisoWhats = ''
     if (agendamento.alunos?.telefone) {
       try {
-        await fetch('/api/notificar-agendamento', {
+        const resp = await fetch('/api/notificar-agendamento', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -250,13 +259,19 @@ function GradeSemanal() {
             horario: horarioObj?.horario?.slice(0, 5) || '',
           }),
         })
-      } catch {}
+        const json = await resp.json().catch(() => null)
+        if (!json?.whatsappEnviado) {
+          avisoWhats = ` — mas o aviso por WhatsApp falhou (${json?.whatsappErro || 'sem detalhe'}), avise o aluno manualmente.`
+        }
+      } catch {
+        avisoWhats = ' — mas o aviso por WhatsApp falhou, avise o aluno manualmente.'
+      }
     }
 
     setMovendoId(null)
     setSalvandoMover(false)
-    setToast('Horário atualizado.')
-    setTimeout(() => setToast(''), 2500)
+    setToast(`Horário atualizado.${avisoWhats}`)
+    setTimeout(() => setToast(''), avisoWhats ? 6000 : 2500)
     await recarregarAgendamentos()
   }
 
@@ -264,13 +279,18 @@ function GradeSemanal() {
     if (!confirm(`Cancelar a aula de ${a.alunos?.nome || 'esse aluno'}? Ele vai receber um aviso pelo WhatsApp.`)) return
     setCancelandoId(a.id)
     try {
-      await fetch('/api/cancelar-agendamento-individual', {
+      const resp = await fetch('/api/cancelar-agendamento-individual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agendamento_id: a.id }),
       })
-      setToast('Aula cancelada e aluno avisado.')
-      setTimeout(() => setToast(''), 2500)
+      const json = await resp.json().catch(() => null)
+      if (json?.whatsappEnviado) {
+        setToast('Aula cancelada e aluno avisado.')
+      } else {
+        setToast(`Aula cancelada, mas o aviso por WhatsApp falhou (${json?.whatsappErro || 'sem detalhe'}). Avise o aluno manualmente.`)
+      }
+      setTimeout(() => setToast(''), 5000)
       await recarregarAgendamentos()
     } catch {
       setToast('Erro ao cancelar.')
@@ -532,8 +552,14 @@ function ProximasAulas() {
       })
       const json = await res.json()
       if (res.ok) {
-        setToast(`Aula cancelada. ${json.canceladas} aluno(s) avisado(s).`)
-        setTimeout(() => setToast(''), 3000)
+        const falhas = (json.avisos || []).filter((a: { ok: boolean }) => !a.ok).length
+        if (falhas > 0) {
+          setToast(`Aula cancelada. ${json.canceladas} aluno(s), mas o aviso por WhatsApp falhou pra ${falhas} deles — avise manualmente.`)
+          setTimeout(() => setToast(''), 6000)
+        } else {
+          setToast(`Aula cancelada. ${json.canceladas} aluno(s) avisado(s).`)
+          setTimeout(() => setToast(''), 3000)
+        }
         load()
       } else {
         setToast('Erro: ' + (json.error || 'falha ao cancelar'))
