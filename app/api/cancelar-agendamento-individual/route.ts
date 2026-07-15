@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   if (!agendamento) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-  await supabase.from('agendamentos').update({ status: 'cancelado' }).eq('id', agendamento_id)
+  await supabase.from('agendamentos').update({ status: 'cancelado', cancelado_por: 'estudio' }).eq('id', agendamento_id)
 
   // Cancela o evento no Google Calendar
   try {

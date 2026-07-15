@@ -91,6 +91,8 @@ export default function ProfessoresPage() {
         Cadastre os professores e o valor pago por aula de cada um. Depois, atribua cada professor aos horários da grade em Agenda → Grade de horários. O valor por aula é usado no cálculo de horas trabalhadas, na aba Horas trabalhadas do Financeiro.
       </p>
 
+      <RegrasPagamentoCancelamento />
+
       {professores.length === 0 ? (
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13, marginBottom: 16 }}>
           Nenhum professor cadastrado ainda.
@@ -210,5 +212,85 @@ export default function ProfessoresPage() {
         </div>
       )}
     </div>
+  )
+}
+
+type ConfigPagamento = {
+  pagar_quando_aluno_cancela: boolean
+  pagar_quando_estudio_cancela: boolean
+}
+
+function RegrasPagamentoCancelamento() {
+  const [config, setConfig] = useState<ConfigPagamento | null>(null)
+  const [salvando, setSalvando] = useState<string | null>(null)
+
+  async function load() {
+    const { data } = await supabase.from('config_pagamento_professores').select('*').eq('id', true).single()
+    setConfig(data as ConfigPagamento)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function atualizar(campo: keyof ConfigPagamento, valor: boolean) {
+    if (!config) return
+    setSalvando(campo)
+    setConfig({ ...config, [campo]: valor })
+    await supabase.from('config_pagamento_professores').update({ [campo]: valor }).eq('id', true)
+    setSalvando(null)
+  }
+
+  if (!config) return null
+
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 20 }}>
+      <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 6 }}>
+        Regras de pagamento em cancelamento
+      </h3>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
+        Quando uma aula é cancelada, o professor recebe por ela mesmo assim? Depende de quem cancelou. Isso é usado no cálculo de Horas trabalhadas e no Controle de caixa.
+      </p>
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}>
+          <span style={{ fontSize: 13 }}>Aluno cancelou a aula</span>
+          <ToggleSwitch
+            checked={config.pagar_quando_aluno_cancela}
+            disabled={salvando === 'pagar_quando_aluno_cancela'}
+            onChange={v => atualizar('pagar_quando_aluno_cancela', v)}
+          />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}>
+          <span style={{ fontSize: 13 }}>Estúdio cancelou a aula (você cancelou)</span>
+          <ToggleSwitch
+            checked={config.pagar_quando_estudio_cancela}
+            disabled={salvando === 'pagar_quando_estudio_cancela'}
+            onChange={v => atualizar('pagar_quando_estudio_cancela', v)}
+          />
+        </label>
+      </div>
+
+      <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 12 }}>
+        Cancelamentos feitos pela Elen no WhatsApp (fora do painel) contam como &quot;aluno cancelou&quot;. Independente dessas regras, você sempre pode marcar &quot;Professor faltou&quot; numa aula específica em Horas trabalhadas pra excluir só ela do pagamento.
+      </p>
+    </div>
+  )
+}
+
+function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      disabled={disabled}
+      style={{
+        width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+        background: checked ? '#3fb950' : 'var(--border2)', position: 'relative', flexShrink: 0,
+        opacity: disabled ? 0.6 : 1, transition: 'background 0.15s',
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 3, left: checked ? 21 : 3, width: 18, height: 18, borderRadius: '50%',
+        background: '#fff', transition: 'left 0.15s',
+      }} />
+    </button>
   )
 }

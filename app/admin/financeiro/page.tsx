@@ -347,19 +347,38 @@ export default function FinanceiroPage() {
   )
 }
 
+type ConfigPagamentoProfessores = {
+  pagar_quando_aluno_cancela: boolean
+  pagar_quando_estudio_cancela: boolean
+}
+
+async function carregarConfigPagamentoProfessores(): Promise<ConfigPagamentoProfessores> {
+  const { data } = await supabase.from('config_pagamento_professores').select('*').eq('id', true).single()
+  return (data as ConfigPagamentoProfessores) || { pagar_quando_aluno_cancela: false, pagar_quando_estudio_cancela: true }
+}
+
+function sessaoContaParaPagamento(status: string, canceladoPor: string | null, config: ConfigPagamentoProfessores): boolean {
+  if (status === 'confirmado') return true
+  if (status === 'cancelado') {
+    // Cancelamento sem origem registrada (ex: veio da Elen no WhatsApp, fora do painel) conta como "aluno cancelou"
+    const origem = canceladoPor || 'aluno'
+    return origem === 'estudio' ? config.pagar_quando_estudio_cancela : config.pagar_quando_aluno_cancela
+  }
+  return false
+}
+
 async function carregarFolhaProfessoresMes(): Promise<number> {
   const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   hoje.setHours(0, 0, 0, 0)
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
   const fmtISO = (d: Date) => d.toISOString().slice(0, 10)
 
-  const [{ data: profData }, { data: horData }, { data: agData }, { data: faltasData }] = await Promise.all([
+  const [{ data: profData }, { data: horData }, { data: agData }, { data: faltasData }, config] = await Promise.all([
     supabase.from('professores').select('id, valor_por_aula'),
     supabase.from('horarios').select('id, professor_id'),
     supabase
       .from('agendamentos')
-      .select('data, status, tipo, horario_id')
-      .eq('status', 'confirmado')
+      .select('data, status, cancelado_por, tipo, horario_id')
       .in('tipo', ['aula', 'experimental'])
       .gte('data', fmtISO(inicioMes))
       .lte('data', fmtISO(hoje)),
@@ -368,6 +387,7 @@ async function carregarFolhaProfessoresMes(): Promise<number> {
       .select('professor_id, data, horario_id')
       .gte('data', fmtISO(inicioMes))
       .lte('data', fmtISO(hoje)),
+    carregarConfigPagamentoProfessores(),
   ])
 
   const mapaValor = new Map<string, number>()
@@ -376,9 +396,11 @@ async function carregarFolhaProfessoresMes(): Promise<number> {
   for (const h of horData || []) mapaProfessorPorHorario.set(h.id, h.professor_id)
 
   // Conta por SESSÃO (data + horário), não por aluno agendado — uma aula em grupo com
-  // vários alunos ainda é só 1 hora de trabalho do professor.
+  // vários alunos ainda é só 1 hora de trabalho do professor. Conta aulas confirmadas e,
+  // conforme a regra configurada, aulas canceladas também.
   const sessoesPorProfessor = new Map<string, Set<string>>()
   for (const a of agData || []) {
+    if (!sessaoContaParaPagamento(a.status, a.cancelado_por, config)) continue
     const professorId = mapaProfessorPorHorario.get(a.horario_id)
     if (!professorId) continue
     const chave = `${a.data}_${a.horario_id}`
@@ -701,6 +723,7 @@ type Sessao = {
   horarioId: string
   horarioLabel: string
   diaSemanaLabel: string
+  motivo: 'confirmada' | 'cancelada_estudio' | 'cancelada_aluno'
 }
 
 type LinhaHoras = {
@@ -742,13 +765,12 @@ function HorasTrabalhadas() {
 
     const fmtISO = (d: Date) => d.toISOString().slice(0, 10)
 
-    const [{ data: profData }, { data: horData }, { data: agData }, { data: faltasData }] = await Promise.all([
+    const [{ data: profData }, { data: horData }, { data: agData }, { data: faltasData }, config] = await Promise.all([
       supabase.from('professores').select('id, nome, ativo, valor_por_aula'),
       supabase.from('horarios').select('id, professor_id, horario, dia_semana'),
       supabase
         .from('agendamentos')
-        .select('data, status, tipo, horario_id')
-        .eq('status', 'confirmado')
+        .select('data, status, cancelado_por, tipo, horario_id')
         .in('tipo', ['aula', 'experimental'])
         .gte('data', fmtISO(inicioBusca))
         .lte('data', fmtISO(hoje)),
@@ -757,6 +779,7 @@ function HorasTrabalhadas() {
         .select('professor_id, data, horario_id')
         .gte('data', fmtISO(inicioBusca))
         .lte('data', fmtISO(hoje)),
+      carregarConfigPagamentoProfessores(),
     ])
 
     const mapaHorario = new Map<string, { professorId: string | null; horario: string; diaSemana: number }>()
@@ -767,12 +790,14 @@ function HorasTrabalhadas() {
     const inicioMesISO = fmtISO(inicioMes)
     const inicioSemanaISO = fmtISO(inicioSemana)
 
-    // Sessões distintas (data + horário) por professor — não conta aluno duplicado na mesma aula
+    // Sessões distintas (data + horário) por professor — não conta aluno duplicado na mesma aula.
+    // Conta aulas confirmadas e, conforme a regra configurada, aulas canceladas também.
     const sessoesPorProfessor = new Map<string, Map<string, Sessao>>()
     let semProfSemana = new Set<string>()
     let semProfMes = new Set<string>()
 
     for (const a of agData || []) {
+      if (!sessaoContaParaPagamento(a.status, a.cancelado_por, config)) continue
       const info = mapaHorario.get(a.horario_id)
       const chave = `${a.data}_${a.horario_id}`
       if (!info || !info.professorId) {
@@ -780,12 +805,16 @@ function HorasTrabalhadas() {
         if (a.data >= inicioMesISO) semProfMes.add(chave)
         continue
       }
+      const motivo: Sessao['motivo'] = a.status === 'confirmado'
+        ? 'confirmada'
+        : (a.cancelado_por || 'aluno') === 'estudio' ? 'cancelada_estudio' : 'cancelada_aluno'
       if (!sessoesPorProfessor.has(info.professorId)) sessoesPorProfessor.set(info.professorId, new Map())
       sessoesPorProfessor.get(info.professorId)!.set(chave, {
         data: a.data,
         horarioId: a.horario_id,
         horarioLabel: info.horario.slice(0, 5),
         diaSemanaLabel: DIAS_ABREV_HORAS[info.diaSemana],
+        motivo,
       })
     }
 
@@ -853,7 +882,7 @@ function HorasTrabalhadas() {
   return (
     <div>
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-        Calculado por aula dada (uma sessão com vários alunos ainda conta como 1 hora), a partir das aulas confirmadas e já realizadas. Se o professor faltou numa aula específica, abra &quot;Ver aulas do mês&quot; e marque a falta — ela sai do cálculo e do Controle de caixa na hora.
+        Calculado por aula dada (uma sessão com vários alunos ainda conta como 1 hora). Aulas canceladas entram ou não conforme as regras em Professores → Regras de pagamento em cancelamento. Se o professor faltou numa aula específica, abra &quot;Ver aulas do mês&quot; e marque a falta — ela sai do cálculo e do Controle de caixa na hora.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
@@ -912,7 +941,14 @@ function HorasTrabalhadas() {
                           const dataFmt = new Date(s.data + 'T12:00:00').toLocaleDateString('pt-BR')
                           return (
                             <div key={chave} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '4px 0' }}>
-                              <span>{s.diaSemanaLabel} {dataFmt} às {s.horarioLabel}</span>
+                              <span>
+                                {s.diaSemanaLabel} {dataFmt} às {s.horarioLabel}
+                                {s.motivo !== 'confirmada' && (
+                                  <span style={{ fontSize: 10, color: 'var(--accent2)', border: '1px solid var(--accent2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6 }}>
+                                    {s.motivo === 'cancelada_estudio' ? 'cancelada pelo estúdio · paga' : 'cancelada pelo aluno · paga'}
+                                  </span>
+                                )}
+                              </span>
                               <button
                                 onClick={() => marcarFalta(l.professorId, s)}
                                 disabled={marcando === chave}

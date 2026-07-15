@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (lista.length > 0) {
     await supabase
       .from('agendamentos')
-      .update({ status: 'cancelado' })
+      .update({ status: 'cancelado', cancelado_por: 'estudio' })
       .eq('data', data)
       .eq('horario_id', horario_id)
       .eq('status', 'confirmado')
