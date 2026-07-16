@@ -40,6 +40,7 @@ const GRUPOS = [
       { href: '/admin/alunos', label: 'Alunos', icon: 'users' },
       { href: '/admin/agenda', label: 'Agenda', icon: 'calendar' },
       { href: '/admin/professores', label: 'Professores', icon: 'users' },
+      { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
       { href: '/admin/aerobico', label: 'Aeróbico', icon: 'activity' },
     ],
   },
