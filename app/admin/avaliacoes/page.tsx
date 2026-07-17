@@ -17,6 +17,7 @@ type Avaliacao = {
   massa_muscular_pct: number | null
   idade_metabolica: number | null
   nivel_atividade: string
+  objetivo: string
   observacoes: string | null
   valor: number
   pago: boolean
@@ -42,6 +43,30 @@ function calcularMetabolismo(peso: number | null, gorduraPct: number | null, niv
   const fator = FATORES_ATIVIDADE[nivelAtividade]?.fator || 1.55
   const manutencao = tmb * fator
   return { massaMagra, tmb, manutencao }
+}
+
+const OBJETIVOS: Record<string, { label: string; ajusteCalorico: number; proteinaGPorKg: number }> = {
+  emagrecimento: { label: 'Emagrecimento (déficit)', ajusteCalorico: -0.20, proteinaGPorKg: 2.2 },
+  manutencao: { label: 'Manutenção', ajusteCalorico: 0, proteinaGPorKg: 2.0 },
+  hipertrofia: { label: 'Hipertrofia (superávit)', ajusteCalorico: 0.15, proteinaGPorKg: 1.8 },
+}
+
+// Meta calórica ajustada pelo objetivo (déficit de 20% ou superávit de 15% sobre a manutenção),
+// proteína em g/kg de peso total (mais alta no déficit pra preservar massa magra),
+// gordura fixada em 25% das calorias totais, carboidrato preenche o resto.
+function calcularPlanoNutricional(peso: number | null, gorduraPct: number | null, nivelAtividade: string, objetivo: string) {
+  const base = calcularMetabolismo(peso, gorduraPct, nivelAtividade)
+  if (!base || peso == null) return null
+  const obj = OBJETIVOS[objetivo] || OBJETIVOS.manutencao
+  const metaCalorica = base.manutencao * (1 + obj.ajusteCalorico)
+  const agua = peso * 0.035
+  const proteinaG = peso * obj.proteinaGPorKg
+  const proteinaCal = proteinaG * 4
+  const gorduraCal = metaCalorica * 0.25
+  const gorduraG = gorduraCal / 9
+  const carboCal = Math.max(0, metaCalorica - proteinaCal - gorduraCal)
+  const carboG = carboCal / 4
+  return { ...base, metaCalorica, agua, proteinaG, gorduraG, carboG }
 }
 
 const CAMPOS_OMRON: { chave: keyof Avaliacao; label: string; unidade: string; step: string }[] = [
@@ -70,6 +95,7 @@ export default function AvaliacoesPage() {
   const [novoPago, setNovoPago] = useState(true)
   const [novoValorCobrado, setNovoValorCobrado] = useState('30')
   const [novoNivelAtividade, setNovoNivelAtividade] = useState('moderado')
+  const [novoObjetivo, setNovoObjetivo] = useState('manutencao')
 
   async function carregarAlunos() {
     setLoading(true)
@@ -124,6 +150,7 @@ export default function AvaliacoesPage() {
       pago: novoPago,
       pago_em: novoPago ? new Date().toISOString() : null,
       nivel_atividade: novoNivelAtividade,
+      objetivo: novoObjetivo,
     }
     for (const campo of CAMPOS_OMRON) {
       const v = novosValores[campo.chave as string]
@@ -137,6 +164,7 @@ export default function AvaliacoesPage() {
     setNovoPago(true)
     setNovoValorCobrado('30')
     setNovoNivelAtividade('moderado')
+    setNovoObjetivo('manutencao')
     setNovaData(new Date().toISOString().slice(0, 10))
     setMostrarForm(false)
     setSalvando(false)
@@ -231,28 +259,64 @@ export default function AvaliacoesPage() {
                 </select>
               </div>
 
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Objetivo (pra calcular água e macronutrientes)</label>
+                <select
+                  value={novoObjetivo} onChange={e => setNovoObjetivo(e.target.value)}
+                  style={{ width: '100%', maxWidth: 320, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                >
+                  {Object.entries(OBJETIVOS).map(([chave, info]) => (
+                    <option key={chave} value={chave}>{info.label}</option>
+                  ))}
+                </select>
+              </div>
+
               {(() => {
                 const peso = Number(novosValores.peso)
                 const gordura = Number(novosValores.gordura_corporal_pct)
-                const calc = peso && gordura ? calcularMetabolismo(peso, gordura, novoNivelAtividade) : null
-                if (!calc) return (
+                const plano = peso && gordura ? calcularPlanoNutricional(peso, gordura, novoNivelAtividade, novoObjetivo) : null
+                if (!plano) return (
                   <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 14 }}>
-                    Preenche peso e % de gordura corporal pra ver a taxa de manutenção calculada.
+                    Preenche peso e % de gordura corporal pra ver a taxa de manutenção e o plano nutricional calculados.
                   </p>
                 )
                 return (
-                  <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 14px', marginBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)' }}>Massa magra</div>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{calc.massaMagra.toFixed(1)} kg</div>
+                  <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 14px', marginBottom: 14 }}>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Massa magra</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{plano.massaMagra.toFixed(1)} kg</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>TMB (repouso)</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(plano.tmb)} kcal</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Manutenção</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(plano.manutencao)} kcal</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Meta calórica ({OBJETIVOS[novoObjetivo].label})</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#3fb950', fontFamily: 'Anton, sans-serif' }}>{Math.round(plano.metaCalorica)} kcal/dia</div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)' }}>TMB (repouso)</div>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(calc.tmb)} kcal</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)' }}>Taxa de manutenção</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#3fb950', fontFamily: 'Anton, sans-serif' }}>{Math.round(calc.manutencao)} kcal/dia</div>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Água</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#4a90d9' }}>{plano.agua.toFixed(1)} L/dia</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Proteína</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(plano.proteinaG)} g</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Carboidrato</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(plano.carboG)} g</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>Gordura</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(plano.gorduraG)} g</div>
+                      </div>
                     </div>
                   </div>
                 )
@@ -321,12 +385,20 @@ export default function AvaliacoesPage() {
                         {a.idade_metabolica != null && <span>Idade metabólica: <b style={{ color: 'var(--text)' }}>{a.idade_metabolica}</b></span>}
                       </div>
                       {(() => {
-                        const calc = calcularMetabolismo(a.peso, a.gordura_corporal_pct, a.nivel_atividade)
-                        if (!calc) return null
+                        const plano = calcularPlanoNutricional(a.peso, a.gordura_corporal_pct, a.nivel_atividade, a.objetivo)
+                        if (!plano) return null
                         return (
                           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>
-                            Taxa de manutenção: <b style={{ color: '#3fb950' }}>{Math.round(calc.manutencao)} kcal/dia</b>
-                            <span style={{ color: 'var(--text3)' }}> (TMB {Math.round(calc.tmb)} kcal · {FATORES_ATIVIDADE[a.nivel_atividade]?.label || a.nivel_atividade})</span>
+                            <div>
+                              Meta calórica ({OBJETIVOS[a.objetivo]?.label || a.objetivo}): <b style={{ color: '#3fb950' }}>{Math.round(plano.metaCalorica)} kcal/dia</b>
+                              <span style={{ color: 'var(--text3)' }}> (manutenção {Math.round(plano.manutencao)} kcal · TMB {Math.round(plano.tmb)} kcal · {FATORES_ATIVIDADE[a.nivel_atividade]?.label || a.nivel_atividade})</span>
+                            </div>
+                            <div style={{ marginTop: 4 }}>
+                              Água: <b style={{ color: '#4a90d9' }}>{plano.agua.toFixed(1)} L</b>
+                              {' · '}Proteína: <b style={{ color: 'var(--text)' }}>{Math.round(plano.proteinaG)}g</b>
+                              {' · '}Carboidrato: <b style={{ color: 'var(--text)' }}>{Math.round(plano.carboG)}g</b>
+                              {' · '}Gordura: <b style={{ color: 'var(--text)' }}>{Math.round(plano.gorduraG)}g</b>
+                            </div>
                           </div>
                         )
                       })()}
