@@ -318,7 +318,7 @@ function GradeSemanal() {
         <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })} style={navBtnStyle}>← Semana anterior</button>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtBR(monday)} a {fmtBR(domingo)}</span>
         <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })} style={navBtnStyle}>Próxima semana →</button>
-        <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: 'var(--accent)', borderColor: 'var(--accent)' }}>Hoje</button>
+        <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: '#3fb950', borderColor: '#3fb950' }}>Hoje</button>
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado.</p>
@@ -362,7 +362,7 @@ function GradeSemanal() {
                       >
                         <span style={{
                           fontSize: 12, fontWeight: 700,
-                          color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : 'var(--accent)',
+                          color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : '#4a90d9',
                         }}>
                           {ocupacao}/{h.capacidade}
                         </span>
@@ -429,7 +429,7 @@ function GradeSemanal() {
                         </select>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button onClick={() => confirmarMoverAgendamento(a)} disabled={salvandoMover} style={{
-                            ...navBtnStyle, flex: 1, background: 'var(--accent)', color: '#fff', opacity: salvandoMover ? 0.6 : 1,
+                            ...navBtnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: salvandoMover ? 0.6 : 1,
                           }}>
                             {salvandoMover ? 'Salvando...' : '✅ Confirmar mudança'}
                           </button>
@@ -445,7 +445,7 @@ function GradeSemanal() {
             {toast && <p style={{ fontSize: 12, color: '#3fb950', marginBottom: 10 }}>{toast}</p>}
 
             {!mostrarForm ? (
-              <button onClick={() => setMostrarForm(true)} style={{ ...navBtnStyle, width: '100%', color: 'var(--accent)', borderColor: 'var(--accent)', marginBottom: 8 }}>
+              <button onClick={() => setMostrarForm(true)} style={{ ...navBtnStyle, width: '100%', color: '#3fb950', borderColor: '#3fb950', marginBottom: 8 }}>
                 + Adicionar aluno manualmente
               </button>
             ) : (
@@ -470,7 +470,7 @@ function GradeSemanal() {
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                   <button onClick={adicionarAlunoNoHorario} disabled={!alunoEscolhido || salvandoAgendamento} style={{
-                    ...navBtnStyle, flex: 1, background: 'var(--accent)', color: '#fff', opacity: (!alunoEscolhido || salvandoAgendamento) ? 0.6 : 1,
+                    ...navBtnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: (!alunoEscolhido || salvandoAgendamento) ? 0.6 : 1,
                   }}>
                     {salvandoAgendamento ? 'Salvando...' : '✅ Confirmar'}
                   </button>
@@ -499,7 +499,7 @@ const inputStyleGrade: React.CSSProperties = {
 
 const thStyle: React.CSSProperties = {
   border: '1px solid var(--border)', padding: '8px 6px', textAlign: 'center',
-  fontSize: 11, fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.5px',
+  fontSize: 11, fontWeight: 800, color: '#3fb950', letterSpacing: '0.5px',
   background: 'var(--bg2)', textTransform: 'uppercase' as const,
 }
 
@@ -616,8 +616,8 @@ function ProximasAulas() {
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--card)', border: '1px solid var(--accent)', borderRadius: 6,
-          padding: '10px 20px', fontSize: 13, color: 'var(--accent)',
+          background: 'var(--card)', border: '1px solid #3fb950', borderRadius: 6,
+          padding: '10px 20px', fontSize: 13, color: '#3fb950',
         }}>
           {toast}
         </div>
@@ -791,7 +791,7 @@ function GradeHorarios() {
                       onChange={e => setCapacidadeTemp(e.target.value)}
                       style={{ width: 55, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
                     />
-                    <button onClick={() => salvarCapacidade(h)} style={{ background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
+                    <button onClick={() => salvarCapacidade(h)} style={{ background: '#3fb950', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
                   </>
                 ) : (
                   <span
@@ -853,7 +853,7 @@ function GradeHorarios() {
 
       {!mostrarForm ? (
         <button onClick={() => setMostrarForm(true)} style={{
-          background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)',
+          background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
           borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
         }}>
           + Criar novo horário
@@ -913,7 +913,7 @@ function GradeHorarios() {
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={criarHorarios} disabled={salvandoNovo} style={{
-              background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 6,
+              background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
               padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvandoNovo ? 0.6 : 1,
             }}>
               {salvandoNovo ? 'Criando...' : '✅ Criar'}

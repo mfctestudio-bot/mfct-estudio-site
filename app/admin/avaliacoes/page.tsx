@@ -16,6 +16,7 @@ type Avaliacao = {
   gordura_visceral: number | null
   massa_muscular_pct: number | null
   idade_metabolica: number | null
+  nivel_atividade: string
   observacoes: string | null
   valor: number
   pago: boolean
@@ -23,6 +24,25 @@ type Avaliacao = {
 }
 
 type Foto = { id: string; avaliacao_id: string; foto_url: string }
+
+const FATORES_ATIVIDADE: Record<string, { label: string; fator: number }> = {
+  sedentario: { label: 'Sedentário (pouco ou nenhum exercício)', fator: 1.2 },
+  leve: { label: 'Leve (1-3x/semana)', fator: 1.375 },
+  moderado: { label: 'Moderado (3-5x/semana)', fator: 1.55 },
+  intenso: { label: 'Intenso (6-7x/semana)', fator: 1.725 },
+  muito_intenso: { label: 'Muito intenso (2x/dia ou trabalho físico)', fator: 1.9 },
+}
+
+// Fórmula de Katch-McArdle: usa massa magra (peso x % de gordura), ideal pra quem tem
+// bioimpedância — mais precisa que fórmulas que só usam peso/altura/idade.
+function calcularMetabolismo(peso: number | null, gorduraPct: number | null, nivelAtividade: string) {
+  if (peso == null || gorduraPct == null) return null
+  const massaMagra = peso * (1 - gorduraPct / 100)
+  const tmb = 370 + 21.6 * massaMagra
+  const fator = FATORES_ATIVIDADE[nivelAtividade]?.fator || 1.55
+  const manutencao = tmb * fator
+  return { massaMagra, tmb, manutencao }
+}
 
 const CAMPOS_OMRON: { chave: keyof Avaliacao; label: string; unidade: string; step: string }[] = [
   { chave: 'peso', label: 'Peso', unidade: 'kg', step: '0.1' },
@@ -49,6 +69,7 @@ export default function AvaliacoesPage() {
   const [novaObs, setNovaObs] = useState('')
   const [novoPago, setNovoPago] = useState(true)
   const [novoValorCobrado, setNovoValorCobrado] = useState('30')
+  const [novoNivelAtividade, setNovoNivelAtividade] = useState('moderado')
 
   async function carregarAlunos() {
     setLoading(true)
@@ -102,6 +123,7 @@ export default function AvaliacoesPage() {
       valor: Number(novoValorCobrado) || 30,
       pago: novoPago,
       pago_em: novoPago ? new Date().toISOString() : null,
+      nivel_atividade: novoNivelAtividade,
     }
     for (const campo of CAMPOS_OMRON) {
       const v = novosValores[campo.chave as string]
@@ -114,6 +136,7 @@ export default function AvaliacoesPage() {
     setNovaObs('')
     setNovoPago(true)
     setNovoValorCobrado('30')
+    setNovoNivelAtividade('moderado')
     setNovaData(new Date().toISOString().slice(0, 10))
     setMostrarForm(false)
     setSalvando(false)
@@ -163,7 +186,7 @@ export default function AvaliacoesPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <h2 style={{ fontSize: 18 }}>{alunoAtual?.nome}</h2>
             <button onClick={() => setMostrarForm(v => !v)} style={{
-              background: mostrarForm ? 'transparent' : 'var(--accent)', border: mostrarForm ? '1px solid var(--border2)' : 'none',
+              background: mostrarForm ? 'transparent' : '#3fb950', border: mostrarForm ? '1px solid var(--border2)' : 'none',
               color: mostrarForm ? 'var(--text2)' : '#fff', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
             }}>
@@ -196,6 +219,45 @@ export default function AvaliacoesPage() {
                 ))}
               </div>
 
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nível de atividade (pra calcular a taxa de manutenção)</label>
+                <select
+                  value={novoNivelAtividade} onChange={e => setNovoNivelAtividade(e.target.value)}
+                  style={{ width: '100%', maxWidth: 320, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                >
+                  {Object.entries(FATORES_ATIVIDADE).map(([chave, info]) => (
+                    <option key={chave} value={chave}>{info.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(() => {
+                const peso = Number(novosValores.peso)
+                const gordura = Number(novosValores.gordura_corporal_pct)
+                const calc = peso && gordura ? calcularMetabolismo(peso, gordura, novoNivelAtividade) : null
+                if (!calc) return (
+                  <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 14 }}>
+                    Preenche peso e % de gordura corporal pra ver a taxa de manutenção calculada.
+                  </p>
+                )
+                return (
+                  <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 14px', marginBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text3)' }}>Massa magra</div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{calc.massaMagra.toFixed(1)} kg</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text3)' }}>TMB (repouso)</div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{Math.round(calc.tmb)} kcal</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text3)' }}>Taxa de manutenção</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#3fb950', fontFamily: 'Anton, sans-serif' }}>{Math.round(calc.manutencao)} kcal/dia</div>
+                    </div>
+                  </div>
+                )
+              })()}
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
                 <div>
                   <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor cobrado (R$)</label>
@@ -221,7 +283,7 @@ export default function AvaliacoesPage() {
               </div>
 
               <button onClick={salvarAvaliacao} disabled={salvando} style={{
-                background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 6,
+                background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
                 padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvando ? 0.6 : 1,
               }}>
                 {salvando ? 'Salvando...' : '✅ Salvar avaliação'}
@@ -258,6 +320,16 @@ export default function AvaliacoesPage() {
                         {a.massa_muscular_pct != null && <span>Massa muscular: <b style={{ color: 'var(--text)' }}>{a.massa_muscular_pct}%</b></span>}
                         {a.idade_metabolica != null && <span>Idade metabólica: <b style={{ color: 'var(--text)' }}>{a.idade_metabolica}</b></span>}
                       </div>
+                      {(() => {
+                        const calc = calcularMetabolismo(a.peso, a.gordura_corporal_pct, a.nivel_atividade)
+                        if (!calc) return null
+                        return (
+                          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>
+                            Taxa de manutenção: <b style={{ color: '#3fb950' }}>{Math.round(calc.manutencao)} kcal/dia</b>
+                            <span style={{ color: 'var(--text3)' }}> (TMB {Math.round(calc.tmb)} kcal · {FATORES_ATIVIDADE[a.nivel_atividade]?.label || a.nivel_atividade})</span>
+                          </div>
+                        )
+                      })()}
                       {a.observacoes && <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 8 }}>{a.observacoes}</p>}
                       {fotosAval.length > 0 && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>

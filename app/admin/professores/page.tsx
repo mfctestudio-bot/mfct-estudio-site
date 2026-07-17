@@ -122,7 +122,7 @@ export default function ProfessoresPage() {
                       style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
                     />
                     <span style={{ fontSize: 11, color: 'var(--text3)' }}>/aula</span>
-                    <button onClick={() => salvarValor(p)} style={{ background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
+                    <button onClick={() => salvarValor(p)} style={{ background: '#3fb950', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
                   </>
                 ) : (
                   <span
@@ -167,7 +167,7 @@ export default function ProfessoresPage() {
 
       {!mostrarForm ? (
         <button onClick={() => setMostrarForm(true)} style={{
-          background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)',
+          background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
           borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
         }}>
           + Cadastrar professor
@@ -197,7 +197,7 @@ export default function ProfessoresPage() {
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={adicionarProfessor} disabled={salvando} style={{
-              background: 'var(--accent)', border: 'none', color: '#fff', borderRadius: 6,
+              background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
               padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvando ? 0.6 : 1,
             }}>
               {salvando ? 'Salvando...' : '✅ Cadastrar'}
