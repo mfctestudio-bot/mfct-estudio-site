@@ -630,6 +630,7 @@ function GradeHorarios() {
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [toast, setToast] = useState('')
   const [diaAtivo, setDiaAtivo] = useState(() => new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).getDay())
 
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -671,6 +672,46 @@ function GradeHorarios() {
     setUpdating(h.id)
     await supabase.from('horarios').update({ ativo: !h.ativo }).eq('id', h.id)
     setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, ativo: !x.ativo } : x))
+    setUpdating(null)
+  }
+
+  async function encerrarComAviso(h: Horario) {
+    const { count: countAgendamentos } = await supabase
+      .from('agendamentos')
+      .select('*', { count: 'exact', head: true })
+      .eq('horario_id', h.id)
+      .eq('status', 'confirmado')
+      .gte('data', new Date().toISOString().slice(0, 10))
+    const { count: countFixos } = await supabase
+      .from('horarios_fixos')
+      .select('*', { count: 'exact', head: true })
+      .eq('horario_id', h.id)
+      .eq('ativo', true)
+
+    const totalAfetados = (countAgendamentos || 0) + (countFixos || 0)
+    const aviso = totalAfetados > 0
+      ? `Encerrar o horário das ${h.horario.slice(0, 5)} (${DIAS[h.dia_semana]})? Isso cancela ${countAgendamentos || 0} aula(s) futura(s) e ${countFixos || 0} horário(s) fixo(s) desse slot, e avisa cada aluno afetado por WhatsApp pra remarcar. Não pode ser desfeito.`
+      : `Encerrar o horário das ${h.horario.slice(0, 5)} (${DIAS[h.dia_semana]})? Não tem ninguém agendado nele agora, então não vai gerar aviso pra ninguém.`
+    if (!confirm(aviso)) return
+
+    setUpdating(h.id)
+    try {
+      const resp = await fetch('/api/encerrar-horario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ horario_id: h.id }),
+      })
+      const json = await resp.json()
+      if (resp.ok) {
+        setToast(`Horário encerrado. ${json.afetados} aluno(s) avisado(s) por WhatsApp.`)
+        setTimeout(() => setToast(''), 4000)
+        load()
+      } else {
+        setToast('Erro: ' + (json.error || 'falha ao encerrar'))
+      }
+    } catch {
+      setToast('Erro ao encerrar horário')
+    }
     setUpdating(null)
   }
 
@@ -741,6 +782,7 @@ function GradeHorarios() {
 
   return (
     <div>
+      {toast && <p style={{ fontSize: 12, color: '#3fb950', marginBottom: 10 }}>{toast}</p>}
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
         Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez.
       </p>
@@ -833,6 +875,17 @@ function GradeHorarios() {
                   }}
                 >
                   {h.ativo ? 'Desativar' : 'Ativar'}
+                </button>
+
+                <button
+                  onClick={() => encerrarComAviso(h)}
+                  disabled={updating === h.id}
+                  style={{
+                    background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9',
+                    borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
+                  }}
+                >
+                  🔔 Encerrar c/ aviso
                 </button>
 
                 <button

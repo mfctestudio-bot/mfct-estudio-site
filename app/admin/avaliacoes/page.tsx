@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 
-type Aluno = { id: string; nome: string; status_plano: string }
+type Aluno = { id: string; nome: string; status_plano: string; meta_peso: number | null; meta_gordura_pct: number | null; token_avaliacao: string }
 
 type Avaliacao = {
   id: string
@@ -87,6 +87,9 @@ export default function AvaliacoesPage() {
   const [loading, setLoading] = useState(true)
   const [loadingAluno, setLoadingAluno] = useState(false)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [metaPesoInput, setMetaPesoInput] = useState('')
+  const [metaGorduraInput, setMetaGorduraInput] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   const [novaData, setNovaData] = useState(() => new Date().toISOString().slice(0, 10))
@@ -101,7 +104,7 @@ export default function AvaliacoesPage() {
     setLoading(true)
     const { data } = await supabase
       .from('alunos')
-      .select('id, nome, status_plano')
+      .select('id, nome, status_plano, meta_peso, meta_gordura_pct, token_avaliacao')
       .eq('status_plano', 'ativo')
       .order('nome')
     setAlunos((data as Aluno[]) || [])
@@ -135,6 +138,11 @@ export default function AvaliacoesPage() {
   }
 
   useEffect(() => { carregarHistorico(alunoId) }, [alunoId])
+  useEffect(() => {
+    const a = alunos.find(x => x.id === alunoId)
+    setMetaPesoInput(a?.meta_peso != null ? String(a.meta_peso) : '')
+    setMetaGorduraInput(a?.meta_gordura_pct != null ? String(a.meta_gordura_pct) : '')
+  }, [alunoId, alunos])
 
   async function salvarAvaliacao() {
     if (!alunoId) return
@@ -157,8 +165,18 @@ export default function AvaliacoesPage() {
       corpo[campo.chave as string] = v ? Number(v) : null
     }
 
-    await supabase.from('avaliacoes').insert(corpo)
+    if (editandoId) {
+      await supabase.from('avaliacoes').update(corpo).eq('id', editandoId)
+    } else {
+      await supabase.from('avaliacoes').insert(corpo)
+    }
 
+    fecharForm()
+    setSalvando(false)
+    carregarHistorico(alunoId)
+  }
+
+  function fecharForm() {
     setNovosValores({})
     setNovaObs('')
     setNovoPago(true)
@@ -167,8 +185,39 @@ export default function AvaliacoesPage() {
     setNovoObjetivo('manutencao')
     setNovaData(new Date().toISOString().slice(0, 10))
     setMostrarForm(false)
-    setSalvando(false)
+    setEditandoId(null)
+  }
+
+  function abrirEdicao(a: Avaliacao) {
+    setEditandoId(a.id)
+    setNovaData(a.data)
+    const valores: Record<string, string> = {}
+    for (const campo of CAMPOS_OMRON) {
+      const v = a[campo.chave] as number | null
+      if (v != null) valores[campo.chave as string] = String(v)
+    }
+    setNovosValores(valores)
+    setNovaObs(a.observacoes || '')
+    setNovoPago(a.pago)
+    setNovoValorCobrado(String(a.valor))
+    setNovoNivelAtividade(a.nivel_atividade)
+    setNovoObjetivo(a.objetivo)
+    setMostrarForm(true)
+  }
+
+  async function apagarAvaliacao(id: string) {
+    if (!confirm('Apagar essa avaliação? As fotos vinculadas a ela também vão junto. Isso não pode ser desfeito.')) return
+    await supabase.from('avaliacoes').delete().eq('id', id)
     carregarHistorico(alunoId)
+  }
+
+  async function salvarMetas(metaPeso: string, metaGordura: string) {
+    if (!alunoId) return
+    await supabase.from('alunos').update({
+      meta_peso: metaPeso ? Number(metaPeso) : null,
+      meta_gordura_pct: metaGordura ? Number(metaGordura) : null,
+    }).eq('id', alunoId)
+    carregarAlunos()
   }
 
   const alunosFiltrados = alunos.filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
@@ -213,7 +262,7 @@ export default function AvaliacoesPage() {
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <h2 style={{ fontSize: 18 }}>{alunoAtual?.nome}</h2>
-            <button onClick={() => setMostrarForm(v => !v)} style={{
+            <button onClick={() => mostrarForm ? fecharForm() : setMostrarForm(true)} style={{
               background: mostrarForm ? 'transparent' : '#3fb950', border: mostrarForm ? '1px solid var(--border2)' : 'none',
               color: mostrarForm ? 'var(--text2)' : '#fff', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
@@ -222,9 +271,50 @@ export default function AvaliacoesPage() {
             </button>
           </div>
 
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 10 }}>
+              <h3 style={{ fontSize: 12, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase' }}>Meta e link de acesso do aluno</h3>
+              <button
+                onClick={() => {
+                  const url = `https://mfct-estudio-site.vercel.app/avaliacao/${alunoAtual?.token_avaliacao}`
+                  navigator.clipboard.writeText(url)
+                  alert('Link copiado! ' + url)
+                }}
+                style={{ background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                🔗 Copiar link de evolução do aluno
+              </button>
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+              Esse link só mostra dados se o aluno estiver com o plano ativo. Manda pra ele quando quiser.
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Meta de peso (kg)</label>
+                <input
+                  type="number" step="0.1" placeholder="—" value={metaPesoInput}
+                  onChange={e => setMetaPesoInput(e.target.value)}
+                  onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
+                  style={{ width: 110, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Meta de gordura corporal (%)</label>
+                <input
+                  type="number" step="0.1" placeholder="—" value={metaGorduraInput}
+                  onChange={e => setMetaGorduraInput(e.target.value)}
+                  onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
+                  style={{ width: 110, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+          </div>
+
           {mostrarForm && (
             <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 24 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
+              {editandoId && (
+                <p style={{ fontSize: 12, color: '#4a90d9', marginBottom: 10, fontWeight: 700 }}>✏️ Editando avaliação existente</p>
+              )}              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
                 <div>
                   <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data</label>
                   <input
@@ -350,7 +440,7 @@ export default function AvaliacoesPage() {
                 background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
                 padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvando ? 0.6 : 1,
               }}>
-                {salvando ? 'Salvando...' : '✅ Salvar avaliação'}
+                {salvando ? 'Salvando...' : editandoId ? '✅ Atualizar avaliação' : '✅ Salvar avaliação'}
               </button>
             </div>
           )}
@@ -372,9 +462,17 @@ export default function AvaliacoesPage() {
                     <div key={a.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 14 }}>{dataFmt}</span>
-                        <span style={{ fontSize: 11, color: a.pago ? '#3fb950' : 'var(--accent2)' }}>
-                          {a.pago ? `✅ Pago (R$ ${Number(a.valor).toFixed(2)})` : `⏳ Pendente (R$ ${Number(a.valor).toFixed(2)})`}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 11, color: a.pago ? '#3fb950' : 'var(--accent2)' }}>
+                            {a.pago ? `✅ Pago (R$ ${Number(a.valor).toFixed(2)})` : `⏳ Pendente (R$ ${Number(a.valor).toFixed(2)})`}
+                          </span>
+                          <button onClick={() => abrirEdicao(a)} style={{ background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            ✏️ Editar
+                          </button>
+                          <button onClick={() => apagarAvaliacao(a.id)} style={{ background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 12, color: 'var(--text2)' }}>
                         {a.peso != null && <span>Peso: <b style={{ color: 'var(--text)' }}>{a.peso} kg</b></span>}
