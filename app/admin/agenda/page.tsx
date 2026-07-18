@@ -501,7 +501,7 @@ function GradeSemanal() {
                     setToast(`Horário encerrado. ${json.afetados} aluno(s) avisado(s).`)
                     setTimeout(() => setToast(''), 4000)
                     setCélulaAberta(null)
-                    load()
+                    recarregarAgendamentos()
                   } else {
                     setToast('Erro: ' + (json.error || 'falha ao encerrar'))
                   }
