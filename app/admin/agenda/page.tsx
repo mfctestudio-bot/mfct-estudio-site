@@ -479,7 +479,43 @@ function GradeSemanal() {
               </div>
             )}
 
-            <button onClick={() => setCélulaAberta(null)} style={{ ...navBtnStyle, width: '100%' }}>Fechar</button>
+            <button
+              onClick={async () => {
+                if (!célulaAberta) return
+                const horarioObj = horarios.find(h => h.id === célulaAberta.horarioId)
+                const label = horarioObj ? `${horarioObj.horario.slice(0, 5)} (${DIAS[horarioObj.dia_semana]})` : 'esse horário'
+                const totalAlunos = célula.length
+                const aviso = totalAlunos > 0
+                  ? `Encerrar ${label} de vez (não só cancelar esse dia)? Isso cancela ${totalAlunos} aula(s) futura(s) e qualquer horário fixo desse slot, e avisa cada aluno por WhatsApp pra remarcar. Não pode ser desfeito.`
+                  : `Encerrar ${label} de vez? Não tem ninguém agendado nele agora.`
+                if (!confirm(aviso)) return
+                setSalvandoAgendamento(true)
+                try {
+                  const resp = await fetch('/api/encerrar-horario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ horario_id: célulaAberta.horarioId }),
+                  })
+                  const json = await resp.json()
+                  if (resp.ok) {
+                    setToast(`Horário encerrado. ${json.afetados} aluno(s) avisado(s).`)
+                    setTimeout(() => setToast(''), 4000)
+                    setCélulaAberta(null)
+                    load()
+                  } else {
+                    setToast('Erro: ' + (json.error || 'falha ao encerrar'))
+                  }
+                } catch {
+                  setToast('Erro ao encerrar horário')
+                }
+                setSalvandoAgendamento(false)
+              }}
+              style={{ ...navBtnStyle, width: '100%', color: '#4a90d9', borderColor: '#4a90d9', marginTop: 8 }}
+            >
+              🔔 Encerrar este horário de vez (avisa todo mundo)
+            </button>
+
+            <button onClick={() => setCélulaAberta(null)} style={{ ...navBtnStyle, width: '100%', marginTop: 8 }}>Fechar</button>
           </div>
         </div>
       )}
