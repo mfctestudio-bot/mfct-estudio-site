@@ -52,7 +52,7 @@ async function getDados(token: string) {
     fotos = await fotosResp.json().catch(() => [])
   }
 
-  return { erro: null as const, aluno, avaliacoes, fotos }
+  return { erro: null, aluno, avaliacoes, fotos }
 }
 
 export default async function AvaliacaoPublica({ params }: { params: Promise<{ token: string }> }) {
