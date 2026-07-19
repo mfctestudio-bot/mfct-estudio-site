@@ -18,6 +18,41 @@ type Avaliacao = {
   gordura_visceral: number | null
   massa_muscular_pct: number | null
   idade_metabolica: number | null
+  nivel_atividade: string
+  objetivo: string
+}
+
+const FATORES_ATIVIDADE: Record<string, { label: string; fator: number }> = {
+  sedentario: { label: 'Sedentário', fator: 1.2 },
+  leve: { label: 'Leve (1-3x/semana)', fator: 1.375 },
+  moderado: { label: 'Moderado (3-5x/semana)', fator: 1.55 },
+  intenso: { label: 'Intenso (6-7x/semana)', fator: 1.725 },
+  muito_intenso: { label: 'Muito intenso', fator: 1.9 },
+}
+
+const OBJETIVOS: Record<string, { label: string; ajusteCalorico: number; proteinaGPorKg: number }> = {
+  emagrecimento: { label: 'Emagrecimento', ajusteCalorico: -0.20, proteinaGPorKg: 2.2 },
+  manutencao: { label: 'Manutenção', ajusteCalorico: 0, proteinaGPorKg: 2.0 },
+  hipertrofia: { label: 'Hipertrofia', ajusteCalorico: 0.15, proteinaGPorKg: 1.8 },
+}
+
+// Katch-McArdle (usa massa magra, ideal com bioimpedância) — mesma fórmula do painel admin.
+function calcularPlanoNutricional(peso: number | null, gorduraPct: number | null, nivelAtividade: string, objetivo: string) {
+  if (peso == null || gorduraPct == null) return null
+  const massaMagra = peso * (1 - gorduraPct / 100)
+  const tmb = 370 + 21.6 * massaMagra
+  const fator = FATORES_ATIVIDADE[nivelAtividade]?.fator || 1.55
+  const manutencao = tmb * fator
+  const obj = OBJETIVOS[objetivo] || OBJETIVOS.manutencao
+  const metaCalorica = manutencao * (1 + obj.ajusteCalorico)
+  const agua = peso * 0.035
+  const proteinaG = peso * obj.proteinaGPorKg
+  const proteinaCal = proteinaG * 4
+  const gorduraCal = metaCalorica * 0.25
+  const gorduraG = gorduraCal / 9
+  const carboCal = Math.max(0, metaCalorica - proteinaCal - gorduraCal)
+  const carboG = carboCal / 4
+  return { massaMagra, tmb, manutencao, metaCalorica, agua, proteinaG, gorduraG, carboG, objetivoLabel: obj.label }
 }
 
 type Foto = { id: string; avaliacao_id: string; foto_url: string }
@@ -37,7 +72,7 @@ async function getDados(token: string) {
   if (aluno.status_plano !== 'ativo') return { erro: 'plano_inativo' as const, aluno }
 
   const avalResp = await fetch(
-    `${SUPA_URL}/rest/v1/avaliacoes?aluno_id=eq.${aluno.id}&status=eq.realizada&order=data.asc&select=id,data,peso,imc,gordura_corporal_pct,gordura_visceral,massa_muscular_pct,idade_metabolica`,
+    `${SUPA_URL}/rest/v1/avaliacoes?aluno_id=eq.${aluno.id}&status=eq.realizada&order=data.asc&select=id,data,peso,imc,gordura_corporal_pct,gordura_visceral,massa_muscular_pct,idade_metabolica,nivel_atividade,objetivo`,
     { headers, cache: 'no-store' }
   )
   const avaliacoes: Avaliacao[] = await avalResp.json().catch(() => [])
@@ -98,6 +133,8 @@ export default async function AvaliacaoPublica({ params }: { params: Promise<{ t
 
         <MetaCard aluno={aluno!} ultima={ultima} primeira={primeira} />
 
+        <PlanoNutricionalCard ultima={ultima} />
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginTop: 20 }}>
           <GraficoEvolucao titulo="Peso (kg)" avaliacoes={avaliacoes} campo="peso" cor="#4a90d9" meta={aluno!.meta_peso} />
           <GraficoEvolucao titulo="Gordura corporal (%)" avaliacoes={avaliacoes} campo="gordura_corporal_pct" cor="#e05656" meta={aluno!.meta_gordura_pct} />
@@ -132,6 +169,43 @@ export default async function AvaliacaoPublica({ params }: { params: Promise<{ t
 
         <p style={{ fontSize: 11, color: '#5e676c', marginTop: 28, textAlign: 'center' }}>MFCT Estúdio</p>
       </div>
+    </div>
+  )
+}
+
+function PlanoNutricionalCard({ ultima }: { ultima: Avaliacao }) {
+  const plano = calcularPlanoNutricional(ultima.peso, ultima.gordura_corporal_pct, ultima.nivel_atividade, ultima.objetivo)
+  if (!plano) return null
+
+  return (
+    <div style={{ background: '#161c20', border: '1px solid #353e43', borderRadius: 8, padding: '14px 16px', marginBottom: 4 }}>
+      <div style={{ fontSize: 12, color: '#9aa3a8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '1px' }}>
+        Sua meta calórica e nutrientes ({plano.objetivoLabel})
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: '#3fb950', fontFamily: 'Georgia, serif', marginBottom: 2 }}>
+        {Math.round(plano.metaCalorica)} kcal/dia
+      </div>
+      <p style={{ fontSize: 11, color: '#5e676c', marginBottom: 12 }}>
+        Taxa de manutenção: {Math.round(plano.manutencao)} kcal · TMB: {Math.round(plano.tmb)} kcal
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 12 }}>
+        <NutrienteBox label="Água" valor={`${plano.agua.toFixed(1)} L`} cor="#4a90d9" />
+        <NutrienteBox label="Proteína" valor={`${Math.round(plano.proteinaG)} g`} cor="#e05656" />
+        <NutrienteBox label="Carboidrato" valor={`${Math.round(plano.carboG)} g`} cor="#f0a500" />
+        <NutrienteBox label="Gordura" valor={`${Math.round(plano.gorduraG)} g`} cor="#9aa3a8" />
+      </div>
+      <p style={{ fontSize: 10, color: '#5e676c', marginTop: 12 }}>
+        Calculado a partir da sua última avaliação. Fala com o Matheus se quiser ajustar o objetivo ou o nível de atividade considerado.
+      </p>
+    </div>
+  )
+}
+
+function NutrienteBox({ label, valor, cor }: { label: string; valor: string; cor: string }) {
+  return (
+    <div style={{ background: '#0a0e10', border: '1px solid #353e43', borderRadius: 6, padding: '8px 10px' }}>
+      <div style={{ fontSize: 10, color: '#5e676c' }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: cor }}>{valor}</div>
     </div>
   )
 }
