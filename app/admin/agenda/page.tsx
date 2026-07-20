@@ -483,6 +483,28 @@ function GradeSemanal() {
               onClick={async () => {
                 if (!célulaAberta) return
                 const horarioObj = horarios.find(h => h.id === célulaAberta.horarioId)
+                if (!horarioObj) return
+                const label = `${horarioObj.horario.slice(0, 5)} (${DIAS[horarioObj.dia_semana]})`
+                if (!confirm(`Desativar o horário de ${label}? Ele some da grade pra novos agendamentos, mas quem já tá marcado continua normal (isso não cancela nem avisa ninguém). Dá pra reativar depois em Grade de horários.`)) return
+                setSalvandoAgendamento(true)
+                await supabase.from('horarios').update({ ativo: false }).eq('id', horarioObj.id)
+                setToast('Horário desativado.')
+                setTimeout(() => setToast(''), 3000)
+                setCélulaAberta(null)
+                const { data: hData } = await supabase.from('horarios').select('*').eq('ativo', true).order('horario')
+                setHorarios(hData || [])
+                await recarregarAgendamentos()
+                setSalvandoAgendamento(false)
+              }}
+              style={{ ...navBtnStyle, width: '100%', marginTop: 8, color: '#e05656', borderColor: '#e05656' }}
+            >
+              ⏸️ Desativar esse horário (some da grade, ninguém é avisado)
+            </button>
+
+            <button
+              onClick={async () => {
+                if (!célulaAberta) return
+                const horarioObj = horarios.find(h => h.id === célulaAberta.horarioId)
                 const label = horarioObj ? `${horarioObj.horario.slice(0, 5)} (${DIAS[horarioObj.dia_semana]})` : 'esse horário'
                 const totalAlunos = célula.length
                 const aviso = totalAlunos > 0
