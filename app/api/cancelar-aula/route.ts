@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Fecha esse dia+horário específico pra ninguém mais conseguir marcar nele (a Elen também respeita isso)
+  await supabase
+    .from('horario_cancelamentos_pontuais')
+    .upsert({ horario_id, data, motivo: mensagem || 'Cancelado pelo estúdio' }, { onConflict: 'horario_id,data' })
+
   // Data formatada em pt-BR, indicando "hoje" quando for o caso (fuso São Paulo)
   const hojeSP = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }).slice(0, 10)
   const hojeISO = new Date(hojeSP).toISOString().slice(0, 10)
