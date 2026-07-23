@@ -24,6 +24,7 @@ type VencimentoRow = {
   valor: number
   proximaData: Date
   diasRestantes: number
+  pagoEsseCiclo: boolean
 }
 
 type PagamentoDetalhe = {
@@ -107,20 +108,47 @@ export default function FinanceiroPage() {
       hoje.setHours(0, 0, 0, 0)
       const projecao: VencimentoRow[] = []
 
+      // Busca o pagamento 'pago' mais recente de cada aluno ativo, pra saber quem já pagou o ciclo atual
+      // e não deixar aparecendo como pendente depois de registrado (tem que ser em tempo real).
+      const idsAtivos = (ativos || []).map(a => a.id)
+      const ultimoPagoPorAluno = new Map<string, Date>()
+      if (idsAtivos.length > 0) {
+        const { data: pagamentosRecentes } = await supabase
+          .from('pagamentos')
+          .select('aluno_id, data_pagamento')
+          .in('aluno_id', idsAtivos)
+          .eq('status', 'pago')
+          .not('data_pagamento', 'is', null)
+          .order('data_pagamento', { ascending: false })
+        for (const p of pagamentosRecentes || []) {
+          if (!ultimoPagoPorAluno.has(p.aluno_id)) {
+            ultimoPagoPorAluno.set(p.aluno_id, new Date(p.data_pagamento))
+          }
+        }
+      }
+
       for (const a of ativos || []) {
         const p = Array.isArray(a.planos) ? a.planos[0] : a.planos
         const valor = p?.valor ? Number(p.valor) : 0
         if (valor) soma += valor
 
         if (a.dia_vencimento) {
+          // Início do ciclo atual: a última vez que o dia de vencimento caiu, hoje ou antes
+          let inicioCiclo = new Date(hoje.getFullYear(), hoje.getMonth(), a.dia_vencimento)
+          if (inicioCiclo > hoje) {
+            inicioCiclo = new Date(hoje.getFullYear(), hoje.getMonth() - 1, a.dia_vencimento)
+          }
+          const ultimoPago = ultimoPagoPorAluno.get(a.id)
+          const pagoEsseCiclo = !!(ultimoPago && ultimoPago >= inicioCiclo)
+
           let proximaData = new Date(hoje.getFullYear(), hoje.getMonth(), a.dia_vencimento)
-          if (proximaData < hoje) {
+          if (proximaData < hoje || pagoEsseCiclo) {
             proximaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, a.dia_vencimento)
           }
           const diasRestantes = Math.round((proximaData.getTime() - hoje.getTime()) / 86400000)
           projecao.push({
             id: a.id, nome: a.nome, telefone: a.telefone, dia_vencimento: a.dia_vencimento,
-            valor, proximaData, diasRestantes,
+            valor, proximaData, diasRestantes, pagoEsseCiclo,
           })
         }
       }
@@ -304,20 +332,24 @@ export default function FinanceiroPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
             {vencimentos.map(v => {
-              const urgente = v.diasRestantes <= 3
-              const emBreve = v.diasRestantes <= 7
+              const urgente = !v.pagoEsseCiclo && v.diasRestantes <= 3
+              const emBreve = !v.pagoEsseCiclo && v.diasRestantes <= 7
               return (
                 <div key={v.id} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                   padding: '10px 12px', borderRadius: 4, flexWrap: 'wrap',
                   background: urgente ? 'var(--accent2)15' : 'var(--bg)',
                   border: `1px solid ${urgente ? 'var(--accent2)' : 'var(--border)'}`,
+                  opacity: v.pagoEsseCiclo ? 0.7 : 1,
                 }}>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{v.nome}</span>
                     <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>
                       {v.proximaData.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                     </span>
+                    {v.pagoEsseCiclo && (
+                      <span style={{ fontSize: 11, color: '#3fb950', marginLeft: 8, fontWeight: 700 }}>✅ pago esse ciclo</span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$ {v.valor.toFixed(2)}</span>
@@ -326,7 +358,7 @@ export default function FinanceiroPage() {
                       color: urgente ? 'var(--accent2)' : emBreve ? '#f0a500' : 'var(--text2)',
                       background: 'var(--bg2)',
                     }}>
-                      {v.diasRestantes === 0 ? 'vence hoje' : v.diasRestantes === 1 ? 'vence amanhã' : `em ${v.diasRestantes} dias`}
+                      {v.pagoEsseCiclo ? 'próximo ciclo' : v.diasRestantes === 0 ? 'vence hoje' : v.diasRestantes === 1 ? 'vence amanhã' : `em ${v.diasRestantes} dias`}
                     </span>
                   </div>
                 </div>
