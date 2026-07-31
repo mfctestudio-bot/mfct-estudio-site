@@ -346,7 +346,36 @@ function GradeSemanal() {
                   {weekDates.map((d, i) => {
                     const diaSemana = d.getDay()
                     const h = horarioNoDia(diaSemana, hr)
-                    if (!h) return <td key={i} style={{ ...tdStyle, color: 'var(--text3)' }}>—</td>
+                    if (!h) {
+                      return (
+                        <td
+                          key={i}
+                          onClick={async () => {
+                            const diaLabel = DIAS_ABREV[diaSemana]
+                            if (!confirm(`Habilitar o horário das ${hr.slice(0, 5)} na ${diaLabel}? Vai abrir com 5 vagas.`)) return
+                            const { data: existente } = await supabase
+                              .from('horarios')
+                              .select('id')
+                              .eq('dia_semana', diaSemana)
+                              .eq('horario', hr)
+                              .maybeSingle()
+                            if (existente) {
+                              await supabase.from('horarios').update({ ativo: true }).eq('id', existente.id)
+                            } else {
+                              await supabase.from('horarios').insert({ dia_semana: diaSemana, horario: hr, capacidade: 5, ativo: true })
+                            }
+                            setToast(`Horário das ${hr.slice(0, 5)} habilitado na ${diaLabel}.`)
+                            setTimeout(() => setToast(''), 3000)
+                            const { data: hData } = await supabase.from('horarios').select('*').eq('ativo', true).order('horario')
+                            setHorarios(hData || [])
+                          }}
+                          style={{ ...tdStyle, color: 'var(--text3)', cursor: 'pointer' }}
+                          title="Clique pra habilitar esse horário nesse dia"
+                        >
+                          + <span style={{ opacity: 0.4 }}>—</span>
+                        </td>
+                      )
+                    }
                     const dataISO = fmtISO(d)
                     const lista = agendamentosDaCelula(dataISO, h.id)
                     const ocupacao = lista.length
