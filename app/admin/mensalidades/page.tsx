@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 
 type PeriodoRow = {
@@ -38,6 +39,7 @@ type PagamentoPendente = {
 const PLANO_3X = '904a1d47-3748-4ddc-980f-cab5979be18e'
 
 export default function MensalidadesPage() {
+  const router = useRouter()
   const [alunos, setAlunos] = useState<AlunoComPeriodo[]>([])
   const [pendentes, setPendentes] = useState<PagamentoPendente[]>([])
   const [confirmando, setConfirmando] = useState<string | null>(null)
@@ -311,9 +313,10 @@ export default function MensalidadesPage() {
             return (
               <div
                 key={a.id}
+                onClick={() => router.push(`/admin/alunos/${a.id}`)}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                  padding: '12px 14px', borderRadius: 8, flexWrap: 'wrap',
+                  padding: '12px 14px', borderRadius: 8, flexWrap: 'wrap', cursor: 'pointer',
                   background: 'var(--card)', border: `1px solid ${statusAtual === 'vencido' ? info.cor : 'var(--border)'}`,
                 }}
               >
@@ -325,7 +328,7 @@ export default function MensalidadesPage() {
                       : 'Nenhum período registrado ainda'}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {a.periodoFuturo && (
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: STATUS_INFO.agendado.cor, background: STATUS_INFO.agendado.bg }}>
                       Renovado até {new Date(a.periodoFuturo.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}
