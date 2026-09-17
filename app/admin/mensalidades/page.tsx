@@ -91,13 +91,44 @@ export default function MensalidadesPage() {
 
   useEffect(() => { carregar() }, [])
 
+  async function calcularDesconto(alunoId: string): Promise<{ valorFinal: number; descontoValor: number | null; descontoMotivo: string | null; descontoRecorrente: boolean }> {
+    const { data: pontual } = await supabase
+      .from('desconto_pendente_aplicacao')
+      .select('id, valor, motivo')
+      .eq('aluno_id', alunoId)
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (pontual) {
+      await supabase.from('desconto_pendente_aplicacao').update({ status: 'aplicado' }).eq('id', pontual.id)
+      return { valorFinal: Math.max(0, 129.90 - Number(pontual.valor)), descontoValor: Number(pontual.valor), descontoMotivo: pontual.motivo, descontoRecorrente: false }
+    }
+
+    const { data: aluno } = await supabase
+      .from('alunos')
+      .select('desconto_individual_valor, desconto_individual_motivo')
+      .eq('id', alunoId)
+      .maybeSingle()
+
+    if (aluno?.desconto_individual_valor) {
+      return { valorFinal: Math.max(0, 129.90 - Number(aluno.desconto_individual_valor)), descontoValor: Number(aluno.desconto_individual_valor), descontoMotivo: aluno.desconto_individual_motivo, descontoRecorrente: true }
+    }
+
+    return { valorFinal: 129.90, descontoValor: null, descontoMotivo: null, descontoRecorrente: false }
+  }
+
   async function confirmarPagamento(pag: PagamentoPendente) {
     setConfirmando(pag.id)
     const agora = new Date()
     const hojeStr = agora.toISOString().slice(0, 10)
 
+    const desconto = await calcularDesconto(pag.aluno_id)
+
     await supabase.from('pagamentos').update({
       status: 'pago', confirmado_em: agora.toISOString(), confirmado_por: 'admin', data_pagamento: agora.toISOString(),
+      valor: desconto.valorFinal, valor_original: 129.90, desconto_valor: desconto.descontoValor, desconto_motivo: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
     }).eq('id', pag.id)
 
     // Empilha o periodo de 30 dias corretamente, igual a Elen faz
@@ -147,8 +178,11 @@ export default function MensalidadesPage() {
     const agora = new Date()
     const hojeStr = agora.toISOString().slice(0, 10)
 
+    const desconto = await calcularDesconto(aluno.id)
+
     const { data: pagamentoNovo } = await supabase.from('pagamentos').insert({
-      aluno_id: aluno.id, plano_id: PLANO_3X, valor: 129.90,
+      aluno_id: aluno.id, plano_id: PLANO_3X, valor: desconto.valorFinal,
+      valor_original: 129.90, desconto_valor: desconto.descontoValor, desconto_motivo: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
       status: 'pago', data_pagamento: agora.toISOString(), metodo_pagamento: 'manual',
       observacao: 'Renovação manual pelo painel',
     }).select('id').single()

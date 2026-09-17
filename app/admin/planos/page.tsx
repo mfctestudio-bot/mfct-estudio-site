@@ -11,6 +11,15 @@ type Plano = {
   created_at: string
 }
 
+type Desconto = {
+  id: string
+  plano_id: string
+  nome: string
+  motivo: string
+  valor: number
+  ativo: boolean
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
   padding: '9px 12px', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
@@ -18,8 +27,12 @@ const inputStyle: React.CSSProperties = {
 
 export default function PlanosPage() {
   const [planos, setPlanos] = useState<Plano[]>([])
+  const [descontos, setDescontos] = useState<Desconto[]>([])
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [planoExpandido, setPlanoExpandido] = useState<string | null>(null)
+  const [novoDescNome, setNovoDescNome] = useState('')
+  const [novoDescValor, setNovoDescValor] = useState('')
 
   const [nome, setNome] = useState('')
   const [vezes, setVezes] = useState('3')
@@ -35,10 +48,32 @@ export default function PlanosPage() {
     setLoading(true)
     const { data } = await supabase.from('planos').select('*').order('valor')
     setPlanos((data as Plano[]) || [])
+    const { data: descData } = await supabase.from('descontos_planos').select('*').order('valor', { ascending: false })
+    setDescontos((descData as Desconto[]) || [])
     setLoading(false)
   }
 
   useEffect(() => { carregar() }, [])
+
+  async function criarDesconto(planoId: string) {
+    if (!novoDescNome.trim() || !novoDescValor) return
+    await supabase.from('descontos_planos').insert({
+      plano_id: planoId, nome: novoDescNome.trim(), motivo: novoDescNome.trim().toLowerCase(), valor: Number(novoDescValor), ativo: true,
+    })
+    setNovoDescNome(''); setNovoDescValor('')
+    carregar()
+  }
+
+  async function toggleDescontoAtivo(d: Desconto) {
+    await supabase.from('descontos_planos').update({ ativo: !d.ativo }).eq('id', d.id)
+    setDescontos(prev => prev.map(x => x.id === d.id ? { ...x, ativo: !x.ativo } : x))
+  }
+
+  async function excluirDesconto(id: string) {
+    if (!confirm('Apagar esse desconto? A Elen não vai mais poder oferecer ele.')) return
+    await supabase.from('descontos_planos').delete().eq('id', id)
+    carregar()
+  }
 
   async function criar() {
     if (!nome.trim() || !valor) return
@@ -109,6 +144,9 @@ export default function PlanosPage() {
                     {!p.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)', marginLeft: 8 }}>(desativado)</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      🏷️ Descontos ({descontos.filter(d => d.plano_id === p.id && d.ativo).length})
+                    </button>
                     <button onClick={() => abrirEdicao(p)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                       ✏️ Editar
                     </button>
@@ -117,6 +155,42 @@ export default function PlanosPage() {
                       color: p.ativo ? 'var(--text2)' : 'var(--accent2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                     }}>
                       {p.ativo ? 'Desativar' : 'Ativar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {planoExpandido === p.id && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+                    A Elen só pode oferecer os descontos que estiverem aqui — ela nunca inventa um valor.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                    {descontos.filter(d => d.plano_id === p.id).map(d => (
+                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: d.ativo ? 1 : 0.5 }}>
+                        <span style={{ fontSize: 12 }}>{d.nome} — R$ {Number(d.valor).toFixed(2)} de desconto{!d.ativo && ' (desativado)'}</span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => toggleDescontoAtivo(d)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            {d.ativo ? 'Desativar' : 'Ativar'}
+                          </button>
+                          <button onClick={() => excluirDesconto(d.id)} style={{ background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Apagar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {!descontos.filter(d => d.plano_id === p.id).length && (
+                      <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum desconto configurado ainda pra esse plano.</p>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input value={novoDescNome} onChange={e => setNovoDescNome(e.target.value)} placeholder="Ex: Falta de dinheiro" style={{ ...inputStyle, flex: 2 }} />
+                    <input type="number" step="0.01" value={novoDescValor} onChange={e => setNovoDescValor(e.target.value)} placeholder="Valor R$" style={{ ...inputStyle, flex: 1 }} />
+                    <button onClick={() => criarDesconto(p.id)} disabled={!novoDescNome.trim() || !novoDescValor} style={{
+                      background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6, padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      opacity: (!novoDescNome.trim() || !novoDescValor) ? 0.6 : 1,
+                    }}>
+                      + Add
                     </button>
                   </div>
                 </div>
