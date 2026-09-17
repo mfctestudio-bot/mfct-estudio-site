@@ -128,7 +128,7 @@ export default function MensalidadesPage() {
 
     await supabase.from('pagamentos').update({
       status: 'pago', confirmado_em: agora.toISOString(), confirmado_por: 'admin', data_pagamento: agora.toISOString(),
-      valor: desconto.valorFinal, valor_original: 129.90, desconto_valor: desconto.descontoValor, desconto_motivo: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
+      valor: desconto.valorFinal, valor_original: 129.90, desconto: desconto.descontoValor || 0, motivo_desconto: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
     }).eq('id', pag.id)
 
     // Empilha o periodo de 30 dias corretamente, igual a Elen faz
@@ -182,7 +182,7 @@ export default function MensalidadesPage() {
 
     const { data: pagamentoNovo } = await supabase.from('pagamentos').insert({
       aluno_id: aluno.id, plano_id: PLANO_3X, valor: desconto.valorFinal,
-      valor_original: 129.90, desconto_valor: desconto.descontoValor, desconto_motivo: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
+      valor_original: 129.90, desconto: desconto.descontoValor || 0, motivo_desconto: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
       status: 'pago', data_pagamento: agora.toISOString(), metodo_pagamento: 'manual',
       observacao: 'Renovação manual pelo painel',
     }).select('id').single()

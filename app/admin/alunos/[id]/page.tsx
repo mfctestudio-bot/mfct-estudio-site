@@ -37,16 +37,21 @@ export default function AlunoPage() {
   const [modalDesconto, setModalDesconto] = useState('')
   const [modalDescontoTipo, setModalDescontoTipo] = useState<'valor' | 'percentual'>('valor')
   const [modalData, setModalData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [periodoAtual, setPeriodoAtual] = useState<{ data_inicio: string; data_fim: string; status: string } | null>(null)
+  const [periodoFuturo, setPeriodoFuturo] = useState<{ data_inicio: string; data_fim: string; status: string } | null>(null)
   const [modalSaving, setModalSaving] = useState(false)
 
   useEffect(() => {
     async function load() {
-      const [{ data: alunoData }, { data: planosData }] = await Promise.all([
+      const [{ data: alunoData }, { data: planosData }, { data: periodosData }] = await Promise.all([
         supabase.from('alunos').select('*').eq('id', id).single(),
         supabase.from('planos').select('*').order('valor'),
+        supabase.from('planos_periodos').select('data_inicio, data_fim, status').eq('aluno_id', id).order('data_fim', { ascending: false }),
       ])
       setAluno(alunoData)
       setPlanos(planosData || [])
+      setPeriodoAtual((periodosData || []).find(p => p.status === 'ativo' || p.status === 'vencido') || null)
+      setPeriodoFuturo((periodosData || []).find(p => p.status === 'agendado') || null)
       setLoading(false)
     }
     load()
@@ -120,7 +125,7 @@ export default function AlunoPage() {
     const dataPagDateAtiv = new Date(modalData + 'T12:00:00')
     const dataVencimentoAtiv = new Date(dataPagDateAtiv)
     dataVencimentoAtiv.setMonth(dataVencimentoAtiv.getMonth() + 1)
-    await supabase.from('pagamentos').insert({
+    const { data: pagamentoInserido } = await supabase.from('pagamentos').insert({
       aluno_id: id,
       plano_id: modalPlano.id,
       valor: valorFinal,
@@ -132,7 +137,34 @@ export default function AlunoPage() {
       confirmado_por: 'admin',
       data_pagamento: dataPagDateAtiv.toISOString(),
       data_vencimento: dataVencimentoAtiv.toISOString().slice(0, 10),
-    })
+    }).select('id').single()
+
+    // Cria o período de 30 dias, empilhado corretamente (mesma lógica usada em Mensalidades)
+    if (pagamentoInserido) {
+      const hojeStr = new Date().toISOString().slice(0, 10)
+      let dataInicioPeriodo = modalData
+      const { data: ultimoPeriodo } = await supabase
+        .from('planos_periodos')
+        .select('data_fim')
+        .eq('aluno_id', id)
+        .order('data_fim', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (ultimoPeriodo) {
+        const fimUltimo = new Date(ultimoPeriodo.data_fim + 'T00:00:00')
+        if (fimUltimo >= dataPagDateAtiv) {
+          fimUltimo.setDate(fimUltimo.getDate() + 1)
+          dataInicioPeriodo = fimUltimo.toISOString().slice(0, 10)
+        }
+      }
+      const dataFimPeriodo = new Date(dataInicioPeriodo + 'T00:00:00')
+      dataFimPeriodo.setDate(dataFimPeriodo.getDate() + 30)
+      await supabase.from('planos_periodos').insert({
+        aluno_id: id, pagamento_id: pagamentoInserido.id,
+        data_inicio: dataInicioPeriodo, data_fim: dataFimPeriodo.toISOString().slice(0, 10),
+        status: dataInicioPeriodo <= hojeStr ? 'ativo' : 'agendado',
+      })
+    }
 
     setAluno(prev => prev ? { ...prev, status_plano: 'ativo', plano_id: modalPlano.id, dia_vencimento: diaVencimentoNovo } : prev)
 
@@ -222,83 +254,6 @@ export default function AlunoPage() {
         </div>
       </div>
 
-      {/* AÇÕES RÁPIDAS */}
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>Ações rápidas</div>
-
-        <SubLabel>Status do plano</SubLabel>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          {aluno.status_plano !== 'ativo' && aluno.status_plano !== 'pausado' && (
-            <button onClick={() => abrirModalAtivacao()} style={{
-              background: '#3fb950', border: 'none', color: '#fff',
-              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>
-              ✅ Ativar plano
-            </button>
-          )}
-
-          {(aluno.status_plano === 'ativo' || aluno.status_plano === 'pausado') && (
-            <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{
-              background: '#3fb950', border: 'none', color: '#fff',
-              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>
-              🔄 {aluno.status_plano === 'pausado' ? 'Reativar (registrar pagamento)' : 'Renovar plano (registrar novo pagamento)'}
-            </button>
-          )}
-
-          {aluno.status_plano === 'ativo' && (
-            <button onClick={pausarPlano} style={{
-              background: 'transparent', border: '1.5px solid #f0a500', color: '#f0a500',
-              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>
-              ⏸️ Pausar plano
-            </button>
-          )}
-
-          {aluno.status_plano !== 'cancelado' && (
-            <button onClick={cancelarPlano} style={{
-              background: 'transparent', border: '1.5px solid var(--accent2)', color: 'var(--accent2)',
-              borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>
-              ❌ Cancelar plano
-            </button>
-          )}
-        </div>
-
-        <SubLabel>Tipo de plano</SubLabel>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          {planos.filter(p => p.vezes_semana > 1).map(p => (
-            <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} style={{
-              background: aluno.plano_id === p.id ? '#3fb95022' : 'var(--card)',
-              border: `1.5px solid ${aluno.plano_id === p.id ? '#3fb950' : 'var(--border)'}`,
-              color: aluno.plano_id === p.id ? '#3fb950' : 'var(--text)',
-              borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}>
-              {p.nome} — R$ {Number(p.valor).toFixed(2).replace('.', ',')}
-            </button>
-          ))}
-        </div>
-
-        <SubLabel>Vencimento</SubLabel>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            value={aluno.dia_vencimento || ''}
-            onChange={e => alterarVencimento(Number(e.target.value))}
-            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}
-          >
-            <option value="">-- selecionar --</option>
-            {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-              <option key={d} value={d}>Dia {d}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       <Secao titulo="Dados pessoais">
         <Campo label="Nome">
           <input value={aluno.nome} onChange={e => update('nome', e.target.value)} style={inputStyle} />
@@ -314,27 +269,7 @@ export default function AlunoPage() {
         </Campo>
       </Secao>
 
-      <Secao titulo="Plano e status">
-        <Campo label="Plano">
-          <select value={aluno.plano_id || ''} onChange={e => update('plano_id', e.target.value)} style={inputStyle}>
-            <option value="">Sem plano</option>
-            {planos.map(p => <option key={p.id} value={p.id}>{p.nome} — R$ {p.valor.toFixed(2)}</option>)}
-          </select>
-        </Campo>
-        <Campo label="Status">
-          <select value={aluno.status_plano} onChange={e => update('status_plano', e.target.value as Aluno['status_plano'])} style={inputStyle}>
-            {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </Campo>
-        <Campo label="Dia do vencimento (1-31)">
-          <input
-            type="number" min={1} max={31}
-            value={aluno.dia_vencimento ?? ''}
-            onChange={e => update('dia_vencimento', e.target.value ? Number(e.target.value) : null)}
-            style={inputStyle}
-            placeholder="Ex: 5 (cobrança automática todo dia 5)"
-          />
-        </Campo>
+      <Secao titulo="Outras informações">
         <Campo label="Observações">
           <textarea value={aluno.observacoes || ''} onChange={e => update('observacoes', e.target.value)} style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
         </Campo>
@@ -359,6 +294,87 @@ export default function AlunoPage() {
           </a>
         </Secao>
       )}
+
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Plano atual</div>
+        <div
+          onClick={() => router.push('/admin/mensalidades')}
+          style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '16px', cursor: 'pointer' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>
+                {planos.find(p => p.id === aluno.plano_id)?.nome || 'Sem plano definido'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+                {periodoAtual
+                  ? `${periodoAtual.status === 'vencido' ? 'Venceu' : 'Vale'} de ${new Date(periodoAtual.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(periodoAtual.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                  : 'Nenhum período registrado ainda'}
+                {periodoFuturo && ` · Renovado até ${new Date(periodoFuturo.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`}
+              </div>
+            </div>
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
+              color: aluno.status_plano === 'ativo' ? '#3fb950' : aluno.status_plano === 'pausado' ? '#5b9bd5' : 'var(--accent2)',
+              background: aluno.status_plano === 'ativo' ? '#3fb95015' : aluno.status_plano === 'pausado' ? '#5b9bd515' : 'var(--accent2)15',
+            }}>
+              {STATUS_OPTIONS.find(s => s.value === aluno.status_plano)?.label || aluno.status_plano}
+            </span>
+          </div>
+
+          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {aluno.status_plano !== 'ativo' && aluno.status_plano !== 'pausado' && (
+              <button onClick={() => abrirModalAtivacao()} style={{ background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ✅ Ativar plano
+              </button>
+            )}
+            {(aluno.status_plano === 'ativo' || aluno.status_plano === 'pausado') && (
+              <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{ background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                🔄 {aluno.status_plano === 'pausado' ? 'Reativar' : 'Renovar plano'}
+              </button>
+            )}
+            {aluno.status_plano === 'ativo' && (
+              <button onClick={pausarPlano} style={{ background: 'transparent', border: '1.5px solid #f0a500', color: '#f0a500', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ⏸️ Pausar
+              </button>
+            )}
+            {aluno.status_plano !== 'cancelado' && (
+              <button onClick={cancelarPlano} style={{ background: 'transparent', border: '1.5px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ❌ Cancelar
+              </button>
+            )}
+          </div>
+
+          <div onClick={e => e.stopPropagation()} style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <SubLabel>Trocar tipo de plano</SubLabel>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              {planos.filter(p => p.vezes_semana > 1).map(p => (
+                <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} style={{
+                  background: aluno.plano_id === p.id ? '#3fb95022' : 'var(--bg)',
+                  border: `1.5px solid ${aluno.plano_id === p.id ? '#3fb950' : 'var(--border)'}`,
+                  color: aluno.plano_id === p.id ? '#3fb950' : 'var(--text)',
+                  borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  {p.nome} — R$ {Number(p.valor).toFixed(2).replace('.', ',')}
+                </button>
+              ))}
+            </div>
+            <SubLabel>Dia de vencimento</SubLabel>
+            <select
+              value={aluno.dia_vencimento || ''}
+              onChange={e => alterarVencimento(Number(e.target.value))}
+              style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}
+            >
+              <option value="">-- selecionar --</option>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                <option key={d} value={d}>Dia {d}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ marginTop: 14, fontSize: 12, color: '#5b9bd5' }}>Ver histórico completo de mensalidades →</div>
+        </div>
+      </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
         <button onClick={salvar} disabled={saving} style={{ ...btnStyle, background: 'var(--accent2)', color: '#fff', opacity: saving ? 0.6 : 1 }}>
