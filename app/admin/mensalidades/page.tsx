@@ -26,51 +26,120 @@ const STATUS_INFO: Record<string, { label: string; cor: string; bg: string }> = 
   sem_periodo: { label: 'Sem período registrado', cor: 'var(--text3)', bg: 'var(--bg)' },
 }
 
+type PagamentoPendente = {
+  id: string
+  aluno_id: string
+  valor: number
+  comprovante_url: string | null
+  created_at: string
+  alunos: { nome: string; telefone: string } | null
+}
+
+const PLANO_3X = '904a1d47-3748-4ddc-980f-cab5979be18e'
+
 export default function MensalidadesPage() {
   const [alunos, setAlunos] = useState<AlunoComPeriodo[]>([])
+  const [pendentes, setPendentes] = useState<PagamentoPendente[]>([])
+  const [confirmando, setConfirmando] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<'todos' | 'vencido' | 'ativo' | 'sem_periodo'>('todos')
   const [busca, setBusca] = useState('')
 
-  useEffect(() => {
-    async function carregar() {
-      setLoading(true)
-      const { data: alunosData } = await supabase
-        .from('alunos')
-        .select('id, nome, telefone, status_plano')
-        .in('status_plano', ['ativo', 'vencido'])
-        .order('nome')
+  async function carregar() {
+    setLoading(true)
+    const { data: pendentesData } = await supabase
+      .from('pagamentos')
+      .select('id, aluno_id, valor, comprovante_url, created_at, alunos(nome, telefone)')
+      .eq('status', 'aguardando_confirmacao')
+      .order('created_at', { ascending: false })
+    setPendentes((pendentesData as unknown as PagamentoPendente[]) || [])
 
-      const { data: periodosData } = await supabase
-        .from('planos_periodos')
-        .select('id, aluno_id, data_inicio, data_fim, status')
-        .order('data_fim', { ascending: false })
+    const { data: alunosData } = await supabase
+      .from('alunos')
+      .select('id, nome, telefone, status_plano')
+      .in('status_plano', ['ativo', 'vencido'])
+      .order('nome')
 
-      const periodosPorAluno = new Map<string, PeriodoRow[]>()
-      for (const p of (periodosData as PeriodoRow[] | null) || []) {
-        if (!periodosPorAluno.has(p.aluno_id)) periodosPorAluno.set(p.aluno_id, [])
-        periodosPorAluno.get(p.aluno_id)!.push(p)
-      }
+    const { data: periodosData } = await supabase
+      .from('planos_periodos')
+      .select('id, aluno_id, data_inicio, data_fim, status')
+      .order('data_fim', { ascending: false })
 
-      const resultado: AlunoComPeriodo[] = ((alunosData as { id: string; nome: string; telefone: string | null; status_plano: string }[] | null) || []).map(a => {
-        const periodos = periodosPorAluno.get(a.id) || []
-        const atual = periodos.find(p => p.status === 'ativo' || p.status === 'vencido') || null
-        const futuro = periodos.find(p => p.status === 'agendado') || null
-        return { ...a, periodoAtual: atual, periodoFuturo: futuro }
-      })
-
-      resultado.sort((a, b) => {
-        const ordem = { vencido: 0, ativo: 1, sem_periodo: 2 }
-        const statusA = a.periodoAtual?.status || 'sem_periodo'
-        const statusB = b.periodoAtual?.status || 'sem_periodo'
-        return (ordem[statusA as keyof typeof ordem] ?? 3) - (ordem[statusB as keyof typeof ordem] ?? 3)
-      })
-
-      setAlunos(resultado)
-      setLoading(false)
+    const periodosPorAluno = new Map<string, PeriodoRow[]>()
+    for (const p of (periodosData as PeriodoRow[] | null) || []) {
+      if (!periodosPorAluno.has(p.aluno_id)) periodosPorAluno.set(p.aluno_id, [])
+      periodosPorAluno.get(p.aluno_id)!.push(p)
     }
+
+    const resultado: AlunoComPeriodo[] = ((alunosData as { id: string; nome: string; telefone: string | null; status_plano: string }[] | null) || []).map(a => {
+      const periodos = periodosPorAluno.get(a.id) || []
+      const atual = periodos.find(p => p.status === 'ativo' || p.status === 'vencido') || null
+      const futuro = periodos.find(p => p.status === 'agendado') || null
+      return { ...a, periodoAtual: atual, periodoFuturo: futuro }
+    })
+
+    resultado.sort((a, b) => {
+      const ordem = { vencido: 0, ativo: 1, sem_periodo: 2 }
+      const statusA = a.periodoAtual?.status || 'sem_periodo'
+      const statusB = b.periodoAtual?.status || 'sem_periodo'
+      return (ordem[statusA as keyof typeof ordem] ?? 3) - (ordem[statusB as keyof typeof ordem] ?? 3)
+    })
+
+    setAlunos(resultado)
+    setLoading(false)
+  }
+
+  useEffect(() => { carregar() }, [])
+
+  async function confirmarPagamento(pag: PagamentoPendente) {
+    setConfirmando(pag.id)
+    const agora = new Date()
+    const hojeStr = agora.toISOString().slice(0, 10)
+
+    await supabase.from('pagamentos').update({
+      status: 'pago', confirmado_em: agora.toISOString(), confirmado_por: 'admin', data_pagamento: agora.toISOString(),
+    }).eq('id', pag.id)
+
+    // Empilha o periodo de 30 dias corretamente, igual a Elen faz
+    const { data: ultimoPeriodo } = await supabase
+      .from('planos_periodos')
+      .select('data_fim')
+      .eq('aluno_id', pag.aluno_id)
+      .order('data_fim', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let dataInicio = hojeStr
+    if (ultimoPeriodo) {
+      const fimUltimo = new Date(ultimoPeriodo.data_fim + 'T00:00:00')
+      if (fimUltimo >= agora) {
+        fimUltimo.setDate(fimUltimo.getDate() + 1)
+        dataInicio = fimUltimo.toISOString().slice(0, 10)
+      }
+    }
+    const dataFim = new Date(dataInicio + 'T00:00:00')
+    dataFim.setDate(dataFim.getDate() + 30)
+    const statusPeriodo = dataInicio <= hojeStr ? 'ativo' : 'agendado'
+
+    await supabase.from('planos_periodos').insert({
+      aluno_id: pag.aluno_id, pagamento_id: pag.id,
+      data_inicio: dataInicio, data_fim: dataFim.toISOString().slice(0, 10), status: statusPeriodo,
+    })
+
+    await supabase.from('alunos').update({ status_plano: 'ativo' }).eq('id', pag.aluno_id)
+
+    if (pag.alunos?.telefone) {
+      try {
+        await fetch('/api/confirmar-pagamento', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pag.alunos.telefone, nomeAluno: pag.alunos.nome }),
+        })
+      } catch (e) {}
+    }
+
+    setConfirmando(null)
     carregar()
-  }, [])
+  }
 
   const filtrados = alunos.filter(a => {
     const statusAtual = a.periodoAtual?.status || 'sem_periodo'
@@ -91,6 +160,42 @@ export default function MensalidadesPage() {
       <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
         Quem está em dia, quem venceu, e quem já renovou pro próximo período.
       </p>
+
+      {!!pendentes.length && (
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: '#f0a500' }}>
+            ⏳ Aguardando confirmação ({pendentes.length})
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendentes.map(p => (
+              <div key={p.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                padding: '12px 14px', borderRadius: 8, background: 'var(--card)', border: '1px solid #f0a500',
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{p.alunos?.nome || p.alunos?.telefone}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                    R$ {Number(p.valor).toFixed(2)}
+                    {p.comprovante_url && (
+                      <> · <a href={p.comprovante_url} target="_blank" rel="noreferrer" style={{ color: '#5b9bd5' }}>ver comprovante</a></>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => confirmarPagamento(p)}
+                  disabled={confirmando === p.id}
+                  style={{
+                    padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    border: '1px solid #3fb950', background: '#3fb95015', color: '#3fb950',
+                  }}
+                >
+                  {confirmando === p.id ? 'Confirmando...' : '✅ Confirmar pagamento'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {([
