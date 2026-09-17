@@ -141,6 +141,44 @@ export default function MensalidadesPage() {
     carregar()
   }
 
+  async function renovarManualmente(aluno: AlunoComPeriodo) {
+    if (!confirm(`Renovar o plano de ${aluno.nome} por mais 30 dias?`)) return
+    setConfirmando(aluno.id)
+    const agora = new Date()
+    const hojeStr = agora.toISOString().slice(0, 10)
+
+    const { data: pagamentoNovo } = await supabase.from('pagamentos').insert({
+      aluno_id: aluno.id, plano_id: PLANO_3X, valor: 129.90,
+      status: 'pago', data_pagamento: agora.toISOString(), metodo_pagamento: 'manual',
+      observacao: 'Renovação manual pelo painel',
+    }).select('id').single()
+
+    let dataInicio = hojeStr
+    const ultimo = aluno.periodoFuturo || aluno.periodoAtual
+    if (ultimo) {
+      const fimUltimo = new Date(ultimo.data_fim + 'T00:00:00')
+      if (fimUltimo >= agora) {
+        fimUltimo.setDate(fimUltimo.getDate() + 1)
+        dataInicio = fimUltimo.toISOString().slice(0, 10)
+      }
+    }
+    const dataFim = new Date(dataInicio + 'T00:00:00')
+    dataFim.setDate(dataFim.getDate() + 30)
+    const statusPeriodo = dataInicio <= hojeStr ? 'ativo' : 'agendado'
+
+    if (pagamentoNovo) {
+      await supabase.from('planos_periodos').insert({
+        aluno_id: aluno.id, pagamento_id: pagamentoNovo.id,
+        data_inicio: dataInicio, data_fim: dataFim.toISOString().slice(0, 10), status: statusPeriodo,
+      })
+    }
+
+    await supabase.from('alunos').update({ status_plano: 'ativo' }).eq('id', aluno.id)
+
+    setConfirmando(null)
+    carregar()
+  }
+
   const filtrados = alunos.filter(a => {
     const statusAtual = a.periodoAtual?.status || 'sem_periodo'
     if (filtro !== 'todos' && statusAtual !== filtro) return false
@@ -262,6 +300,18 @@ export default function MensalidadesPage() {
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: info.cor, background: info.bg }}>
                     {info.label}
                   </span>
+                  {!a.periodoFuturo && (
+                    <button
+                      onClick={() => renovarManualmente(a)}
+                      disabled={confirmando === a.id}
+                      style={{
+                        padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        border: '1px solid #5b9bd5', background: '#5b9bd515', color: '#5b9bd5',
+                      }}
+                    >
+                      {confirmando === a.id ? 'Renovando...' : '🔄 Renovar 30 dias'}
+                    </button>
+                  )}
                 </div>
               </div>
             )
