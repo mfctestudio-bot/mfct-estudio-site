@@ -10,17 +10,24 @@ function hojeISO() {
 }
 
 async function validarAcessoECapacidade(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   alunoId: string,
   horarioId: string,
   data: string,
   excluirAgendamentoId?: string,
 ) {
-  const [{ data: aluno, error: alunoError }, { data: periodos, error: periodosError }, { data: horario, error: horarioError }] = await Promise.all([
+  const [alunoResp, periodosResp, horarioResp] = await Promise.all([
     supabase.from('alunos').select('id, status_plano').eq('id', alunoId).single(),
     supabase.from('planos_periodos').select('data_inicio, data_fim').eq('aluno_id', alunoId),
     supabase.from('horarios').select('id, capacidade, ativo').eq('id', horarioId).single(),
   ])
+  const aluno = alunoResp.data as { id: string; status_plano: string } | null
+  const alunoError = alunoResp.error
+  const periodos = periodosResp.data as { data_inicio: string; data_fim: string }[] | null
+  const periodosError = periodosResp.error
+  const horario = horarioResp.data as { id: string; capacidade: number; ativo: boolean } | null
+  const horarioError = horarioResp.error
 
   if (alunoError || !aluno) return 'aluno não encontrado'
   if (aluno.status_plano !== 'ativo') return 'a matrícula do aluno não está ativa'

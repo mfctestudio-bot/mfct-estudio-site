@@ -147,5 +147,6 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
     throw new Error(alunoUpdateError.message)
   }
 
+  if (!pagamentoId) throw new Error('pagamentoId ausente após criação/atualização do pagamento')
   return { pagamentoId, periodoId: periodo.id, dataInicio, dataFim }
 }
