@@ -73,7 +73,10 @@ function AlunosContent() {
       const periodos = periodosPorAluno.get(aluno.id) || []
       const atual = periodoAtualHoje(periodos)
       const vencido = periodos.some(p => statusPeriodoHoje(p) === 'vencido')
-      efetivos[aluno.id] = atual ? 'ativo' : vencido ? 'vencido' : aluno.status_plano
+      // Só reclassifica como "vencido" quem está com matrícula ativa vencendo.
+      // Um aluno pausado ou já cancelado não deve voltar a aparecer como
+      // vencido só porque tem um período antigo com data_fim no passado.
+      efetivos[aluno.id] = atual ? 'ativo' : (vencido && aluno.status_plano === 'ativo') ? 'vencido' : aluno.status_plano
     }
     setStatusEfetivo(efetivos)
     setAlunos((data || []).filter(a => statusFiltro === 'todos' || efetivos[a.id] === statusFiltro))
