@@ -17,6 +17,7 @@ type PagamentoRow = {
   observacao: string | null
   created_at: string
   aluno_id: string
+  plano_id: string | null
   alunos: { nome: string; telefone: string } | null
   planos: { nome: string } | null
 }
@@ -80,7 +81,7 @@ export default function PagamentosPage() {
     setLoading(true)
     let q = supabase
       .from('pagamentos')
-      .select('id, valor, valor_original, desconto, status, data_vencimento, data_pagamento, comprovante_url, comprovante_recebido_em, confirmado_em, metodo_pagamento, observacao, created_at, aluno_id, alunos(nome, telefone), planos(nome)')
+      .select('id, valor, valor_original, desconto, status, data_vencimento, data_pagamento, comprovante_url, comprovante_recebido_em, confirmado_em, metodo_pagamento, observacao, created_at, aluno_id, plano_id, alunos(nome, telefone), planos(nome)')
       .order('created_at', { ascending: false })
       .limit(100)
     if (filtro !== 'todos') q = q.eq('status', filtro)
@@ -173,7 +174,12 @@ export default function PagamentosPage() {
 
   async function removerPagamento(id: string) {
     if (!confirm('Remover este pagamento? Essa ação não pode ser desfeita.')) return
-    await supabase.from('pagamentos').delete().eq('id', id)
+    const resposta = await fetch(`/api/admin-pagamentos?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      alert(erro?.error || 'Não foi possível excluir o pagamento.')
+      return
+    }
     setEditando(null)
     load()
   }
@@ -183,34 +189,40 @@ export default function PagamentosPage() {
   async function confirmarPagamento(id: string) {
     setConfirmando(id)
     const dataPag = dataConfirm[id] || new Date().toISOString().slice(0, 10)
-    const dataPagDate = new Date(dataPag + 'T12:00:00')
-    const dataVencimento = new Date(dataPagDate)
-    dataVencimento.setMonth(dataVencimento.getMonth() + 1)
     const metodo = metodoConfirm[id] || 'pix'
-
-    // Atualizar pagamento
-    await supabase.from('pagamentos').update({
-      status: 'pago',
-      confirmado_em: new Date().toISOString(),
-      confirmado_por: 'admin',
-      data_pagamento: dataPagDate.toISOString(),
-      data_vencimento: dataVencimento.toISOString().slice(0, 10),
-      metodo_pagamento: metodo,
-    }).eq('id', id)
-
-    // Ativar aluno
     const pag = rows.find(r => r.id === id)
-    if (pag?.alunos?.telefone) {
-      await supabase.from('alunos')
-        .update({ status_plano: 'ativo' })
-        .eq('telefone', pag.alunos.telefone)
+    if (!pag) {
+      setConfirmando(null)
+      return
+    }
+    const { data: aluno } = await supabase.from('alunos').select('plano_id').eq('id', pag.aluno_id).single()
+    const planoId = pag.plano_id || aluno?.plano_id
+    if (!planoId) {
+      setConfirmando(null)
+      return
+    }
 
+    const resposta = await fetch('/api/admin-ativar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: pag.aluno_id,
+        pagamentoId: pag.id,
+        planoId,
+        valor: Number(pag.valor),
+        valorOriginal: Number(pag.valor_original || pag.valor),
+        desconto: Number(pag.desconto || 0),
+        dataPagamento: dataPag,
+        metodoPagamento: metodo,
+      }),
+    })
+    if (resposta.ok) {
       // Notificar aluno via WhatsApp
       try {
         await fetch('/api/confirmar-pagamento', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pag.alunos.telefone, nomeAluno: pag.alunos.nome })
+          body: JSON.stringify({ alunoId: pag.aluno_id })
         })
       } catch (e) {}
     }

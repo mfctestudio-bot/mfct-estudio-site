@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/api-auth'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -8,6 +9,9 @@ const EVO_URL = 'https://ribbitingshoebill-evolution.cloudfy.live'
 const EVO_KEY = 'MMxqYf3msawylWCBW2PSU4uUdJAY6mL3'
 
 export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req)
+  if (authError) return authError
+
   const { agendamento_id } = await req.json()
   if (!agendamento_id) return NextResponse.json({ error: 'agendamento_id required' }, { status: 400 })
 

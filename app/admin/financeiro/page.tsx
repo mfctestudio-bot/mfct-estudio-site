@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { periodoAtualHoje } from '@/lib/periodos'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const MESES_LONGOS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -98,10 +99,21 @@ export default function FinanceiroPage() {
       setGrafico(MESES.map((m, i) => ({ mes: m, total: Math.round(porMes[i] * 100) / 100 })))
 
       // Receita prevista: soma dos planos dos alunos ativos
-      const { data: ativos } = await supabase
+      const { data: alunosCadastrados } = await supabase
         .from('alunos')
         .select('id, nome, telefone, dia_vencimento, planos(valor)')
-        .eq('status_plano', 'ativo')
+
+      const idsCandidatos = (alunosCadastrados || []).map(a => a.id)
+      const { data: periodosAtuais } = idsCandidatos.length > 0
+        ? await supabase.from('planos_periodos').select('aluno_id, data_inicio, data_fim, status').in('aluno_id', idsCandidatos)
+        : { data: [] }
+      const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string; status: string }[]>()
+      for (const periodo of periodosAtuais || []) {
+        const lista = periodosPorAluno.get(periodo.aluno_id) || []
+        lista.push(periodo)
+        periodosPorAluno.set(periodo.aluno_id, lista)
+      }
+      const ativos = (alunosCadastrados || []).filter(a => periodoAtualHoje(periodosPorAluno.get(a.id) || []))
 
       let soma = 0
       const hoje = new Date()

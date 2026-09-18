@@ -22,6 +22,8 @@ type Avaliacao = {
   objetivo: string
 }
 
+type Periodo = { data_inicio: string; data_fim: string; status: string }
+
 const FATORES_ATIVIDADE: Record<string, { label: string; fator: number }> = {
   sedentario: { label: 'Sedentário', fator: 1.2 },
   leve: { label: 'Leve (1-3x/semana)', fator: 1.375 },
@@ -69,7 +71,14 @@ async function getDados(token: string) {
   if (!Array.isArray(alunos) || alunos.length === 0) return { erro: 'nao_encontrado' as const }
   const aluno = alunos[0]
 
-  if (aluno.status_plano !== 'ativo') return { erro: 'plano_inativo' as const, aluno }
+  const periodosResp = await fetch(
+    `${SUPA_URL}/rest/v1/planos_periodos?aluno_id=eq.${aluno.id}&select=data_inicio,data_fim,status&order=data_fim.desc`,
+    { headers, cache: 'no-store' }
+  )
+  const periodos: Periodo[] = await periodosResp.json().catch(() => [])
+  const hoje = new Date().toISOString().slice(0, 10)
+  const temPeriodoAtivo = periodos.some(periodo => periodo.data_inicio <= hoje && periodo.data_fim >= hoje)
+  if (!temPeriodoAtivo) return { erro: 'plano_inativo' as const, aluno }
 
   const avalResp = await fetch(
     `${SUPA_URL}/rest/v1/avaliacoes?aluno_id=eq.${aluno.id}&status=eq.realizada&order=data.asc&select=id,data,peso,imc,gordura_corporal_pct,gordura_visceral,massa_muscular_pct,idade_metabolica,nivel_atividade,objetivo`,

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
+import { periodoAtualHoje } from '@/lib/periodos'
 
 type Aluno = { id: string; nome: string; status_plano: string; meta_peso: number | null; meta_gordura_pct: number | null; token_avaliacao: string }
 
@@ -105,9 +106,18 @@ export default function AvaliacoesPage() {
     const { data } = await supabase
       .from('alunos')
       .select('id, nome, status_plano, meta_peso, meta_gordura_pct, token_avaliacao')
-      .eq('status_plano', 'ativo')
       .order('nome')
-    setAlunos((data as Aluno[]) || [])
+    const ids = (data || []).map(a => a.id)
+    const { data: periodos } = ids.length > 0
+      ? await supabase.from('planos_periodos').select('aluno_id, data_inicio, data_fim, status').in('aluno_id', ids)
+      : { data: [] }
+    const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string; status: string }[]>()
+    for (const periodo of periodos || []) {
+      const lista = periodosPorAluno.get(periodo.aluno_id) || []
+      lista.push(periodo)
+      periodosPorAluno.set(periodo.aluno_id, lista)
+    }
+    setAlunos(((data as Aluno[]) || []).filter(a => periodoAtualHoje(periodosPorAluno.get(a.id) || [])))
     setLoading(false)
   }
 

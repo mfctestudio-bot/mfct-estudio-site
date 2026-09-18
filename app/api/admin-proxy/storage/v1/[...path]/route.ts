@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/api-auth'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-function isAdmin(req: NextRequest) {
-  const cookie = req.cookies.get('admin_auth')?.value
-  const adminUser = process.env.ADMIN_USER || 'ronynsc5'
-  const adminPass = process.env.ADMIN_PASSWORD || '@Miudinho123'
-  const expected = Buffer.from(`${adminUser}:${adminPass}`).toString('base64')
-  return cookie === expected
-}
-
 async function forward(req: NextRequest, path: string[]) {
-  if (!isAdmin(req)) {
-    return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
-  }
+  const authError = requireAdmin(req)
+  if (authError) return authError
   if (!SERVICE_KEY) {
     return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY não configurada no servidor' }, { status: 500 })
   }

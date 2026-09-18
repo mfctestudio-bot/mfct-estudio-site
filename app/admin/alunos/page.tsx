@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Aluno, Plano } from '@/lib/supabase'
+import { periodoAtualHoje, statusPeriodoHoje } from '@/lib/periodos'
 
 const STATUS_LABEL: Record<string, string> = {
   lead: 'Lead',
@@ -45,6 +46,7 @@ function AlunosContent() {
   const [loading, setLoading] = useState(true)
   const [novoOpen, setNovoOpen] = useState(false)
   const [comAvulsa, setComAvulsa] = useState<Set<string>>(new Set())
+  const [statusEfetivo, setStatusEfetivo] = useState<Record<string, string>>({})
 
   async function load() {
     setLoading(true)
@@ -55,9 +57,26 @@ function AlunosContent() {
     setComAvulsa(new Set((avulsasData || []).map(a => a.aluno_id)))
 
     let query = supabase.from('alunos').select('*, planos(*)').order('nome')
-    if (statusFiltro !== 'todos') query = query.eq('status_plano', statusFiltro)
     const { data } = await query
-    setAlunos(data || [])
+    const ids = (data || []).map(a => a.id)
+    const { data: periodosData } = ids.length > 0
+      ? await supabase.from('planos_periodos').select('aluno_id, data_inicio, data_fim, status').in('aluno_id', ids)
+      : { data: [] }
+    const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string; status: string }[]>()
+    for (const periodo of periodosData || []) {
+      const lista = periodosPorAluno.get(periodo.aluno_id) || []
+      lista.push(periodo)
+      periodosPorAluno.set(periodo.aluno_id, lista)
+    }
+    const efetivos: Record<string, string> = {}
+    for (const aluno of data || []) {
+      const periodos = periodosPorAluno.get(aluno.id) || []
+      const atual = periodoAtualHoje(periodos)
+      const vencido = periodos.some(p => statusPeriodoHoje(p) === 'vencido')
+      efetivos[aluno.id] = atual ? 'ativo' : vencido ? 'vencido' : aluno.status_plano
+    }
+    setStatusEfetivo(efetivos)
+    setAlunos((data || []).filter(a => statusFiltro === 'todos' || efetivos[a.id] === statusFiltro))
     setLoading(false)
   }
 
@@ -133,7 +152,7 @@ function AlunosContent() {
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{a.nome}</div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                   {a.telefone || 'sem telefone'} {a.planos ? `· ${a.planos.nome}` : ''}
-                  {a.status_plano === 'ativo' && a.dia_vencimento && (
+                  {statusEfetivo[a.id] === 'ativo' && a.dia_vencimento && (
                     <span style={{ color: 'var(--text3)' }}> · vence dia {a.dia_vencimento}</span>
                   )}
                 </div>
@@ -150,10 +169,10 @@ function AlunosContent() {
                 )}
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-                  color: STATUS_COLOR[a.status_plano], border: `1px solid ${STATUS_COLOR[a.status_plano]}`,
+                    color: STATUS_COLOR[statusEfetivo[a.id] || a.status_plano], border: `1px solid ${STATUS_COLOR[statusEfetivo[a.id] || a.status_plano]}`,
                   textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}>
-                  {STATUS_LABEL[a.status_plano]}
+                  {STATUS_LABEL[statusEfetivo[a.id] || a.status_plano]}
                 </span>
               </div>
             </Link>
@@ -201,13 +220,17 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
     if (!nome.trim()) return
     if (possivelDuplicata && !forcarCriacao) return
     setSaving(true)
-    await supabase.from('alunos').insert({
-      nome: nome.trim(),
-      cpf: cpf.trim() || null,
-      telefone: normalizarTelefone(telefone) || null,
-      data_nascimento: dataNascimento || null,
-      plano_id: planoId || null,
-      status_plano: status,
+    await fetch('/api/admin-alunos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: nome.trim(),
+        cpf: cpf.trim() || null,
+        telefone: normalizarTelefone(telefone) || null,
+        dataNascimento,
+        planoId: planoId || null,
+        status,
+      }),
     })
     setSaving(false)
     onSaved()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/api-auth'
 
 const EVO_URL = 'https://ribbitingshoebill-evolution.cloudfy.live'
 const EVO_KEY = 'MMxqYf3msawylWCBW2PSU4uUdJAY6mL3'
@@ -8,10 +9,22 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdah
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 export async function POST(req: NextRequest) {
-  const { phone, nomeAluno } = await req.json()
-  if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 })
+  const authError = requireAdmin(req)
+  if (authError) return authError
+
+  const { alunoId } = await req.json()
+  if (!alunoId) return NextResponse.json({ error: 'alunoId required' }, { status: 400 })
 
   const supabase = createClient(SUPA_URL, SUPA_SERVICE_KEY)
+  const { data: aluno, error: alunoError } = await supabase
+    .from('alunos')
+    .select('nome, telefone')
+    .eq('id', alunoId)
+    .single()
+  if (alunoError || !aluno?.telefone) return NextResponse.json({ error: 'aluno não encontrado ou sem telefone' }, { status: 404 })
+
+  const phone = aluno.telefone
+  const nomeAluno = aluno.nome
 
   const msg = `✅ *Pagamento confirmado!*\n\nOlá ${nomeAluno?.split(' ')[0] || ''}! Seu pagamento foi confirmado pelo Matheus. Você já pode agendar suas aulas normalmente! 💪\n\nQualquer dúvida, é só me chamar.`
 

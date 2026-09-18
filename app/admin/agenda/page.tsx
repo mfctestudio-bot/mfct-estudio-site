@@ -140,25 +140,30 @@ function GradeSemanal() {
     if (!célulaAberta || !alunoEscolhido) return
     setSalvandoAgendamento(true)
 
-    const { data: novoAgendamento } = await supabase.from('agendamentos').insert({
-      aluno_id: alunoEscolhido,
-      horario_id: célulaAberta.horarioId,
-      data: célulaAberta.data,
-      status: 'confirmado',
-      tipo: tipoAula,
-    }).select('id').single()
+    const aluno = alunosOpt.find(a => a.id === alunoEscolhido)
 
-    if (repetirSemana) {
-      await supabase.from('horarios_fixos').insert({
-        aluno_id: alunoEscolhido,
-        horario_id: célulaAberta.horarioId,
-        ativo: true,
-      })
+    const resposta = await fetch('/api/admin-agendamentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: alunoEscolhido,
+        horarioId: célulaAberta.horarioId,
+        data: célulaAberta.data,
+        tipo: tipoAula,
+        repetirSemana,
+      }),
+    })
+    const resultado = await resposta.json().catch(() => null)
+    if (!resposta.ok) {
+      setToast(resultado?.error || 'Não foi possível criar o agendamento.')
+      setTimeout(() => setToast(''), 5000)
+      setSalvandoAgendamento(false)
+      return
     }
+    const novoAgendamentoId = resultado?.agendamentoId
 
     // Sincroniza com o Google Calendar
-    if (novoAgendamento) {
-      const aluno = alunosOpt.find(a => a.id === alunoEscolhido)
+    if (novoAgendamentoId) {
       const horarioObj = horarios.find(h => h.id === célulaAberta.horarioId)
       try {
         await fetch('/api/sync-calendario', {
@@ -166,7 +171,7 @@ function GradeSemanal() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             acao: 'criar',
-            agendamento_id: novoAgendamento.id,
+            agendamento_id: novoAgendamentoId,
             aluno_nome: aluno?.nome || '',
             data: célulaAberta.data,
             horario: horarioObj?.horario?.slice(0, 5) || '',
@@ -212,13 +217,18 @@ function GradeSemanal() {
     if (!novaDataMover || !novoHorarioMover) return
     setSalvandoMover(true)
 
-    const { error: erroUpdate } = await supabase.from('agendamentos').update({
-      data: novaDataMover,
-      horario_id: novoHorarioMover,
-    }).eq('id', agendamento.id)
-
-    if (erroUpdate) {
-      setToast(`Erro ao remarcar: ${erroUpdate.message || 'já existe uma aula desse aluno nesse horário/data'}`)
+    const resposta = await fetch('/api/admin-agendamentos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agendamentoId: agendamento.id,
+        data: novaDataMover,
+        horarioId: novoHorarioMover,
+      }),
+    })
+    if (!resposta.ok) {
+      const resultado = await resposta.json().catch(() => null)
+      setToast(`Erro ao remarcar: ${resultado?.error || 'falha na validação'}`)
       setTimeout(() => setToast(''), 4000)
       setMovendoId(null)
       setSalvandoMover(false)

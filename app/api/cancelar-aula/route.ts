@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/api-auth'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -9,6 +10,9 @@ const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'MFCT-ESTUDIO'
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || ''
 
 export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req)
+  if (authError) return authError
+
   const { data, horario_id, mensagem } = await req.json()
 
   if (!data || !horario_id) {

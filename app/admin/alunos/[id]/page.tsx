@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { Aluno, Plano } from '@/lib/supabase'
 import { waLink } from '@/lib/whatsapp'
 import { normalizarTelefone } from '@/lib/phone'
+import { periodoAtualHoje, periodoFuturoHoje } from '@/lib/periodos'
 
 const STATUS_OPTIONS = [
   { value: 'lead', label: 'Lead (novo)' },
@@ -50,8 +51,8 @@ export default function AlunoPage() {
       ])
       setAluno(alunoData)
       setPlanos(planosData || [])
-      setPeriodoAtual((periodosData || []).find(p => p.status === 'ativo' || p.status === 'vencido') || null)
-      setPeriodoFuturo((periodosData || []).find(p => p.status === 'agendado') || null)
+      setPeriodoAtual(periodoAtualHoje(periodosData || []) || (periodosData || []).find(p => p.data_fim < new Date().toISOString().slice(0, 10)) || null)
+      setPeriodoFuturo(periodoFuturoHoje(periodosData || []))
       setLoading(false)
     }
     load()
@@ -75,18 +76,20 @@ export default function AlunoPage() {
     }
 
     setSaving(true)
-    const { error } = await supabase.from('alunos').update({
-      nome: aluno.nome,
-      cpf: aluno.cpf,
-      telefone: telNormalizado || null,
-      data_nascimento: aluno.data_nascimento,
-      plano_id: aluno.plano_id || null,
-      status_plano: aluno.status_plano,
-      observacoes: aluno.observacoes,
-      dia_vencimento: aluno.dia_vencimento || null,
-    }).eq('id', id)
+    const resposta = await fetch('/api/admin-alunos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        nome: aluno.nome,
+        cpf: aluno.cpf,
+        telefone: telNormalizado || null,
+        dataNascimento: aluno.data_nascimento,
+        observacoes: aluno.observacoes,
+      }),
+    })
     setSaving(false)
-    if (!error) {
+    if (resposta.ok) {
       setToast('Alterações salvas')
       setTimeout(() => setToast(''), 2500)
     }
@@ -117,55 +120,27 @@ export default function AlunoPage() {
       : Number(modalDesconto || 0)
     const valorFinal = Number(modalValor || 0)
 
-    // Ativa o aluno com o plano escolhido — o dia de vencimento passa a ser o dia do pagamento (recorrente todo mês)
-    const diaVencimentoNovo = Number(modalData.split('-')[2])
-    await supabase.from('alunos').update({ status_plano: 'ativo', plano_id: modalPlano.id, dia_vencimento: diaVencimentoNovo }).eq('id', id)
-
-    // Registra o pagamento de fato — isso que faltava
-    const dataPagDateAtiv = new Date(modalData + 'T12:00:00')
-    const dataVencimentoAtiv = new Date(dataPagDateAtiv)
-    dataVencimentoAtiv.setMonth(dataVencimentoAtiv.getMonth() + 1)
-    const { data: pagamentoInserido } = await supabase.from('pagamentos').insert({
-      aluno_id: id,
-      plano_id: modalPlano.id,
-      valor: valorFinal,
-      valor_original: valorOriginal,
-      desconto,
-      status: 'pago',
-      metodo_pagamento: 'manual',
-      confirmado_em: new Date().toISOString(),
-      confirmado_por: 'admin',
-      data_pagamento: dataPagDateAtiv.toISOString(),
-      data_vencimento: dataVencimentoAtiv.toISOString().slice(0, 10),
-    }).select('id').single()
-
-    // Cria o período de 30 dias, empilhado corretamente (mesma lógica usada em Mensalidades)
-    if (pagamentoInserido) {
-      const hojeStr = new Date().toISOString().slice(0, 10)
-      let dataInicioPeriodo = modalData
-      const { data: ultimoPeriodo } = await supabase
-        .from('planos_periodos')
-        .select('data_fim')
-        .eq('aluno_id', id)
-        .order('data_fim', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (ultimoPeriodo) {
-        const fimUltimo = new Date(ultimoPeriodo.data_fim + 'T00:00:00')
-        if (fimUltimo >= dataPagDateAtiv) {
-          fimUltimo.setDate(fimUltimo.getDate() + 1)
-          dataInicioPeriodo = fimUltimo.toISOString().slice(0, 10)
-        }
-      }
-      const dataFimPeriodo = new Date(dataInicioPeriodo + 'T00:00:00')
-      dataFimPeriodo.setDate(dataFimPeriodo.getDate() + 30)
-      await supabase.from('planos_periodos').insert({
-        aluno_id: id, pagamento_id: pagamentoInserido.id,
-        data_inicio: dataInicioPeriodo, data_fim: dataFimPeriodo.toISOString().slice(0, 10),
-        status: dataInicioPeriodo <= hojeStr ? 'ativo' : 'agendado',
-      })
+    const resposta = await fetch('/api/admin-ativar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: id,
+        planoId: modalPlano.id,
+        valor: valorFinal,
+        valorOriginal,
+        desconto,
+        dataPagamento: modalData,
+      }),
+    })
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      setModalSaving(false)
+      setToast(erro?.error || 'Não foi possível ativar o plano.')
+      setTimeout(() => setToast(''), 3500)
+      return
     }
 
+    const diaVencimentoNovo = Number(modalData.split('-')[2])
     setAluno(prev => prev ? { ...prev, status_plano: 'ativo', plano_id: modalPlano.id, dia_vencimento: diaVencimentoNovo } : prev)
 
     // Notificar aluno
@@ -173,7 +148,7 @@ export default function AlunoPage() {
       await fetch('/api/confirmar-pagamento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: aluno.telefone, nomeAluno: aluno.nome })
+        body: JSON.stringify({ alunoId: id })
       })
     } catch {}
 
@@ -185,7 +160,7 @@ export default function AlunoPage() {
 
   async function cancelarPlano() {
     if (!aluno || !confirm('Cancelar o plano deste aluno? Isso encerra a relação — se for algo temporário, use "Pausar" em vez disso.')) return
-    await supabase.from('alunos').update({ status_plano: 'cancelado' }).eq('id', id)
+    await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'cancelado' }) })
     setAluno(prev => prev ? { ...prev, status_plano: 'cancelado' } : prev)
     setToast('Plano cancelado.')
     setTimeout(() => setToast(''), 2500)
@@ -193,7 +168,7 @@ export default function AlunoPage() {
 
   async function pausarPlano() {
     if (!aluno || !confirm('Pausar o plano deste aluno? Ele fica temporariamente suspenso, sem cancelar de vez.')) return
-    await supabase.from('alunos').update({ status_plano: 'pausado' }).eq('id', id)
+    await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'pausado' }) })
     setAluno(prev => prev ? { ...prev, status_plano: 'pausado' } : prev)
     setToast('Plano pausado.')
     setTimeout(() => setToast(''), 2500)

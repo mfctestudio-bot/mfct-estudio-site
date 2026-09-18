@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
+import { periodoAtualHoje, statusPeriodoHoje } from '@/lib/periodos'
 
 type AulaHoje = {
   horario: string
@@ -31,17 +32,17 @@ export default function AdminHome() {
       const hojeStr = hoje.toISOString().slice(0, 10)
 
       const [
-        { count: ativos },
+        { data: alunosComPeriodos },
         { count: leads },
         { count: aguardando },
-        { count: vencidos },
+        { data: periodos },
         { data: agendamentos },
         { data: pagamentos },
       ] = await Promise.all([
-        supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('status_plano', 'ativo'),
+        supabase.from('alunos').select('id, status_plano'),
         supabase.from('alunos').select('*', { count: 'exact', head: true }).in('status_plano', ['lead', 'experimental_oferecida', 'experimental_agendada', 'experimental_realizada', 'em_negociacao']),
         supabase.from('pagamentos').select('*', { count: 'exact', head: true }).eq('status', 'aguardando_confirmacao'),
-        supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('status_plano', 'vencido'),
+        supabase.from('planos_periodos').select('aluno_id, data_inicio, data_fim, status'),
         supabase.from('agendamentos')
           .select('status, tipo, horarios(horario), alunos(nome, telefone)')
           .eq('data', hojeStr)
@@ -54,7 +55,18 @@ export default function AdminHome() {
           .limit(5),
       ])
 
-      setStats({ ativos: ativos || 0, leads: leads || 0, aguardando: aguardando || 0, vencidos: vencidos || 0 })
+      const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string; status: string }[]>()
+      for (const periodo of periodos || []) {
+        const lista = periodosPorAluno.get(periodo.aluno_id) || []
+        lista.push(periodo)
+        periodosPorAluno.set(periodo.aluno_id, lista)
+      }
+      const ativos = (alunosComPeriodos || []).filter(a => periodoAtualHoje(periodosPorAluno.get(a.id) || [])).length
+      const vencidos = (alunosComPeriodos || []).filter(a => {
+        const periodosAluno = periodosPorAluno.get(a.id) || []
+        return !periodoAtualHoje(periodosAluno) && periodosAluno.some(p => statusPeriodoHoje(p) === 'vencido')
+      }).length
+      setStats({ ativos, leads: leads || 0, aguardando: aguardando || 0, vencidos })
 
       setAulasHoje((agendamentos || []).map((a: any) => ({
         horario: a.horarios?.horario?.slice(0, 5) || '',

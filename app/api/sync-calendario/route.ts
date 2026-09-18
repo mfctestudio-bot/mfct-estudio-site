@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/api-auth'
 
 const SYNC_URL = 'https://primary-production-4716.up.railway.app/webhook/mfct-sync-calendar'
 
 export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req)
+  if (authError) return authError
+
   const body = await req.json()
 
   try {

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
+import { periodoAtualHoje, periodoFuturoHoje, statusPeriodoHoje } from '@/lib/periodos'
 
 type PeriodoRow = {
   id: string
@@ -59,7 +60,6 @@ export default function MensalidadesPage() {
     const { data: alunosData } = await supabase
       .from('alunos')
       .select('id, nome, telefone, status_plano')
-      .in('status_plano', ['ativo', 'vencido'])
       .order('nome')
 
     const { data: periodosData } = await supabase
@@ -75,15 +75,15 @@ export default function MensalidadesPage() {
 
     const resultado: AlunoComPeriodo[] = ((alunosData as { id: string; nome: string; telefone: string | null; status_plano: string }[] | null) || []).map(a => {
       const periodos = periodosPorAluno.get(a.id) || []
-      const atual = periodos.find(p => p.status === 'ativo' || p.status === 'vencido') || null
-      const futuro = periodos.find(p => p.status === 'agendado') || null
+      const atual = periodoAtualHoje(periodos) || periodos.find(p => statusPeriodoHoje(p) === 'vencido') || null
+      const futuro = periodoFuturoHoje(periodos)
       return { ...a, periodoAtual: atual, periodoFuturo: futuro }
-    })
+    }).filter(a => a.periodoAtual || a.periodoFuturo || ['ativo', 'vencido'].includes(a.status_plano))
 
     resultado.sort((a, b) => {
       const ordem = { vencido: 0, ativo: 1, sem_periodo: 2 }
-      const statusA = a.periodoAtual?.status || 'sem_periodo'
-      const statusB = b.periodoAtual?.status || 'sem_periodo'
+      const statusA = a.periodoAtual ? statusPeriodoHoje(a.periodoAtual) : 'sem_periodo'
+      const statusB = b.periodoAtual ? statusPeriodoHoje(b.periodoAtual) : 'sem_periodo'
       return (ordem[statusA as keyof typeof ordem] ?? 3) - (ordem[statusB as keyof typeof ordem] ?? 3)
     })
 
@@ -128,44 +128,29 @@ export default function MensalidadesPage() {
 
     const desconto = await calcularDesconto(pag.aluno_id)
 
-    await supabase.from('pagamentos').update({
-      status: 'pago', confirmado_em: agora.toISOString(), confirmado_por: 'admin', data_pagamento: agora.toISOString(),
-      valor: desconto.valorFinal, valor_original: 129.90, desconto: desconto.descontoValor || 0, motivo_desconto: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
-    }).eq('id', pag.id)
-
-    // Empilha o periodo de 30 dias corretamente, igual a Elen faz
-    const { data: ultimoPeriodo } = await supabase
-      .from('planos_periodos')
-      .select('data_fim')
-      .eq('aluno_id', pag.aluno_id)
-      .order('data_fim', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    let dataInicio = hojeStr
-    if (ultimoPeriodo) {
-      const fimUltimo = new Date(ultimoPeriodo.data_fim + 'T00:00:00')
-      if (fimUltimo >= agora) {
-        fimUltimo.setDate(fimUltimo.getDate() + 1)
-        dataInicio = fimUltimo.toISOString().slice(0, 10)
-      }
-    }
-    const dataFim = new Date(dataInicio + 'T00:00:00')
-    dataFim.setDate(dataFim.getDate() + 30)
-    const statusPeriodo = dataInicio <= hojeStr ? 'ativo' : 'agendado'
-
-    await supabase.from('planos_periodos').insert({
-      aluno_id: pag.aluno_id, pagamento_id: pag.id,
-      data_inicio: dataInicio, data_fim: dataFim.toISOString().slice(0, 10), status: statusPeriodo,
+    const resposta = await fetch('/api/admin-ativar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: pag.aluno_id,
+        pagamentoId: pag.id,
+        planoId: PLANO_3X,
+        valor: desconto.valorFinal,
+        valorOriginal: 129.90,
+        desconto: desconto.descontoValor || 0,
+        dataPagamento: hojeStr,
+      }),
     })
-
-    await supabase.from('alunos').update({ status_plano: 'ativo' }).eq('id', pag.aluno_id)
+    if (!resposta.ok) {
+      setConfirmando(null)
+      return
+    }
 
     if (pag.alunos?.telefone) {
       try {
         await fetch('/api/confirmar-pagamento', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: pag.alunos.telefone, nomeAluno: pag.alunos.nome }),
+          body: JSON.stringify({ alunoId: pag.aluno_id }),
         })
       } catch (e) {}
     }
@@ -182,49 +167,38 @@ export default function MensalidadesPage() {
 
     const desconto = await calcularDesconto(aluno.id)
 
-    const { data: pagamentoNovo } = await supabase.from('pagamentos').insert({
-      aluno_id: aluno.id, plano_id: PLANO_3X, valor: desconto.valorFinal,
-      valor_original: 129.90, desconto: desconto.descontoValor || 0, motivo_desconto: desconto.descontoMotivo, desconto_recorrente: desconto.descontoRecorrente,
-      status: 'pago', data_pagamento: agora.toISOString(), metodo_pagamento: 'manual',
-      observacao: 'Renovação manual pelo painel',
-    }).select('id').single()
-
-    let dataInicio = hojeStr
-    const ultimo = aluno.periodoFuturo || aluno.periodoAtual
-    if (ultimo) {
-      const fimUltimo = new Date(ultimo.data_fim + 'T00:00:00')
-      if (fimUltimo >= agora) {
-        fimUltimo.setDate(fimUltimo.getDate() + 1)
-        dataInicio = fimUltimo.toISOString().slice(0, 10)
-      }
+    const resposta = await fetch('/api/admin-ativar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: aluno.id,
+        planoId: PLANO_3X,
+        valor: desconto.valorFinal,
+        valorOriginal: 129.90,
+        desconto: desconto.descontoValor || 0,
+        dataPagamento: hojeStr,
+        observacao: 'Renovação manual pelo painel',
+      }),
+    })
+    if (!resposta.ok) {
+      setConfirmando(null)
+      return
     }
-    const dataFim = new Date(dataInicio + 'T00:00:00')
-    dataFim.setDate(dataFim.getDate() + 30)
-    const statusPeriodo = dataInicio <= hojeStr ? 'ativo' : 'agendado'
-
-    if (pagamentoNovo) {
-      await supabase.from('planos_periodos').insert({
-        aluno_id: aluno.id, pagamento_id: pagamentoNovo.id,
-        data_inicio: dataInicio, data_fim: dataFim.toISOString().slice(0, 10), status: statusPeriodo,
-      })
-    }
-
-    await supabase.from('alunos').update({ status_plano: 'ativo' }).eq('id', aluno.id)
 
     setConfirmando(null)
     carregar()
   }
 
   const filtrados = alunos.filter(a => {
-    const statusAtual = a.periodoAtual?.status || 'sem_periodo'
+    const statusAtual = a.periodoAtual ? statusPeriodoHoje(a.periodoAtual) : 'sem_periodo'
     if (filtro !== 'todos' && statusAtual !== filtro) return false
     if (busca && !a.nome.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
 
   const contagens = {
-    vencido: alunos.filter(a => a.periodoAtual?.status === 'vencido').length,
-    ativo: alunos.filter(a => a.periodoAtual?.status === 'ativo').length,
+    vencido: alunos.filter(a => a.periodoAtual && statusPeriodoHoje(a.periodoAtual) === 'vencido').length,
+    ativo: alunos.filter(a => a.periodoAtual && statusPeriodoHoje(a.periodoAtual) === 'ativo').length,
     sem_periodo: alunos.filter(a => !a.periodoAtual).length,
   }
 
@@ -308,7 +282,7 @@ export default function MensalidadesPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtrados.map(a => {
-            const statusAtual = a.periodoAtual?.status || 'sem_periodo'
+            const statusAtual = a.periodoAtual ? statusPeriodoHoje(a.periodoAtual) : 'sem_periodo'
             const info = STATUS_INFO[statusAtual]
             return (
               <div
@@ -324,7 +298,7 @@ export default function MensalidadesPage() {
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{a.nome}</div>
                   <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
                     {a.periodoAtual
-                      ? `${a.periodoAtual.status === 'vencido' ? 'Venceu' : 'Vale até'} ${new Date(a.periodoAtual.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                      ? `${statusAtual === 'vencido' ? 'Venceu' : 'Vale até'} ${new Date(a.periodoAtual.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
                       : 'Nenhum período registrado ainda'}
                   </div>
                 </div>

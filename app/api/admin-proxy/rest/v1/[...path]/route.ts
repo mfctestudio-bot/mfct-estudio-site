@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/api-auth'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-function isAdmin(req: NextRequest) {
-  const cookie = req.cookies.get('admin_auth')?.value
-  const adminUser = process.env.ADMIN_USER || 'ronynsc5'
-  const adminPass = process.env.ADMIN_PASSWORD || '@Miudinho123'
-  const expected = Buffer.from(`${adminUser}:${adminPass}`).toString('base64')
-  return cookie === expected
-}
-
 async function forward(req: NextRequest, path: string[]) {
-  if (!isAdmin(req)) {
-    return NextResponse.json({ error: 'não autenticado' }, { status: 401 })
+  const authError = requireAdmin(req)
+  if (authError) return authError
+  const recurso = path[0]
+  if (!['GET', 'HEAD'].includes(req.method) && ['agendamentos', 'horarios_fixos'].includes(recurso)) {
+    return NextResponse.json({ error: 'mutações de agenda devem usar a API de domínio' }, { status: 403 })
+  }
+  if (!['GET', 'HEAD'].includes(req.method) && recurso === 'planos_periodos') {
+    return NextResponse.json({ error: 'mutações de período devem usar a autoridade de ativação/renovação' }, { status: 403 })
+  }
+  if (req.method === 'DELETE' && recurso === 'pagamentos') {
+    return NextResponse.json({ error: 'exclusão de pagamento deve usar a API financeira protegida' }, { status: 403 })
   }
   if (!SERVICE_KEY) {
     return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY não configurada no servidor' }, { status: 500 })
@@ -37,6 +39,16 @@ async function forward(req: NextRequest, path: string[]) {
 
   const hasBody = !['GET', 'HEAD'].includes(req.method)
   const body = hasBody ? await req.text() : undefined
+  if (recurso === 'alunos' && hasBody && body) {
+    try {
+      const payload = JSON.parse(body) as Record<string, unknown>
+      if ('status_plano' in payload || 'plano_id' in payload) {
+        return NextResponse.json({ error: 'alterações de matrícula devem usar a API de domínio' }, { status: 403 })
+      }
+    } catch {
+      return NextResponse.json({ error: 'payload JSON inválido' }, { status: 400 })
+    }
+  }
 
   const upstream = await fetch(url, {
     method: req.method,

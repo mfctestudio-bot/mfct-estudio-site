@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/api-auth'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -17,6 +18,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const authError = requireAdmin(req)
+  if (authError) return authError
+
   const { id, ativo } = await req.json()
   if (!id || typeof ativo !== 'boolean') {
     return NextResponse.json({ error: 'id e ativo são obrigatórios' }, { status: 400 })
