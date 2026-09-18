@@ -8,6 +8,12 @@ async function forward(req: NextRequest, path: string[]) {
   const authError = requireAdmin(req)
   if (authError) return authError
   const recurso = path[0]
+
+  // DEBUG TEMPORARIO
+  if (req.headers.get('x-debug-proxy') === '1') {
+    return NextResponse.json({ path, recurso, method: req.method, joined: path.join('/') })
+  }
+
   if (!['GET', 'HEAD'].includes(req.method) && ['agendamentos', 'horarios_fixos'].includes(recurso)) {
     return NextResponse.json({ error: 'mutações de agenda devem usar a API de domínio' }, { status: 403 })
   }
@@ -63,7 +69,6 @@ async function forward(req: NextRequest, path: string[]) {
   const contentRange = upstream.headers.get('content-range')
   if (contentRange) resHeaders.set('content-range', contentRange)
 
-  // Respostas 204/205/304 não podem ter corpo, mesmo vazio, ou o Response() quebra
   const semCorpo = [204, 205, 304].includes(upstream.status)
   return new NextResponse(semCorpo ? null : resBody, { status: upstream.status, headers: resHeaders })
 }
