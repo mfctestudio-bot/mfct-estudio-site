@@ -179,18 +179,22 @@ export default function AlunoPage() {
 
   async function cancelarPlano() {
     if (!aluno || !confirm('Cancelar o plano deste aluno? Isso encerra a relação — se for algo temporário, use "Pausar" em vez disso.')) return
-    await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'cancelado' }) })
+    const resp = await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'cancelado' }) })
+    const dados = await resp.json().catch(() => null)
     setAluno(prev => prev ? { ...prev, status_plano: 'cancelado' } : prev)
-    setToast('Plano cancelado.')
-    setTimeout(() => setToast(''), 2500)
+    const extra = dados?.agendamentos_futuros_liberados ? ` ${dados.agendamentos_futuros_liberados} aula(s) futura(s) liberada(s) da agenda.` : ''
+    setToast('Plano cancelado.' + extra)
+    setTimeout(() => setToast(''), 3500)
   }
 
   async function pausarPlano() {
-    if (!aluno || !confirm('Pausar o plano deste aluno? Ele fica temporariamente suspenso, sem cancelar de vez.')) return
-    await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'pausado' }) })
+    if (!aluno || !confirm('Pausar o plano deste aluno? Ele fica temporariamente suspenso, sem cancelar de vez. As aulas futuras já marcadas serão liberadas da agenda enquanto ele estiver pausado.')) return
+    const resp = await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'pausado' }) })
+    const dados = await resp.json().catch(() => null)
     setAluno(prev => prev ? { ...prev, status_plano: 'pausado' } : prev)
-    setToast('Plano pausado.')
-    setTimeout(() => setToast(''), 2500)
+    const extra = dados?.agendamentos_futuros_liberados ? ` ${dados.agendamentos_futuros_liberados} aula(s) futura(s) liberada(s) da agenda.` : ''
+    setToast('Plano pausado.' + extra + ' Ao reativar, será preciso remarcar os horários fixos.')
+    setTimeout(() => setToast(''), 4000)
   }
 
   async function alterarVencimento(dia: number) {
