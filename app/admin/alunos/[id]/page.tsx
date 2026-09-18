@@ -41,6 +41,7 @@ export default function AlunoPage() {
   const [periodoAtual, setPeriodoAtual] = useState<{ data_inicio: string; data_fim: string; status: string } | null>(null)
   const [periodoFuturo, setPeriodoFuturo] = useState<{ data_inicio: string; data_fim: string; status: string } | null>(null)
   const [modalSaving, setModalSaving] = useState(false)
+  const [modalTrocaInfo, setModalTrocaInfo] = useState<{ planoAtualNome: string; planoAtualValor: number; diferenca: number } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -105,6 +106,23 @@ export default function AlunoPage() {
     if (!aluno) return
     const plano = planos.find(p => p.id === (planoId || aluno.plano_id)) || planos[0]
     if (!plano) { setToast('Cadastre um plano antes de ativar.'); setTimeout(() => setToast(''), 2500); return }
+
+    // TROCA DE PLANO: se já tem período vigente com OUTRO plano, sugere a diferença, não o valor cheio
+    const ehTrocaRealDePlano = !!planoId && aluno.plano_id && planoId !== aluno.plano_id && !!periodoAtual
+    if (ehTrocaRealDePlano) {
+      const planoAtualObj = planos.find(p => p.id === aluno.plano_id)
+      if (planoAtualObj) {
+        const diferenca = Math.max(0, Number(plano.valor) - Number(planoAtualObj.valor))
+        setModalPlano(plano)
+        setModalValor(String(diferenca))
+        setModalDesconto('0')
+        setModalData(new Date().toISOString().slice(0, 10))
+        setModalTrocaInfo({ planoAtualNome: planoAtualObj.nome, planoAtualValor: Number(planoAtualObj.valor), diferenca })
+        return
+      }
+    }
+
+    setModalTrocaInfo(null)
     setModalPlano(plano)
     setModalValor(String(plano.valor))
     setModalDesconto('0')
@@ -154,6 +172,7 @@ export default function AlunoPage() {
 
     setModalSaving(false)
     setModalPlano(null)
+    setModalTrocaInfo(null)
     setToast('Plano ativado e pagamento registrado! Aluno notificado.')
     setTimeout(() => setToast(''), 3000)
   }
@@ -372,17 +391,23 @@ export default function AlunoPage() {
 
       {modalPlano && (
         <div
-          onClick={() => !modalSaving && setModalPlano(null)}
+          onClick={() => !modalSaving && (setModalPlano(null), setModalTrocaInfo(null))}
           style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
         >
           <div onClick={e => e.stopPropagation()} style={{
             background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8,
             padding: '20px', width: '100%', maxWidth: 380,
           }}>
-            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Ativar plano — registrar pagamento</h3>
-            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>{modalTrocaInfo ? 'Troca de plano' : 'Ativar plano — registrar pagamento'}</h3>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: modalTrocaInfo ? 6 : 16 }}>
               {modalPlano.nome} · valor de tabela R$ {Number(modalPlano.valor).toFixed(2).replace('.', ',')}
             </p>
+            {modalTrocaInfo && (
+              <p style={{ fontSize: 12, color: '#5b9bd5', marginBottom: 16, background: '#5b9bd515', padding: '8px 10px', borderRadius: 6 }}>
+                Trocando de <strong>{modalTrocaInfo.planoAtualNome}</strong> (R$ {modalTrocaInfo.planoAtualValor.toFixed(2).replace('.', ',')}) pra <strong>{modalPlano.nome}</strong>.
+                Cobrando só a diferença: <strong>R$ {modalTrocaInfo.diferenca.toFixed(2).replace('.', ',')}</strong> (não o valor cheio do plano novo).
+              </p>
+            )}
 
             <Campo label="Valor cobrado (R$)">
               <input type="number" step="0.01" value={modalValor} onChange={e => setModalValor(e.target.value)} style={inputStyle} />
@@ -438,7 +463,7 @@ export default function AlunoPage() {
               <button onClick={confirmarAtivacao} disabled={modalSaving} style={{ ...btnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: modalSaving ? 0.6 : 1 }}>
                 {modalSaving ? 'Registrando...' : '✅ Confirmar'}
               </button>
-              <button onClick={() => setModalPlano(null)} disabled={modalSaving} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
+              <button onClick={() => { setModalPlano(null); setModalTrocaInfo(null) }} disabled={modalSaving} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
                 Cancelar
               </button>
             </div>
