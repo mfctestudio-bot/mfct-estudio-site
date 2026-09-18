@@ -63,6 +63,9 @@ export default function AdminHome() {
       }
       const ativos = (alunosComPeriodos || []).filter(a => periodoAtualHoje(periodosPorAluno.get(a.id) || [])).length
       const vencidos = (alunosComPeriodos || []).filter(a => {
+        // Só conta como "vencido" (pendente de cobrança/renovação) quem ainda
+        // está com matrícula ativa. Pausado/cancelado não entra nessa conta.
+        if (a.status_plano !== 'ativo') return false
         const periodosAluno = periodosPorAluno.get(a.id) || []
         return !periodoAtualHoje(periodosAluno) && periodosAluno.some(p => statusPeriodoHoje(p) === 'vencido')
       }).length
