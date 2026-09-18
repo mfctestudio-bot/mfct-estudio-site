@@ -75,10 +75,13 @@ export default function MensalidadesPage() {
 
     const resultado: AlunoComPeriodo[] = ((alunosData as { id: string; nome: string; telefone: string | null; status_plano: string }[] | null) || []).map(a => {
       const periodos = periodosPorAluno.get(a.id) || []
-      const atual = periodoAtualHoje(periodos) || periodos.find(p => statusPeriodoHoje(p) === 'vencido') || null
+// Um período vencido só conta como "período atual" pra quem ainda está
+            // ativo (cobrável). Aluno pausado/cancelado não deve reaparecer aqui
+            // como vencido só por ter um período antigo vencido.
+            const atual = periodoAtualHoje(periodos) || (a.status_plano === 'ativo' ? periodos.find(p => statusPeriodoHoje(p) === 'vencido') || null : null)
       const futuro = periodoFuturoHoje(periodos)
       return { ...a, periodoAtual: atual, periodoFuturo: futuro }
-    }).filter(a => a.periodoAtual || a.periodoFuturo || ['ativo', 'vencido'].includes(a.status_plano))
+                                                          }).filter(a => a.status_plano !== 'cancelado' && (a.periodoAtual || a.periodoFuturo || ['ativo', 'vencido'].includes(a.status_plano)))
 
     resultado.sort((a, b) => {
       const ordem = { vencido: 0, ativo: 1, sem_periodo: 2 }
