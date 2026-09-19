@@ -88,6 +88,10 @@ export default function MensalidadeAlunoPage() {
 
   const periodoAtual = periodos.find(p => statusPeriodoHoje(p) === 'ativo') || null
   const periodoFuturo = periodos.find(p => statusPeriodoHoje(p) === 'agendado') || null
+  // "vencido" nunca fica gravado em status_plano -- enquanto dentro da carência
+  // (verificarVencimentos) o aluno continua com status_plano 'ativo', só que
+  // sem período vigente cobrindo hoje. É esse o sinal de que já venceu.
+  const estaVencido = aluno?.status_plano === 'ativo' && !periodoAtual
 
   function abrirModalAtivacao(planoId?: string) {
     if (!aluno) return
@@ -176,6 +180,22 @@ export default function MensalidadeAlunoPage() {
     carregar()
   }
 
+  async function continuarPlanoHandler() {
+    if (!aluno) return
+    const resp = await fetch('/api/admin-continuar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alunoId: id }),
+    })
+    const dados = await resp.json().catch(() => null)
+    if (!resp.ok) {
+      avisar(dados?.error || 'Não foi possível continuar o plano.', 4500)
+      return
+    }
+    avisar(`Plano reativado sem cobrança. Novo vencimento: ${new Date(dados.dataFimNova + 'T00:00:00').toLocaleDateString('pt-BR')}.`, 4500)
+    carregar()
+  }
+
   async function alterarVencimento(dia: number) {
     if (!aluno) return
     await supabase.from('alunos').update({ dia_vencimento: dia }).eq('id', id)
@@ -241,17 +261,22 @@ export default function MensalidadeAlunoPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          {aluno.status_plano !== 'ativo' && aluno.status_plano !== 'pausado' && (
+          {aluno.status_plano === 'cancelado' && (
             <button onClick={() => abrirModalAtivacao()} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
-              ✅ Ativar plano
+              🔄 Reativar
             </button>
           )}
-          {(aluno.status_plano === 'ativo' || aluno.status_plano === 'pausado') && (
+          {aluno.status_plano === 'pausado' && (
+            <button onClick={continuarPlanoHandler} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
+              ▶️ Continuar
+            </button>
+          )}
+          {estaVencido && (
             <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
-              🔄 {aluno.status_plano === 'pausado' ? 'Reativar' : 'Renovar plano'}
+              🔄 Renovar
             </button>
           )}
-          {aluno.status_plano === 'ativo' && (
+          {aluno.status_plano === 'ativo' && !estaVencido && (
             <button onClick={pausarPlano} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid #f0a500', color: '#f0a500' }}>
               ⏸️ Pausar
             </button>
