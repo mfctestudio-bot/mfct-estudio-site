@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdminSession } from '@/lib/api-auth'
-import { verificarVencimentos } from '@/lib/planos'
+import { verificarVencimentos, verificarPausasExpiradas } from '@/lib/planos'
 
 // Autoriza tanto o Vercel Cron (header Authorization: Bearer $CRON_SECRET,
 // enviado automaticamente pela Vercel quando a env var CRON_SECRET esta
@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
   }
 
 try {
-  const resultado = await verificarVencimentos()
-  return NextResponse.json({ ok: true, ...resultado })
+  const vencimentos = await verificarVencimentos()
+  const pausas = await verificarPausasExpiradas()
+  return NextResponse.json({ ok: true, vencimentos, pausas })
 } catch (error) {
   return NextResponse.json({ error: error instanceof Error ? error.message : 'falha ao verificar vencimentos' }, { status: 500 })
 }
