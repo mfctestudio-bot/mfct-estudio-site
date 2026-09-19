@@ -304,3 +304,61 @@ for (const alunoId of alunoIds) {
 
 return { verificados: alunoIds.length, cancelados, avisos }
 }
+
+export type EditarInicioPeriodoInput = {
+  periodoId: string
+  novaDataInicio: string
+}
+
+export type EditarInicioPeriodoResult = {
+  periodoId: string
+  dataInicio: string
+  dataFim: string
+  status: string
+}
+
+// Permite corrigir a data de inicio de um periodo ja cadastrado (ex.: quando
+// o plano foi cadastrado atrasado, com a data errada). Recalcula data_fim
+// (sempre 30 dias a partir da nova data_inicio) e o status do periodo
+// ('ativo' se ja comecou, 'agendado' se comeca no futuro). Nao mexe em
+// pagamento nem em nenhuma outra tabela -- so nas datas desse periodo.
+export async function editarInicioPeriodo(input: EditarInicioPeriodoInput): Promise<EditarInicioPeriodoResult> {
+  const supabase = serviceClient()
+  const novaDataInicio = input.novaDataInicio
+  const novaData = new Date(`${novaDataInicio}T00:00:00`)
+  if (Number.isNaN(novaData.getTime())) throw new Error('data de início inválida')
+
+  const { data: periodo, error: periodoError } = await supabase
+    .from('planos_periodos')
+    .select('id, aluno_id')
+    .eq('id', input.periodoId)
+    .single()
+  if (periodoError || !periodo) throw new Error(periodoError?.message || 'período não encontrado')
+
+  const { data: outrosPeriodos, error: outrosError } = await supabase
+    .from('planos_periodos')
+    .select('id, data_inicio, data_fim')
+    .eq('aluno_id', periodo.aluno_id)
+    .neq('id', input.periodoId)
+  if (outrosError) throw new Error(outrosError.message)
+
+  const novaDataFimDate = new Date(`${novaDataInicio}T00:00:00`)
+  novaDataFimDate.setDate(novaDataFimDate.getDate() + 30)
+  const novaDataFim = isoDate(novaDataFimDate)
+
+  const sobrepoe = (outrosPeriodos || []).some(p => novaDataInicio <= p.data_fim && novaDataFim >= p.data_inicio)
+  if (sobrepoe) throw new Error('Essa data faz esse período se sobrepor a outro período já registrado do aluno. Ajuste ou remova o outro período primeiro.')
+
+  const hoje = isoDate(new Date())
+  const novoStatus = novaDataInicio <= hoje ? 'ativo' : 'agendado'
+
+  const { data: atualizado, error: updateError } = await supabase
+    .from('planos_periodos')
+    .update({ data_inicio: novaDataInicio, data_fim: novaDataFim, status: novoStatus })
+    .eq('id', input.periodoId)
+    .select('id, data_inicio, data_fim, status')
+    .single()
+  if (updateError || !atualizado) throw new Error(updateError?.message || 'não foi possível atualizar o período')
+
+  return { periodoId: atualizado.id, dataInicio: atualizado.data_inicio, dataFim: atualizado.data_fim, status: atualizado.status }
+}
