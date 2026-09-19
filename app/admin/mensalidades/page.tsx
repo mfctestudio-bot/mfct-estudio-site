@@ -290,7 +290,7 @@ export default function MensalidadesPage() {
             return (
               <div
                 key={a.id}
-                onClick={() => router.push(`/admin/alunos/${a.id}`)}
+                onClick={() => router.push(`/admin/mensalidades/${a.id}`)}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                   padding: '12px 14px', borderRadius: 8, flexWrap: 'wrap', cursor: 'pointer',
