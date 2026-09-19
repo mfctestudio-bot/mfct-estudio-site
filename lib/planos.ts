@@ -30,6 +30,31 @@ function isoDate(date: Date) {
   return date.toISOString().slice(0, 10)
 }
 
+function diasEntre(dataInicioIso: string, dataFimIso: string): number {
+  const inicio = new Date(`${dataInicioIso}T00:00:00`)
+  const fim = new Date(`${dataFimIso}T00:00:00`)
+  return Math.round((fim.getTime() - inicio.getTime()) / 86400000)
+}
+
+const EVO_URL = process.env.EVO_URL || ''
+const EVO_KEY = process.env.EVO_KEY || ''
+
+// Notificacao "best effort" pelo WhatsApp (mesma Evolution API usada pela Elen
+// no n8n). Uma falha aqui nunca pode travar um cancelamento/pausa automatico
+// -- por isso engole qualquer erro.
+export async function enviarWhatsAppAluno(telefone: string | null | undefined, texto: string): Promise<void> {
+  if (!telefone || !EVO_URL || !EVO_KEY) return
+  try {
+    await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
+      body: JSON.stringify({ number: telefone, text: texto }),
+    })
+  } catch {
+    // notificacao e best effort -- nao pode quebrar o fluxo principal
+  }
+}
+
 export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoResult> {
   const supabase = serviceClient()
   const dataPagamento = new Date(`${input.dataPagamento}T12:00:00`)
@@ -303,6 +328,133 @@ for (const alunoId of alunoIds) {
 }
 
 return { verificados: alunoIds.length, cancelados, avisos }
+}
+
+export const LIMITE_DIAS_PAUSA = 15
+
+export type ContinuarPlanoResult = {
+  periodoId: string
+  dataFimAnterior: string
+  dataFimNova: string
+  diasPausado: number
+}
+
+// "Continuar" depois de uma pausa: dentro do limite de LIMITE_DIAS_PAUSA dias
+// corridos, o aluno volta a treinar sem pagar de novo. Nao conta aula --
+// conta dia corrido: o vencimento do periodo que estava em curso quando a
+// pausa comecou e so empurrado pelo numero de dias que ele ficou parado.
+// Ex.: periodo ia ate dia 30, pausou dia 10 (sobravam 20 dias), voltou dia 17
+// (ficou 7 dias pausado) -> novo vencimento = dia 30 + 7 = dia 37.
+export async function continuarPlano(alunoId: string): Promise<ContinuarPlanoResult> {
+  const supabase = serviceClient()
+  const hojeIso = hojeISOSaoPaulo()
+
+  const { data: aluno, error: alunoError } = await supabase
+    .from('alunos')
+    .select('id, status_plano, status_desde')
+    .eq('id', alunoId)
+    .single()
+  if (alunoError || !aluno) throw new Error(alunoError?.message || 'aluno não encontrado')
+  if (aluno.status_plano !== 'pausado') throw new Error('esse aluno não está pausado')
+  if (!aluno.status_desde) throw new Error('não foi possível determinar a data em que a pausa começou')
+
+  const diasPausado = diasEntre(aluno.status_desde, hojeIso)
+  if (diasPausado > LIMITE_DIAS_PAUSA) {
+    throw new Error(`Essa pausa já passou de ${LIMITE_DIAS_PAUSA} dias (${diasPausado} dias). O plano já deveria estar cancelado -- use "Reativar" com um novo pagamento.`)
+  }
+
+  // periodo que estava em curso no dia em que a pausa comecou
+  const { data: periodo, error: periodoError } = await supabase
+    .from('planos_periodos')
+    .select('id, data_inicio, data_fim')
+    .eq('aluno_id', alunoId)
+    .lte('data_inicio', aluno.status_desde)
+    .gte('data_fim', aluno.status_desde)
+    .order('data_fim', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (periodoError) throw new Error(periodoError.message)
+  if (!periodo) throw new Error('não foi encontrado o período que estava em curso quando a pausa começou')
+
+  const fimAnteriorDate = new Date(`${periodo.data_fim}T00:00:00`)
+  fimAnteriorDate.setDate(fimAnteriorDate.getDate() + diasPausado)
+  const dataFimNova = isoDate(fimAnteriorDate)
+
+  const { error: updatePeriodoError } = await supabase
+    .from('planos_periodos')
+    .update({ data_fim: dataFimNova, status: 'ativo' })
+    .eq('id', periodo.id)
+  if (updatePeriodoError) throw new Error(updatePeriodoError.message)
+
+  const { error: updateAlunoError } = await supabase
+    .from('alunos')
+    .update({ status_plano: 'ativo' })
+    .eq('id', alunoId)
+  if (updateAlunoError) throw new Error(updateAlunoError.message)
+
+  return { periodoId: periodo.id, dataFimAnterior: periodo.data_fim, dataFimNova, diasPausado }
+}
+
+export type VerificarPausasResult = {
+  verificados: number
+  cancelados: { alunoId: string; diasPausado: number }[]
+  avisos: string[]
+}
+
+// Pausa -> Cancelado: uma pausa tem prazo maximo de LIMITE_DIAS_PAUSA dias
+// corridos a partir do dia em que comecou (status_desde), independente de
+// quantos dias de mensalidade ainda restavam quando pausou. Passado o prazo
+// sem o aluno voltar (continuarPlano), o plano e cancelado automaticamente,
+// com o mesmo efeito de liberacao de agenda do cancelamento manual, e o
+// aluno e avisado pelo WhatsApp (Elen) que precisa pagar de novo pra voltar.
+export async function verificarPausasExpiradas(
+  limiteDias = LIMITE_DIAS_PAUSA,
+  supabaseClient?: SupabaseClient,
+): Promise<VerificarPausasResult> {
+  const supabase = supabaseClient || serviceClient()
+  const hojeIso = hojeISOSaoPaulo()
+
+  const { data: alunosPausados, error: alunosError } = await supabase
+    .from('alunos')
+    .select('id, nome, telefone, status_desde')
+    .eq('status_plano', 'pausado')
+  if (alunosError) throw new Error(alunosError.message)
+
+  const cancelados: VerificarPausasResult['cancelados'] = []
+  const avisos: string[] = []
+
+  for (const aluno of alunosPausados || []) {
+    if (!aluno.status_desde) {
+      avisos.push(`aluno ${aluno.id}: pausado sem status_desde registrado -- nao avaliado automaticamente`)
+      continue
+    }
+    const diasPausado = diasEntre(aluno.status_desde, hojeIso)
+    if (diasPausado <= limiteDias) continue
+
+    const { error: updateError } = await supabase
+      .from('alunos')
+      .update({ status_plano: 'cancelado' })
+      .eq('id', aluno.id)
+      .eq('status_plano', 'pausado') // evita corrida com um "continuar" concorrente
+      .select('id')
+      .single()
+    if (updateError) {
+      avisos.push(`aluno ${aluno.id}: ${updateError.message}`)
+      continue
+    }
+
+    const liberacao = await liberarAgendaDoAluno(supabase, aluno.id)
+    avisos.push(...liberacao.avisos)
+
+    await enviarWhatsAppAluno(
+      aluno.telefone,
+      `Oi, ${aluno.nome}! Infelizmente sua mensalidade no MFCT Estúdio foi cancelada porque o tempo máximo de pausa (${limiteDias} dias) passou. Se quiser voltar a treinar, é só pagar a mensalidade de novo pra gente reativar. 💪`
+    )
+
+    cancelados.push({ alunoId: aluno.id, diasPausado })
+  }
+
+  return { verificados: (alunosPausados || []).length, cancelados, avisos }
 }
 
 export type EditarInicioPeriodoInput = {
