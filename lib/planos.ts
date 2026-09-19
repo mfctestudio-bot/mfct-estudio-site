@@ -248,28 +248,39 @@ const cancelados: VerificarVencimentosResult['cancelados'] = []
 
 const { data: periodos, error: periodosError } = await supabase
   .from('planos_periodos')
-  .select('aluno_id, data_fim')
+  .select('aluno_id, data_inicio, data_fim')
   .in('aluno_id', alunoIds)
   .order('data_fim', { ascending: false })
   if (periodosError) throw new Error(periodosError.message)
 
-const ultimoFimPorAluno = new Map<string, string>()
+const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string }[]>()
   for (const periodo of periodos || []) {
-    // ja vem ordenado por data_fim desc, entao o primeiro valor visto por
-  // aluno e o periodo mais recente (o que determina ate quando ele esta coberto)
-  if (!ultimoFimPorAluno.has(periodo.aluno_id)) {
-    ultimoFimPorAluno.set(periodo.aluno_id, periodo.data_fim)
-  }
+    const lista = periodosPorAluno.get(periodo.aluno_id) || []
+    lista.push({ data_inicio: periodo.data_inicio, data_fim: periodo.data_fim })
+    periodosPorAluno.set(periodo.aluno_id, lista)
   }
 
 for (const alunoId of alunoIds) {
-  const dataFim = ultimoFimPorAluno.get(alunoId)
-  if (!dataFim) {
+  const listaPeriodos = periodosPorAluno.get(alunoId)
+  if (!listaPeriodos || listaPeriodos.length === 0) {
     avisos.push(`aluno ${alunoId}: status ativo sem periodo registrado -- nao avaliado automaticamente`)
     continue
   }
 
-  if (dataFim >= hojeIso) continue // periodo ainda cobre hoje (ou e uma renovacao futura ja registrada): nao venceu
+  // Hoje esta coberto por algum periodo (passado, atual ou ja agendado)? entao nao venceu,
+  // mesmo que exista tambem um periodo futuro ja cadastrado.
+  const coberto = listaPeriodos.some(p => p.data_inicio <= hojeIso && p.data_fim >= hojeIso)
+  if (coberto) continue
+
+  // Nao ha periodo cobrindo hoje. O que importa pra saber ha quanto tempo esta vencido
+  // e o periodo passado mais recente (o ultimo que de fato cobriu o aluno) -- nunca um
+  // periodo futuro ja agendado, que nao diz nada sobre um buraco no meio.
+  const periodosPassados = listaPeriodos.filter(p => p.data_fim < hojeIso)
+  if (periodosPassados.length === 0) {
+    avisos.push(`aluno ${alunoId}: so tem periodo(s) futuro(s) agendado(s), sem cobertura ate hoje -- nao avaliado automaticamente`)
+    continue
+  }
+  const dataFim = periodosPassados.reduce((maior, p) => (p.data_fim > maior ? p.data_fim : maior), periodosPassados[0].data_fim)
 
   const dias = diasVencido(dataFim, hojeIso)
   if (dias < diasCarencia) continue // vencido, mas ainda dentro da carencia -- continua ativo e cobravel
