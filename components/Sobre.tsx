@@ -51,7 +51,7 @@ export default function Sobre() {
 
             <div style={{ display: 'grid', gap: 16, fontSize: 15, lineHeight: 1.75, color: 'var(--text2)' }}>
               <p>
-                Minha paixão pelo fisiculturismo começou em 2014, aos 14 anos, numa academia de bairro. Sem
+                Minha paixão pelo fisiculturismo começou em 2011, aos 14 anos, numa academia de bairro. Sem
                 dinheiro pra curso ou treinador, estudava sozinho: baixava vídeos e artigos em inglês lá de fora,
                 traduzia como dava e tentava replicar os treinos. Aos 16, 17 anos, já tinha um físico que me
                 destacava bastante entre os da minha idade.
