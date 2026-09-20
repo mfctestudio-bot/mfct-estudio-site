@@ -37,6 +37,48 @@ type VencendoEmBreve = {
   dias: number
 }
 
+// ---- Padrão visual compartilhado desta tela (cards, seções, grids) ----
+// Todo card usa o mesmo fundo/borda/raio/padding, pra parar de ter tamanhos
+// diferentes espalhados pela tela. Toda grade usa auto-fit + minmax, que é o
+// que faz o layout responder sozinho em celular (empilha) sem precisar de
+// media query pra cada bloco.
+const cardBase: React.CSSProperties = {
+  background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '1.1rem',
+}
+
+function gridAuto(minWidth: number): React.CSSProperties {
+  return { display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}px, 1fr))`, gap: 14 }
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '28px 0 12px' }}>
+      <span style={{ width: 4, height: 16, borderRadius: 2, background: 'var(--accent2)', display: 'inline-block' }} />
+      <h2 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+        {children}
+      </h2>
+    </div>
+  )
+}
+
+// Título sempre em cima, link de ação sempre embaixo -- de propósito. Título
+// e ação lado a lado (comum em telas largas) quebra feio em card estreito
+// quando o título é grande: o texto do título vira duas linhas e o link fica
+// "grudado" na primeira linha, sobrepondo a segunda. Empilhar sempre evita
+// esse problema em qualquer largura de tela, sem precisar de media query.
+function CardHeader({ title, color, action, href }: { title: string; color?: string; action?: string; href?: string }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <h3 style={{ fontSize: 13, fontWeight: 800, color: color || 'var(--text)', letterSpacing: 0.5, lineHeight: 1.3 }}>
+        {title}
+      </h3>
+      {action && href && (
+        <Link href={href} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent2)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}>{action} →</Link>
+      )}
+    </div>
+  )
+}
+
 export default function AdminHome() {
   const [stats, setStats] = useState({ ativos: 0, leads: 0, aguardando: 0, vencidos: 0 })
   const [aulasHoje, setAulasHoje] = useState<AulaHoje[]>([])
@@ -66,7 +108,7 @@ export default function AdminHome() {
         { data: alunosMatricula },
       ] = await Promise.all([
         supabase.from('alunos').select('id, nome, status_plano'),
-        supabase.from('alunos').select('*', { count: 'exact', head: true }).in('status_plano', ['lead', 'experimental_oferecida', 'experimental_agendada', 'experimental_realizada', 'em_negociacao']),
+        supabase.from('alunos').select('*', { count: 'exact', head: true }).in('status_plano', ['lead', 'experimental', 'experimental_oferecida', 'experimental_agendada', 'experimental_realizada', 'em_negociacao']),
         supabase.from('pagamentos').select('*', { count: 'exact', head: true }).eq('status', 'aguardando_confirmacao'),
         supabase.from('planos_periodos').select('aluno_id, data_inicio, data_fim, status'),
         supabase.from('agendamentos')
@@ -185,55 +227,50 @@ export default function AdminHome() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 4 }}>Dashboard</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
+      <h1 style={{ fontSize: 28, marginBottom: 4 }}>Início</h1>
+      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>
         {diaSemana[hoje.getDay()]}, {hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
       </p>
 
-      {/* Cards de stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 28 }}>
+      {/* Visão geral -- os 4 números que resumem a saúde do estúdio agora */}
+      <div style={{ ...gridAuto(150), marginTop: 20 }}>
         {[
           { label: 'Alunos ativos', value: stats.ativos, href: '/admin/alunos?status=ativo', color: '#3fb950' },
-          { label: 'Leads / em negociação', value: stats.leads, href: '/admin/alunos?status=lead', color: 'var(--accent)' },
+          { label: 'Leads / em negociação', value: stats.leads, href: '/admin/alunos?status=leads', color: 'var(--accent)' },
           { label: 'Aguard. confirmação', value: stats.aguardando, href: '/admin/pagamentos', color: '#f0a500' },
           { label: 'Planos vencidos', value: stats.vencidos, href: '/admin/alunos?status=vencido', color: 'var(--danger)' },
         ].map(c => (
           <Link key={c.label} href={c.href} style={{
-            background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8,
-            padding: '1rem', textDecoration: 'none', color: 'var(--text)', display: 'block',
+            ...cardBase, textDecoration: 'none', color: 'var(--text)', display: 'block',
+            borderColor: c.value > 0 && c.label !== 'Alunos ativos' ? `${c.color}55` : 'var(--border)',
           }}>
-            <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 40, color: c.color, lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 38, color: c.color, lineHeight: 1 }}>
               {loading ? '—' : c.value}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>{c.label}</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, fontWeight: 600 }}>{c.label}</div>
           </Link>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
-        {/* Aulas de hoje */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', letterSpacing: 1, textTransform: 'uppercase' }}>
-              Aulas hoje
-            </h2>
-            <Link href="/admin/agenda" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>Ver agenda →</Link>
-          </div>
+      {/* HOJE -- o que precisa acontecer nas próximas horas */}
+      <SectionTitle>Hoje</SectionTitle>
+      <div style={gridAuto(320)}>
+        <div style={cardBase}>
+          <CardHeader title="Aulas hoje" action="Ver agenda" href="/admin/agenda" />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
           ) : aulasHoje.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Nenhuma aula hoje.</p>
           ) : (
-            <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ display: 'grid', gap: 2 }}>
               {aulasHoje.map((a, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < aulasHoje.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < aulasHoje.length - 1 ? '1px solid var(--border)' : 'none' }}>
                   <div>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{a.horario}</span>
+                    <span style={{ fontWeight: 800, fontSize: 14 }}>{a.horario}</span>
                     <span style={{ fontSize: 13, color: 'var(--text2)', marginLeft: 8 }}>{a.aluno_nome}</span>
                   </div>
                   {a.tipo === 'experimental' && (
-                    <span style={{ fontSize: 11, background: 'var(--accent)', color: '#fff', borderRadius: 4, padding: '2px 6px' }}>exp.</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#000', borderRadius: 4, padding: '2px 7px' }}>exp.</span>
                   )}
                 </div>
               ))}
@@ -241,22 +278,21 @@ export default function AdminHome() {
           )}
         </div>
 
-        {/* Pagamentos aguardando confirmação */}
-        <div style={{ background: 'var(--card)', border: `1px solid ${stats.aguardando > 0 ? '#f0a500' : 'var(--border)'}`, borderRadius: 8, padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: stats.aguardando > 0 ? '#f0a500' : 'var(--text2)', letterSpacing: 1, textTransform: 'uppercase' }}>
-              {stats.aguardando > 0 ? `⚠️ ${stats.aguardando} aguardando` : 'Pagamentos'}
-            </h2>
-            <Link href="/admin/pagamentos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>Ver todos →</Link>
-          </div>
+        <div style={{ ...cardBase, borderColor: stats.aguardando > 0 ? '#f0a50077' : 'var(--border)' }}>
+          <CardHeader
+            title={stats.aguardando > 0 ? `⚠️ ${stats.aguardando} pagamento(s) aguardando` : 'Pagamentos'}
+            color={stats.aguardando > 0 ? '#f0a500' : 'var(--text)'}
+            action="Ver todos"
+            href="/admin/pagamentos"
+          />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
           ) : pagPendentes.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Nenhum pagamento pendente.</p>
           ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'grid', gap: 10 }}>
               {pagPendentes.map(p => (
-                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{p.aluno_nome}</div>
                     <div style={{ fontSize: 12, color: 'var(--text2)' }}>
@@ -265,34 +301,31 @@ export default function AdminHome() {
                     </div>
                   </div>
                   <Link href="/admin/pagamentos" style={{
-                    background: '#f0a500', color: '#000', borderRadius: 4, padding: '4px 10px',
-                    fontSize: 11, fontWeight: 700, textDecoration: 'none',
+                    background: '#f0a500', color: '#000', borderRadius: 6, padding: '6px 12px',
+                    fontSize: 11, fontWeight: 800, textDecoration: 'none',
                   }}>Confirmar</Link>
                 </div>
               ))}
             </div>
           )}
         </div>
-
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-
-        {/* Aniversariantes do mês */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-            🎂 Aniversariantes do mês
-          </h2>
+      {/* PRECISA DE ATENÇÃO -- coisas que, se ignoradas, viram problema */}
+      <SectionTitle>Precisa de atenção</SectionTitle>
+      <div style={gridAuto(320)}>
+        <div style={cardBase}>
+          <CardHeader title="🎂 Aniversariantes do mês" />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
           ) : aniversariantes.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Ninguém faz aniversário esse mês.</p>
           ) : (
-            <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ display: 'grid', gap: 8 }}>
               {aniversariantes.map(a => (
                 <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 13 }}>{a.nome}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: a.ehHoje ? 'var(--accent2)' : 'var(--text2)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: a.ehHoje ? 'var(--accent2)' : 'var(--text2)' }}>
                     {a.ehHoje ? 'Hoje! 🎉' : `dia ${a.dia}`}
                   </span>
                 </div>
@@ -301,42 +334,35 @@ export default function AdminHome() {
           )}
         </div>
 
-        {/* Vencendo em breve */}
-        <div style={{ background: 'var(--card)', border: `1px solid ${vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 8, padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--text2)', letterSpacing: 1, textTransform: 'uppercase' }}>
-              ⏳ Vencendo em breve
-            </h2>
-            <Link href="/admin/mensalidades" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>Ver mensalidades →</Link>
-          </div>
+        <div style={{ ...cardBase, borderColor: vencendoEmBreve.length > 0 ? 'var(--danger)77' : 'var(--border)' }}>
+          <CardHeader
+            title="⏳ Vencendo em breve"
+            color={vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--text)'}
+            action="Ver mensalidades"
+            href="/admin/mensalidades"
+          />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
           ) : vencendoEmBreve.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Ninguém vence nos próximos 7 dias.</p>
           ) : (
-            <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ display: 'grid', gap: 8 }}>
               {vencendoEmBreve.map(v => (
                 <Link key={v.id} href={`/admin/mensalidades/${v.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none', color: 'var(--text)' }}>
                   <span style={{ fontSize: 13 }}>{v.nome}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>{v.dias === 0 ? 'vence hoje' : `${v.dias} dia(s)`}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>{v.dias === 0 ? 'vence hoje' : `${v.dias} dia(s)`}</span>
                 </Link>
               ))}
             </div>
           )}
         </div>
-
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-
-        {/* Gráfico: faturamento por mês */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', letterSpacing: 1, textTransform: 'uppercase' }}>
-              💰 Faturamento por mês
-            </h2>
-            <Link href="/admin/financeiro" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>Ver financeiro →</Link>
-          </div>
+      {/* DESEMPENHO -- números do estúdio ao longo do tempo */}
+      <SectionTitle>Desempenho</SectionTitle>
+      <div style={gridAuto(320)}>
+        <div style={cardBase}>
+          <CardHeader title="💰 Faturamento por mês" action="Ver financeiro" href="/admin/financeiro" />
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={faturamentoGrafico}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -351,11 +377,8 @@ export default function AdminHome() {
           </ResponsiveContainer>
         </div>
 
-        {/* Gráfico: crescimento de alunos */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-            📈 Crescimento (matrículas acumuladas)
-          </h2>
+        <div style={cardBase}>
+          <CardHeader title="📈 Crescimento (matrículas acumuladas)" />
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={crescimentoGrafico}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -366,11 +389,11 @@ export default function AdminHome() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-
       </div>
 
-      {/* Links rápidos */}
-      <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
+      {/* Acesso rápido */}
+      <SectionTitle>Acesso rápido</SectionTitle>
+      <div style={gridAuto(130)}>
         {[
           { label: '👥 Alunos', href: '/admin/alunos' },
           { label: '📅 Agenda', href: '/admin/agenda' },
@@ -380,8 +403,8 @@ export default function AdminHome() {
           { label: '📝 Posts', href: '/admin/posts' },
         ].map(l => (
           <Link key={l.href} href={l.href} style={{
-            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
-            padding: '8px 16px', fontSize: 13, textDecoration: 'none', color: 'var(--text)',
+            ...cardBase, padding: '12px 14px', fontSize: 13, fontWeight: 700, textDecoration: 'none', color: 'var(--text)',
+            textAlign: 'center',
           }}>{l.label}</Link>
         ))}
       </div>
