@@ -97,7 +97,7 @@ export default function PostsPage() {
           {imagemUrl ? (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <img src={imagemUrl} alt="Preview" style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-              <button onClick={removerImagem} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', padding: '8px 14px' }}>
+              <button onClick={removerImagem} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '8px 14px' }}>
                 Remover imagem
               </button>
             </div>
@@ -152,7 +152,7 @@ export default function PostsPage() {
                 <button onClick={() => publicar(p.id, p.publicado)} style={smallBtn(p.publicado ? 'var(--accent)' : '#3fb950')}>
                   {p.publicado ? 'Despublicar' : 'Publicar no site'}
                 </button>
-                <button onClick={() => excluir(p.id)} style={smallBtn('var(--accent2)')}>Excluir</button>
+                <button onClick={() => excluir(p.id)} style={smallBtn('var(--danger)')}>Excluir</button>
               </div>
             </div>
           ))}
