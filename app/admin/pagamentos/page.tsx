@@ -25,19 +25,20 @@ type PagamentoRow = {
 type AlunoOpt = { id: string; nome: string; plano_id: string | null }
 type PlanoOpt = { id: string; nome: string; valor: number }
 
+// Pagamentos e so historico de dinheiro (o que entrou, o que esta em analise,
+// o que foi anulado). "Pendente" e "Vencido" nao entram aqui de proposito --
+// isso e status da MENSALIDADE (planos_periodos / status_plano do aluno),
+// nao do registro de pagamento em si. Ver app/admin/mensalidades para quem
+// esta devendo.
 const STATUS_LABEL: Record<string, string> = {
-  pendente: 'Pendente',
   aguardando_confirmacao: 'Aguard. confirmação',
   pago: 'Pago',
-  vencido: 'Vencido',
   cancelado: 'Cancelado',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  pendente: 'var(--accent)',
   aguardando_confirmacao: '#f0a500',
   pago: '#3fb950',
-  vencido: 'var(--danger)',
   cancelado: 'var(--text3)',
 }
 
@@ -261,7 +262,7 @@ export default function PagamentosPage() {
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {['aguardando_confirmacao', 'pendente', 'pago', 'vencido', 'todos'].map(s => (
+        {['aguardando_confirmacao', 'pago', 'cancelado', 'todos'].map(s => (
           <button key={s} onClick={() => setFiltro(s)} style={{
             background: filtro === s ? '#3fb95022' : 'var(--card)',
             border: `1.5px solid ${filtro === s ? '#3fb950' : 'var(--border)'}`, color: filtro === s ? '#3fb950' : 'var(--text2)',
@@ -280,7 +281,7 @@ export default function PagamentosPage() {
           <option value="maior_valor">Maior valor</option>
           <option value="menor_valor">Menor valor</option>
           <option value="nome">Nome (A-Z)</option>
-          <option value="vencimento">Vencimento mais próximo</option>
+          <option value="vencimento">Cobertura mais próxima</option>
         </select>
       </div>
 
@@ -308,7 +309,7 @@ export default function PagamentosPage() {
                         R$ {Number(p.desconto).toFixed(2).replace('.', ',')})
                       </span>
                     )}
-                    {p.data_vencimento && ` · Vence ${new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}`}
+                    {p.data_vencimento && ` · Cobre até ${new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}`}
                   </div>
                   {p.comprovante_recebido_em && (
                     <div style={{ fontSize: 12, color: '#f0a500', marginTop: 4 }}>
@@ -442,7 +443,7 @@ export default function PagamentosPage() {
               </select>
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data de vencimento (desse pagamento)</label>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Cobre até (data)</label>
               <input type="date" value={editVencimento} onChange={e => setEditVencimento(e.target.value)} style={inputStyle} />
             </div>
             {editStatus === 'pago' && (
