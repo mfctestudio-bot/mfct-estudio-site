@@ -161,7 +161,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 ← Ver site
               </Link>
               <button onClick={sair} style={{
-                textAlign: 'left', background: 'transparent', border: 'none', color: 'var(--accent2)', width: '100%',
+                textAlign: 'left', background: 'transparent', border: 'none', color: 'var(--danger)', width: '100%',
                 fontSize: 12, fontWeight: 700, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 Sair
