@@ -119,7 +119,7 @@ export default function PlanosPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
           {planos.map(p => (
             <div key={p.id} style={{
-              background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+              background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
               borderRadius: 6, padding: '14px 16px', opacity: p.ativo ? 1 : 0.55,
             }}>
               {editandoId === p.id ? (
@@ -141,7 +141,7 @@ export default function PlanosPage() {
                     <span style={{ fontSize: 12, color: 'var(--text2)', marginLeft: 8 }}>
                       {p.vezes_semana}x/semana · R$ {Number(p.valor).toFixed(2)}
                     </span>
-                    {!p.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)', marginLeft: 8 }}>(desativado)</span>}
+                    {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -151,8 +151,8 @@ export default function PlanosPage() {
                       ✏️ Editar
                     </button>
                     <button onClick={() => toggleAtivo(p)} style={{
-                      background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--accent2)'}`,
-                      color: p.ativo ? 'var(--text2)' : 'var(--accent2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                      background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
+                      color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                     }}>
                       {p.ativo ? 'Desativar' : 'Ativar'}
                     </button>
@@ -173,7 +173,7 @@ export default function PlanosPage() {
                           <button onClick={() => toggleDescontoAtivo(d)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                             {d.ativo ? 'Desativar' : 'Ativar'}
                           </button>
-                          <button onClick={() => excluirDesconto(d.id)} style={{ background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <button onClick={() => excluirDesconto(d.id)} style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                             Apagar
                           </button>
                         </div>
