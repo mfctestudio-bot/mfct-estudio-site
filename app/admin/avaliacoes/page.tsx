@@ -473,13 +473,13 @@ export default function AvaliacoesPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 14 }}>{dataFmt}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 11, color: a.pago ? '#3fb950' : 'var(--accent2)' }}>
+                          <span style={{ fontSize: 11, color: a.pago ? '#3fb950' : 'var(--danger)' }}>
                             {a.pago ? `✅ Pago (R$ ${Number(a.valor).toFixed(2)})` : `⏳ Pendente (R$ ${Number(a.valor).toFixed(2)})`}
                           </span>
                           <button onClick={() => abrirEdicao(a)} style={{ background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                             ✏️ Editar
                           </button>
-                          <button onClick={() => apagarAvaliacao(a.id)} style={{ background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <button onClick={() => apagarAvaliacao(a.id)} style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                             🗑️
                           </button>
                         </div>
@@ -586,7 +586,7 @@ function MiniLineChart({ titulo, avaliacoes, campo, cor }: { titulo: string; ava
     <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <span style={{ fontSize: 12, color: 'var(--text2)' }}>{titulo}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: diff === 0 ? 'var(--text3)' : melhorou ? '#3fb950' : 'var(--accent2)' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: diff === 0 ? 'var(--text3)' : melhorou ? '#3fb950' : 'var(--danger)' }}>
           {diff > 0 ? '+' : ''}{diff.toFixed(1)}
         </span>
       </div>
