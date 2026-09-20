@@ -2,16 +2,17 @@
 @import "tailwindcss";
 
 :root {
-  --bg:       #0a0e10;
-  --bg2:      #11161a;
-  --card:     #161c20;
-  --border:   #232a2e;
-  --border2:  #353e43;
+  --bg:       #060606;   /* preto neutro (sem tom azulado) */
+  --bg2:      #0d0d0d;
+  --card:     #141414;
+  --border:   #262626;
+  --border2:  #3a3a3a;
   --text:     #f2f4f5;
   --text2:    #9aa3a8;
   --text3:    #5e676c;
   --accent:   #cfd8dc;   /* prata/metalico - logo MFCT */
-  --accent2:  #2F6FED;   /* azul de destaque (era vermelho) */
+  --accent2:  #2F6FED;   /* azul de destaque -- botoes principais (era vermelho) */
+  --danger:   #c0392b;   /* vermelho -- vencido, cancelado, erro, excluir */
   --whatsapp: #25D366;
 }
 
