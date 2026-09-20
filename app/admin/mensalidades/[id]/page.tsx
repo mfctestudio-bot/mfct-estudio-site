@@ -8,7 +8,7 @@ import { statusPeriodoHoje } from '@/lib/periodos'
 
 const STATUS_LABEL: Record<string, { label: string; cor: string; bg: string }> = {
   ativo: { label: 'Em dia', cor: '#3fb950', bg: '#3fb95015' },
-  vencido: { label: 'Vencido', cor: 'var(--accent2)', bg: 'var(--accent2)15' },
+  vencido: { label: 'Vencido', cor: 'var(--danger)', bg: 'var(--danger)15' },
   agendado: { label: 'Agendado', cor: '#5b9bd5', bg: '#5b9bd515' },
 }
 
@@ -231,9 +231,9 @@ export default function MensalidadeAlunoPage() {
   if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div>
       <Link href={`/admin/alunos/${id}`} style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← {aluno.nome}</Link>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '8px 0 4px' }}>Mensalidade de {aluno.nome}</h1>
+      <h1 style={{ fontSize: 24, margin: '8px 0 4px' }}>Mensalidade de {aluno.nome}</h1>
       <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
         Plano, pagamentos e histórico de períodos desse aluno.
       </p>
@@ -253,8 +253,8 @@ export default function MensalidadeAlunoPage() {
           </div>
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-            color: aluno.status_plano === 'ativo' ? '#3fb950' : aluno.status_plano === 'pausado' ? '#5b9bd5' : 'var(--accent2)',
-            background: aluno.status_plano === 'ativo' ? '#3fb95015' : aluno.status_plano === 'pausado' ? '#5b9bd515' : 'var(--accent2)15',
+            color: aluno.status_plano === 'ativo' ? '#3fb950' : aluno.status_plano === 'pausado' ? '#5b9bd5' : 'var(--danger)',
+            background: aluno.status_plano === 'ativo' ? '#3fb95015' : aluno.status_plano === 'pausado' ? '#5b9bd515' : 'var(--danger)15',
           }}>
             {aluno.status_plano}
           </span>
@@ -282,7 +282,7 @@ export default function MensalidadeAlunoPage() {
             </button>
           )}
           {aluno.status_plano !== 'cancelado' && (
-            <button onClick={cancelarPlano} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid var(--accent2)', color: 'var(--accent2)' }}>
+            <button onClick={cancelarPlano} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid var(--danger)', color: 'var(--danger)' }}>
               ❌ Cancelar
             </button>
           )}
