@@ -457,6 +457,66 @@ export async function verificarPausasExpiradas(
   return { verificados: (alunosPausados || []).length, cancelados, avisos }
 }
 
+export type NotificarVencimentoResult = {
+  diasVencido: number
+  valor: number | null
+  telefone: string
+}
+
+// Cobranca manual: disparada pelo admin clicando um botao no perfil da
+// mensalidade, pra um aluno com matricula vencida. Usa o mesmo canal
+// (Evolution API/WhatsApp) que a Elen ja usa pra avisos automaticos -- mas,
+// ao contrario de enviarWhatsAppAluno (best-effort, engole erro), aqui um
+// erro de envio precisa aparecer pra quem clicou o botao.
+export async function notificarVencimentoManual(
+  alunoId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<NotificarVencimentoResult> {
+  const supabase = supabaseClient || serviceClient()
+  const hojeIso = hojeISOSaoPaulo()
+
+  const { data: aluno, error: alunoError } = await supabase
+    .from('alunos')
+    .select('id, nome, telefone, plano_id')
+    .eq('id', alunoId)
+    .single()
+  if (alunoError || !aluno) throw new Error('Aluno não encontrado')
+  if (!aluno.telefone) throw new Error('Esse aluno não tem telefone cadastrado')
+
+  const { data: periodos, error: periodosError } = await supabase
+    .from('planos_periodos')
+    .select('data_fim')
+    .eq('aluno_id', alunoId)
+    .order('data_fim', { ascending: false })
+    .limit(1)
+  if (periodosError) throw new Error(periodosError.message)
+  const periodo = (periodos || [])[0]
+  if (!periodo) throw new Error('Esse aluno não tem nenhum período de mensalidade registrado')
+
+  const dias = diasVencido(periodo.data_fim, hojeIso)
+  if (dias <= 0) throw new Error('A mensalidade desse aluno não está vencida')
+
+  let valor: number | null = null
+  if (aluno.plano_id) {
+    const { data: plano } = await supabase.from('planos').select('valor').eq('id', aluno.plano_id).single()
+    valor = plano?.valor ?? null
+  }
+
+  const valorTexto = valor != null ? `R$ ${valor.toFixed(2).replace('.', ',')}` : 'o valor combinado'
+  const texto = `Oi, ${aluno.nome}! Passando aqui pra lembrar que sua mensalidade do MFCT Estúdio venceu há ${dias} dia${dias === 1 ? '' : 's'} (valor: ${valorTexto}). Pra continuar treinando sem problemas, é só regularizar o pagamento. Qualquer dúvida, me chama! 💪`
+
+  if (!EVO_URL || !EVO_KEY) throw new Error('WhatsApp (Evolution API) não está configurado no servidor')
+
+  const resposta = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
+    body: JSON.stringify({ number: aluno.telefone, text: texto }),
+  })
+  if (!resposta.ok) throw new Error('Falha ao enviar a mensagem pelo WhatsApp')
+
+  return { diasVencido: dias, valor, telefone: aluno.telefone }
+}
+
 export type EditarInicioPeriodoInput = {
   periodoId: string
   novaDataInicio: string
