@@ -23,7 +23,7 @@ type AlunoComPeriodo = {
 
 const STATUS_INFO: Record<string, { label: string; cor: string; bg: string }> = {
   ativo: { label: 'Em dia', cor: '#3fb950', bg: '#3fb95015' },
-  vencido: { label: 'Vencido', cor: 'var(--accent2)', bg: 'var(--accent2)15' },
+  vencido: { label: 'Vencido', cor: 'var(--danger)', bg: 'var(--danger)15' },
   agendado: { label: 'Agendado', cor: '#5b9bd5', bg: '#5b9bd515' },
   sem_periodo: { label: 'Sem período registrado', cor: 'var(--text3)', bg: 'var(--bg)' },
 }
@@ -206,8 +206,8 @@ export default function MensalidadesPage() {
   }
 
   return (
-    <div style={{ padding: '20px 16px', maxWidth: 720, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Planos</h1>
+    <div>
+      <h1 style={{ fontSize: 28, marginBottom: 4 }}>Planos</h1>
       <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
         Quem está em dia, quem venceu, e quem já renovou pro próximo período.
       </p>
