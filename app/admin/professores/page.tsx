@@ -101,7 +101,7 @@ export default function ProfessoresPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 16 }}>
           {professores.map(p => (
             <div key={p.id} style={{
-              background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+              background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
               borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: p.ativo ? 1 : 0.55,
             }}>
@@ -109,7 +109,7 @@ export default function ProfessoresPage() {
                 <span style={{ fontWeight: 700, fontSize: 14, textDecoration: p.ativo ? 'none' : 'line-through' }}>
                   {p.nome}
                 </span>
-                {!p.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)' }}>(inativo)</span>}
+                {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)' }}>(inativo)</span>}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -141,8 +141,8 @@ export default function ProfessoresPage() {
                   onClick={() => toggleAtivo(p)}
                   disabled={updating === p.id}
                   style={{
-                    background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--accent2)'}`,
-                    color: p.ativo ? 'var(--text2)' : 'var(--accent2)', borderRadius: 4, padding: '6px 12px',
+                    background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
+                    color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px',
                     fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === p.id ? 0.6 : 1,
                   }}
                 >
@@ -153,7 +153,7 @@ export default function ProfessoresPage() {
                   onClick={() => apagar(p)}
                   disabled={updating === p.id}
                   style={{
-                    background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                    background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                     borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === p.id ? 0.6 : 1,
                   }}
                 >
@@ -193,7 +193,7 @@ export default function ProfessoresPage() {
             </div>
           </div>
 
-          {erroForm && <p style={{ color: 'var(--accent2)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
+          {erroForm && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={adicionarProfessor} disabled={salvando} style={{
@@ -293,4 +293,4 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
       }} />
     </button>
   )
-}
+}F
