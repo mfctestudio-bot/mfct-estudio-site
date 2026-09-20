@@ -206,8 +206,8 @@ export default function AlunoPage() {
             </div>
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-              color: aluno.status_plano === 'ativo' ? '#3fb950' : aluno.status_plano === 'pausado' ? '#5b9bd5' : 'var(--accent2)',
-              background: aluno.status_plano === 'ativo' ? '#3fb95015' : aluno.status_plano === 'pausado' ? '#5b9bd515' : 'var(--accent2)15',
+              color: aluno.status_plano === 'ativo' ? '#3fb950' : aluno.status_plano === 'pausado' ? '#5b9bd5' : 'var(--danger)',
+              background: aluno.status_plano === 'ativo' ? '#3fb95015' : aluno.status_plano === 'pausado' ? '#5b9bd515' : 'var(--danger)15',
             }}>
               {STATUS_OPTIONS.find(s => s.value === aluno.status_plano)?.label || aluno.status_plano}
             </span>
