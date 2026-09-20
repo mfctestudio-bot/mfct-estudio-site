@@ -307,7 +307,7 @@ export default function FinanceiroPage() {
         <Card label={`Recebido em ${mesAtualLabel}`} value={`R$ ${totalMes.toFixed(2)}`} />
         <Card label="Pagamentos no mês" value={String(qtdMes)} />
         <Card label="Receita prevista/mês" value={`R$ ${previsto.toFixed(2)}`} sub={`${alunosAtivos} aluno(s) ativo(s)`} />
-        <Card label="Pagamentos pendentes" value={String(pendentes)} accent="var(--accent2)" />
+        <Card label="Pagamentos pendentes" value={String(pendentes)} accent="var(--danger)" />
       </div>
 
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem' }}>
@@ -350,8 +350,8 @@ export default function FinanceiroPage() {
                 <div key={v.id} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                   padding: '10px 12px', borderRadius: 4, flexWrap: 'wrap',
-                  background: urgente ? 'var(--accent2)15' : 'var(--bg)',
-                  border: `1px solid ${urgente ? 'var(--accent2)' : 'var(--border)'}`,
+                  background: urgente ? 'var(--danger)15' : 'var(--bg)',
+                  border: `1px solid ${urgente ? 'var(--danger)' : 'var(--border)'}`,
                   opacity: v.pagoEsseCiclo ? 0.7 : 1,
                 }}>
                   <div>
@@ -367,7 +367,7 @@ export default function FinanceiroPage() {
                     <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$ {v.valor.toFixed(2)}</span>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4,
-                      color: urgente ? 'var(--accent2)' : emBreve ? '#f0a500' : 'var(--text2)',
+                      color: urgente ? 'var(--danger)' : emBreve ? '#f0a500' : 'var(--text2)',
                       background: 'var(--bg2)',
                     }}>
                       {v.pagoEsseCiclo ? 'próximo ciclo' : v.diasRestantes === 0 ? 'vence hoje' : v.diasRestantes === 1 ? 'vence amanhã' : `em ${v.diasRestantes} dias`}
@@ -543,7 +543,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         <Card label={`Receita do mês`} value={`R$ ${totalMes.toFixed(2)}`} />
-        <Card label={`Lucro estimado (${lucroPercentual.toFixed(0)}%)`} value={`R$ ${lucroValor.toFixed(2)}`} accent={lucroValor >= 0 ? '#3fb950' : 'var(--accent2)'} />
+        <Card label={`Lucro estimado (${lucroPercentual.toFixed(0)}%)`} value={`R$ ${lucroValor.toFixed(2)}`} accent={lucroValor >= 0 ? '#3fb950' : 'var(--danger)'} />
         {diaSugerido && (
           <Card label="Melhor dia pra tirar o dinheiro" value={`Dia ${diaSugerido}`} sub="~85% da receita já deve ter entrado até lá" />
         )}
@@ -602,7 +602,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
           })}
         </div>
 
-        <div style={{ fontSize: 12, color: totalPercentual > 100 ? 'var(--accent2)' : 'var(--text3)', marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: totalPercentual > 100 ? 'var(--danger)' : 'var(--text3)', marginBottom: 16 }}>
           Total de despesas: R$ {totalDespesas.toFixed(2)} ({totalPercentual.toFixed(1)}% da receita do mês) {totalPercentual > 100 && '— as despesas passaram da receita do mês'}
         </div>
 
@@ -729,7 +729,7 @@ function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anua
                   {m.crescimento !== null && (
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
-                      color: m.crescimento >= 0 ? '#3fb950' : 'var(--accent2)',
+                      color: m.crescimento >= 0 ? '#3fb950' : 'var(--danger)',
                       background: 'var(--bg)',
                     }}>
                       {m.crescimento >= 0 ? '↑' : '↓'} {Math.abs(m.crescimento).toFixed(0)}%
@@ -931,7 +931,7 @@ function HorasTrabalhadas() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         <Card label="A pagar essa semana" value={`R$ ${totalValorSemana.toFixed(2)}`} />
-        <Card label="A pagar esse mês" value={`R$ ${totalValorMes.toFixed(2)}`} accent="var(--accent2)" />
+        <Card label="A pagar esse mês" value={`R$ ${totalValorMes.toFixed(2)}`} accent="var(--danger)" />
       </div>
 
       {linhas.length === 0 ? (
@@ -947,7 +947,7 @@ function HorasTrabalhadas() {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>
-                    {l.nome}{!l.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)', marginLeft: 6 }}>(inativo)</span>}
+                    {l.nome}{!l.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 6 }}>(inativo)</span>}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--text3)' }}>R$ {l.valorPorAula.toFixed(2)}/aula</span>
                 </div>
@@ -988,7 +988,7 @@ function HorasTrabalhadas() {
                               <span>
                                 {s.diaSemanaLabel} {dataFmt} às {s.horarioLabel}
                                 {s.motivo !== 'confirmada' && (
-                                  <span style={{ fontSize: 10, color: 'var(--accent2)', border: '1px solid var(--accent2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6 }}>
+                                  <span style={{ fontSize: 10, color: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6 }}>
                                     {s.motivo === 'cancelada_estudio' ? 'cancelada pelo estúdio · paga' : 'cancelada pelo aluno · paga'}
                                   </span>
                                 )}
@@ -997,7 +997,7 @@ function HorasTrabalhadas() {
                                 onClick={() => marcarFalta(l.professorId, s)}
                                 disabled={marcando === chave}
                                 style={{
-                                  background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                                  background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                                   borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
                                   opacity: marcando === chave ? 0.6 : 1,
                                 }}
@@ -1012,7 +1012,7 @@ function HorasTrabalhadas() {
 
                     {l.faltasMesDetalhe.length > 0 && (
                       <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px dashed var(--border)' }}>
-                        <div style={{ fontSize: 11, color: 'var(--accent2)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <div style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Faltas marcadas (não contam no pagamento)
                         </div>
                         <div style={{ display: 'grid', gap: 6 }}>
