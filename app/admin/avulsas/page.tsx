@@ -33,7 +33,7 @@ const STATUS_COLOR: Record<string, string> = {
   disponivel: '#3fb950',
   agendado: 'var(--accent)',
   usado: 'var(--text3)',
-  expirado: 'var(--accent2)',
+  expirado: 'var(--danger)',
   cancelado: 'var(--text3)',
 }
 
@@ -186,7 +186,7 @@ export default function AvulsasPage() {
                   </span>
                   {(c.status === 'aguardando_confirmacao' || c.status === 'aguardando_pagamento') && (
                     <button onClick={() => cancelar(c.id)} style={{
-                      background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                      background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                       borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
                     }}>
                       Cancelar
