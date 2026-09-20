@@ -32,7 +32,7 @@ const STATUS_COLOR: Record<string, string> = {
   experimental: 'var(--accent)',
   ativo: '#3fb950',
   pausado: '#f0a500',
-  vencido: 'var(--accent2)',
+  vencido: 'var(--danger)',
   cancelado: 'var(--text3)',
 }
 
@@ -270,8 +270,8 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
           </div>
           {checando && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Checando se já existe cadastro com esse número...</p>}
           {possivelDuplicata && (
-            <div style={{ background: 'var(--accent2)22', border: '1px solid var(--accent2)', borderRadius: 6, padding: '10px 12px', marginTop: 8 }}>
-              <p style={{ fontSize: 12, color: 'var(--accent2)', fontWeight: 700, marginBottom: 6 }}>
+            <div style={{ background: 'var(--danger)22', border: '1px solid var(--danger)', borderRadius: 6, padding: '10px 12px', marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 700, marginBottom: 6 }}>
                 ⚠️ Já existe um aluno com esse telefone: {possivelDuplicata.nome}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
