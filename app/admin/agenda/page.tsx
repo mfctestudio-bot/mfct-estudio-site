@@ -448,7 +448,7 @@ function GradeSemanal() {
                             ✏️ Mudar
                           </button>
                           <button onClick={() => cancelarAgendamentoIndividual(a)} disabled={cancelandoId === a.id} style={{
-                            background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                            background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                             borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
                             opacity: cancelandoId === a.id ? 0.6 : 1,
                           }}>
@@ -699,7 +699,7 @@ function ProximasAulas() {
                 onClick={() => cancelarTurma(first.data, first.horario_id, horario)}
                 disabled={cancelando === key}
                 style={{
-                  background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                  background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                   borderRadius: 4, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   opacity: cancelando === key ? 0.6 : 1,
                 }}
@@ -911,7 +911,7 @@ function GradeHorarios() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 16 }}>
           {horariosDoDia.map(h => (
             <div key={h.id} style={{
-              background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
+              background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--danger)'}`,
               borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: h.ativo ? 1 : 0.55,
             }}>
@@ -919,7 +919,7 @@ function GradeHorarios() {
                 <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
                   {h.horario.slice(0, 5)}
                 </span>
-                {!h.ativo && <span style={{ fontSize: 11, color: 'var(--accent2)' }}>(desativado)</span>}
+                {!h.ativo && <span style={{ fontSize: 11, color: 'var(--danger)' }}>(desativado)</span>}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -966,8 +966,8 @@ function GradeHorarios() {
                   onClick={() => toggle(h)}
                   disabled={updating === h.id}
                   style={{
-                    background: 'transparent', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--accent2)'}`,
-                    color: h.ativo ? 'var(--text2)' : 'var(--accent2)', borderRadius: 4, padding: '6px 12px',
+                    background: 'transparent', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--danger)'}`,
+                    color: h.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px',
                     fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
                   }}
                 >
@@ -989,7 +989,7 @@ function GradeHorarios() {
                   onClick={() => apagar(h)}
                   disabled={updating === h.id}
                   style={{
-                    background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                    background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                     borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
                   }}
                 >
@@ -1059,7 +1059,7 @@ function GradeHorarios() {
             </div>
           </div>
 
-          {erroForm && <p style={{ color: 'var(--accent2)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
+          {erroForm && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={criarHorarios} disabled={salvandoNovo} style={{
