@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje, periodoFuturoHoje, statusPeriodoHoje } from '@/lib/periodos'
 
@@ -28,35 +29,15 @@ const STATUS_INFO: Record<string, { label: string; cor: string; bg: string }> = 
   sem_periodo: { label: 'Sem período registrado', cor: 'var(--text3)', bg: 'var(--bg)' },
 }
 
-type PagamentoPendente = {
-  id: string
-  aluno_id: string
-  valor: number
-  comprovante_url: string | null
-  created_at: string
-  alunos: { nome: string; telefone: string } | null
-}
-
-const PLANO_3X = '904a1d47-3748-4ddc-980f-cab5979be18e'
-
 export default function MensalidadesPage() {
   const router = useRouter()
   const [alunos, setAlunos] = useState<AlunoComPeriodo[]>([])
-  const [pendentes, setPendentes] = useState<PagamentoPendente[]>([])
-  const [confirmando, setConfirmando] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<'todos' | 'vencido' | 'ativo' | 'sem_periodo'>('todos')
   const [busca, setBusca] = useState('')
 
   async function carregar() {
     setLoading(true)
-    const { data: pendentesData } = await supabase
-      .from('pagamentos')
-      .select('id, aluno_id, valor, comprovante_url, created_at, alunos(nome, telefone)')
-      .eq('status', 'aguardando_confirmacao')
-      .order('created_at', { ascending: false })
-    setPendentes((pendentesData as unknown as PagamentoPendente[]) || [])
-
     const { data: alunosData } = await supabase
       .from('alunos')
       .select('id, nome, telefone, status_plano')
@@ -96,102 +77,6 @@ export default function MensalidadesPage() {
 
   useEffect(() => { carregar() }, [])
 
-  async function calcularDesconto(alunoId: string): Promise<{ valorFinal: number; descontoValor: number | null; descontoMotivo: string | null; descontoRecorrente: boolean }> {
-    const { data: pontual } = await supabase
-      .from('desconto_pendente_aplicacao')
-      .select('id, valor, motivo')
-      .eq('aluno_id', alunoId)
-      .eq('status', 'pendente')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (pontual) {
-      await supabase.from('desconto_pendente_aplicacao').update({ status: 'aplicado' }).eq('id', pontual.id)
-      return { valorFinal: Math.max(0, 129.90 - Number(pontual.valor)), descontoValor: Number(pontual.valor), descontoMotivo: pontual.motivo, descontoRecorrente: false }
-    }
-
-    const { data: aluno } = await supabase
-      .from('alunos')
-      .select('desconto_individual_valor, desconto_individual_motivo')
-      .eq('id', alunoId)
-      .maybeSingle()
-
-    if (aluno?.desconto_individual_valor) {
-      return { valorFinal: Math.max(0, 129.90 - Number(aluno.desconto_individual_valor)), descontoValor: Number(aluno.desconto_individual_valor), descontoMotivo: aluno.desconto_individual_motivo, descontoRecorrente: true }
-    }
-
-    return { valorFinal: 129.90, descontoValor: null, descontoMotivo: null, descontoRecorrente: false }
-  }
-
-  async function confirmarPagamento(pag: PagamentoPendente) {
-    setConfirmando(pag.id)
-    const agora = new Date()
-    const hojeStr = agora.toISOString().slice(0, 10)
-
-    const desconto = await calcularDesconto(pag.aluno_id)
-
-    const resposta = await fetch('/api/admin-ativar-plano', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        alunoId: pag.aluno_id,
-        pagamentoId: pag.id,
-        planoId: PLANO_3X,
-        valor: desconto.valorFinal,
-        valorOriginal: 129.90,
-        desconto: desconto.descontoValor || 0,
-        dataPagamento: hojeStr,
-      }),
-    })
-    if (!resposta.ok) {
-      setConfirmando(null)
-      return
-    }
-
-    if (pag.alunos?.telefone) {
-      try {
-        await fetch('/api/confirmar-pagamento', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alunoId: pag.aluno_id }),
-        })
-      } catch (e) {}
-    }
-
-    setConfirmando(null)
-    carregar()
-  }
-
-  async function renovarManualmente(aluno: AlunoComPeriodo) {
-    if (!confirm(`Renovar o plano de ${aluno.nome} por mais 30 dias?`)) return
-    setConfirmando(aluno.id)
-    const agora = new Date()
-    const hojeStr = agora.toISOString().slice(0, 10)
-
-    const desconto = await calcularDesconto(aluno.id)
-
-    const resposta = await fetch('/api/admin-ativar-plano', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        alunoId: aluno.id,
-        planoId: PLANO_3X,
-        valor: desconto.valorFinal,
-        valorOriginal: 129.90,
-        desconto: desconto.descontoValor || 0,
-        dataPagamento: hojeStr,
-        observacao: 'Renovação manual pelo painel',
-      }),
-    })
-    if (!resposta.ok) {
-      setConfirmando(null)
-      return
-    }
-
-    setConfirmando(null)
-    carregar()
-  }
-
   const filtrados = alunos.filter(a => {
     const statusAtual = a.periodoAtual ? statusPeriodoHoje(a.periodoAtual) : 'sem_periodo'
     if (filtro !== 'todos' && statusAtual !== filtro) return false
@@ -209,44 +94,10 @@ export default function MensalidadesPage() {
     <div>
       <h1 style={{ fontSize: 28, marginBottom: 4 }}>Planos</h1>
       <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
-        Quem está em dia, quem venceu, e quem já renovou pro próximo período.
+        Quem está em dia, quem venceu, e quem já renovou pro próximo período. Pra confirmar um
+        pagamento ou registrar um novo, use a tela de <Link href="/admin/pagamentos" style={{ color: 'var(--accent2)' }}>Pagamentos</Link> —
+        assim que um pagamento é confirmado por lá, a mensalidade do aluno é liberada aqui automaticamente.
       </p>
-
-      {!!pendentes.length && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 800, marginBottom: 8, color: '#f0a500' }}>
-            ⏳ Aguardando confirmação ({pendentes.length})
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {pendentes.map(p => (
-              <div key={p.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                padding: '12px 14px', borderRadius: 8, background: 'var(--card)', border: '1px solid #f0a500',
-              }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{p.alunos?.nome || p.alunos?.telefone}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
-                    R$ {Number(p.valor).toFixed(2)}
-                    {p.comprovante_url && (
-                      <> · <a href={p.comprovante_url} target="_blank" rel="noreferrer" style={{ color: '#5b9bd5' }}>ver comprovante</a></>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => confirmarPagamento(p)}
-                  disabled={confirmando === p.id}
-                  style={{
-                    padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    border: '1px solid #3fb950', background: '#3fb95015', color: '#3fb950',
-                  }}
-                >
-                  {confirmando === p.id ? 'Confirmando...' : '✅ Confirmar pagamento'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {([
@@ -305,7 +156,7 @@ export default function MensalidadesPage() {
                       : 'Nenhum período registrado ainda'}
                   </div>
                 </div>
-                <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {a.periodoFuturo && (
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: STATUS_INFO.agendado.cor, background: STATUS_INFO.agendado.bg }}>
                       Renovado até {new Date(a.periodoFuturo.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}
@@ -314,18 +165,6 @@ export default function MensalidadesPage() {
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: info.cor, background: info.bg }}>
                     {info.label}
                   </span>
-                  {!a.periodoFuturo && (
-                    <button
-                      onClick={() => renovarManualmente(a)}
-                      disabled={confirmando === a.id}
-                      style={{
-                        padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        border: '1px solid #5b9bd5', background: '#5b9bd515', color: '#5b9bd5',
-                      }}
-                    >
-                      {confirmando === a.id ? 'Renovando...' : '🔄 Renovar 30 dias'}
-                    </button>
-                  )}
                 </div>
               </div>
             )
