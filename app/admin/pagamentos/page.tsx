@@ -37,7 +37,7 @@ const STATUS_COLOR: Record<string, string> = {
   pendente: 'var(--accent)',
   aguardando_confirmacao: '#f0a500',
   pago: '#3fb950',
-  vencido: 'var(--accent2)',
+  vencido: 'var(--danger)',
   cancelado: 'var(--text3)',
 }
 
@@ -460,7 +460,7 @@ export default function PagamentosPage() {
                 {salvandoEdicao ? 'Salvando...' : 'Salvar'}
               </button>
               <button onClick={() => removerPagamento(editando.id)} disabled={salvandoEdicao} style={{
-                background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)', borderRadius: 6,
+                background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6,
                 padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 🗑️ Remover
