@@ -103,7 +103,7 @@ export default function AerobicoPage() {
                 </div>
               </div>
               <button onClick={() => cancelar(r.id)} style={{
-                background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
+                background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
                 borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'
               }}>
                 Cancelar
