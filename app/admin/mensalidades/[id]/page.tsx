@@ -196,6 +196,21 @@ export default function MensalidadeAlunoPage() {
     carregar()
   }
 
+  async function notificarVencimentoHandler() {
+    if (!aluno) return
+    const resp = await fetch('/api/admin-notificar-vencimento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alunoId: id }),
+    })
+    const dados = await resp.json().catch(() => null)
+    if (!resp.ok) {
+      avisar(dados?.error || 'Não foi possível enviar a cobrança.', 4500)
+      return
+    }
+    avisar(`Cobrança enviada pelo WhatsApp (${dados.diasVencido} dia(s) de atraso).`, 4000)
+  }
+
   async function alterarVencimento(dia: number) {
     if (!aluno) return
     await supabase.from('alunos').update({ dia_vencimento: dia }).eq('id', id)
@@ -274,6 +289,11 @@ export default function MensalidadeAlunoPage() {
           {estaVencido && (
             <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
               🔄 Renovar
+            </button>
+          )}
+          {estaVencido && (
+            <button onClick={notificarVencimentoHandler} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid var(--whatsapp)', color: 'var(--whatsapp)' }}>
+              💬 Notificar vencimento
             </button>
           )}
           {aluno.status_plano === 'ativo' && !estaVencido && (
