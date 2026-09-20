@@ -196,7 +196,7 @@ export default function AdminHome() {
           { label: 'Alunos ativos', value: stats.ativos, href: '/admin/alunos?status=ativo', color: '#3fb950' },
           { label: 'Leads / em negociação', value: stats.leads, href: '/admin/alunos?status=lead', color: 'var(--accent)' },
           { label: 'Aguard. confirmação', value: stats.aguardando, href: '/admin/pagamentos', color: '#f0a500' },
-          { label: 'Planos vencidos', value: stats.vencidos, href: '/admin/alunos?status=vencido', color: 'var(--accent2)' },
+          { label: 'Planos vencidos', value: stats.vencidos, href: '/admin/alunos?status=vencido', color: 'var(--danger)' },
         ].map(c => (
           <Link key={c.label} href={c.href} style={{
             background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: 8,
@@ -302,9 +302,9 @@ export default function AdminHome() {
         </div>
 
         {/* Vencendo em breve */}
-        <div style={{ background: 'var(--card)', border: `1px solid ${vencendoEmBreve.length > 0 ? 'var(--accent2)' : 'var(--border)'}`, borderRadius: 8, padding: '1rem' }}>
+        <div style={{ background: 'var(--card)', border: `1px solid ${vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 8, padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: vencendoEmBreve.length > 0 ? 'var(--accent2)' : 'var(--text2)', letterSpacing: 1, textTransform: 'uppercase' }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--text2)', letterSpacing: 1, textTransform: 'uppercase' }}>
               ⏳ Vencendo em breve
             </h2>
             <Link href="/admin/mensalidades" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>Ver mensalidades →</Link>
