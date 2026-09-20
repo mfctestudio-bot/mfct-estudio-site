@@ -277,32 +277,32 @@ export default function MensalidadeAlunoPage() {
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           {aluno.status_plano === 'cancelado' && (
-            <button onClick={() => abrirModalAtivacao()} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
+            <button onClick={() => abrirModalAtivacao()} className="btn btn-success">
               🔄 Reativar
             </button>
           )}
           {aluno.status_plano === 'pausado' && (
-            <button onClick={continuarPlanoHandler} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
+            <button onClick={continuarPlanoHandler} className="btn btn-success">
               ▶️ Continuar
             </button>
           )}
           {estaVencido && (
-            <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} style={{ ...btnStyle, background: '#3fb950', color: '#fff' }}>
+            <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} className="btn btn-success">
               🔄 Renovar
             </button>
           )}
           {estaVencido && (
-            <button onClick={notificarVencimentoHandler} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid var(--whatsapp)', color: 'var(--whatsapp)' }}>
+            <button onClick={notificarVencimentoHandler} className="btn btn-outline-whatsapp">
               💬 Notificar vencimento
             </button>
           )}
           {aluno.status_plano === 'ativo' && !estaVencido && (
-            <button onClick={pausarPlano} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid #f0a500', color: '#f0a500' }}>
+            <button onClick={pausarPlano} className="btn btn-outline-warning">
               ⏸️ Pausar
             </button>
           )}
           {aluno.status_plano !== 'cancelado' && (
-            <button onClick={cancelarPlano} style={{ ...btnStyle, background: 'transparent', border: '1.5px solid var(--danger)', color: 'var(--danger)' }}>
+            <button onClick={cancelarPlano} className="btn btn-outline-danger">
               ❌ Cancelar
             </button>
           )}
@@ -384,10 +384,10 @@ export default function MensalidadeAlunoPage() {
                       onChange={e => setNovaDataInicio(e.target.value)}
                       style={{ ...inputStyle, width: 'auto' }}
                     />
-                    <button onClick={() => salvarNovaData(periodo.id)} disabled={salvandoData} style={{ ...btnStyle, padding: '8px 14px', background: '#3fb950', color: '#fff', opacity: salvandoData ? 0.6 : 1 }}>
+                    <button onClick={() => salvarNovaData(periodo.id)} disabled={salvandoData} className="btn btn-success btn-sm">
                       {salvandoData ? 'Salvando...' : 'Salvar'}
                     </button>
-                    <button onClick={() => setEditandoPeriodoId(null)} disabled={salvandoData} style={{ ...btnStyle, padding: '8px 14px', background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
+                    <button onClick={() => setEditandoPeriodoId(null)} disabled={salvandoData} className="btn btn-neutral btn-sm">
                       Cancelar
                     </button>
                   </div>
@@ -478,10 +478,10 @@ export default function MensalidadeAlunoPage() {
             </Campo>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button onClick={confirmarAtivacao} disabled={modalSaving} style={{ ...btnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: modalSaving ? 0.6 : 1 }}>
+              <button onClick={confirmarAtivacao} disabled={modalSaving} className="btn btn-success" style={{ flex: 1 }}>
                 {modalSaving ? 'Registrando...' : '✅ Confirmar'}
               </button>
-              <button onClick={() => { setModalPlano(null); setModalTrocaInfo(null) }} disabled={modalSaving} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
+              <button onClick={() => { setModalPlano(null); setModalTrocaInfo(null) }} disabled={modalSaving} className="btn btn-neutral">
                 Cancelar
               </button>
             </div>
@@ -513,9 +513,4 @@ const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
   padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   fontFamily: 'inherit',
-}
-
-const btnStyle: React.CSSProperties = {
-  border: 'none', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700,
-  cursor: 'pointer', fontFamily: 'inherit',
 }
