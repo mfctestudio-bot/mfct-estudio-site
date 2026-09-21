@@ -52,7 +52,8 @@ function LoginForm() {
               style={{ width: '100%', background: 'var(--bg2)', border: `1px solid ${erro ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, padding: '12px 14px', color: 'var(--text)', fontSize: 16, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 12, letterSpacing: '2px' }} />
             {erro && <div style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 12 }}>{erro}</div>}
             <button type="submit" disabled={loading || !senha || !usuario}
-              style={{ width: '100%', background: 'var(--accent2)', color: '#fff', border: 'none', borderRadius: 6, padding: '13px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: "'Anton', sans-serif", textTransform: 'uppercase', letterSpacing: 1, opacity: (loading || !senha || !usuario) ? 0.6 : 1 }}>
+              className="btn btn-primary"
+              style={{ width: '100%', fontFamily: "'Anton', sans-serif", textTransform: 'uppercase', letterSpacing: 1 }}>
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
