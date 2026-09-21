@@ -43,7 +43,7 @@ type VencendoEmBreve = {
 // que faz o layout responder sozinho em celular (empilha) sem precisar de
 // media query pra cada bloco.
 const cardBase: React.CSSProperties = {
-  background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '1.1rem',
+  padding: '1.1rem',
 }
 
 function gridAuto(minWidth: number): React.CSSProperties {
@@ -240,7 +240,7 @@ export default function AdminHome() {
           { label: 'Aguard. confirmação', value: stats.aguardando, href: '/admin/pagamentos', color: '#f0a500' },
           { label: 'Planos vencidos', value: stats.vencidos, href: '/admin/alunos?status=vencido', color: 'var(--danger)' },
         ].map(c => (
-          <Link key={c.label} href={c.href} style={{
+          <Link key={c.label} href={c.href} className="card card-hover" style={{
             ...cardBase, textDecoration: 'none', color: 'var(--text)', display: 'block',
             borderColor: c.value > 0 && c.label !== 'Alunos ativos' ? `${c.color}55` : 'var(--border)',
           }}>
@@ -255,7 +255,7 @@ export default function AdminHome() {
       {/* HOJE -- o que precisa acontecer nas próximas horas */}
       <SectionTitle>Hoje</SectionTitle>
       <div style={gridAuto(320)}>
-        <div style={cardBase}>
+        <div className="card card-hover" style={cardBase}>
           <CardHeader title="Aulas hoje" action="Ver agenda" href="/admin/agenda" />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
@@ -278,7 +278,7 @@ export default function AdminHome() {
           )}
         </div>
 
-        <div style={{ ...cardBase, borderColor: stats.aguardando > 0 ? '#f0a50077' : 'var(--border)' }}>
+        <div className="card card-hover" style={{ ...cardBase, borderColor: stats.aguardando > 0 ? '#f0a50077' : 'var(--border)' }}>
           <CardHeader
             title={stats.aguardando > 0 ? `⚠️ ${stats.aguardando} pagamento(s) aguardando` : 'Pagamentos'}
             color={stats.aguardando > 0 ? '#f0a500' : 'var(--text)'}
@@ -314,7 +314,7 @@ export default function AdminHome() {
       {/* PRECISA DE ATENÇÃO -- coisas que, se ignoradas, viram problema */}
       <SectionTitle>Precisa de atenção</SectionTitle>
       <div style={gridAuto(320)}>
-        <div style={cardBase}>
+        <div className="card card-hover" style={cardBase}>
           <CardHeader title="🎂 Aniversariantes do mês" />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
@@ -334,7 +334,7 @@ export default function AdminHome() {
           )}
         </div>
 
-        <div style={{ ...cardBase, borderColor: vencendoEmBreve.length > 0 ? 'var(--danger)77' : 'var(--border)' }}>
+        <div className="card card-hover" style={{ ...cardBase, borderColor: vencendoEmBreve.length > 0 ? 'var(--danger)77' : 'var(--border)' }}>
           <CardHeader
             title="⏳ Vencendo em breve"
             color={vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--text)'}
@@ -361,7 +361,7 @@ export default function AdminHome() {
       {/* DESEMPENHO -- números do estúdio ao longo do tempo */}
       <SectionTitle>Desempenho</SectionTitle>
       <div style={gridAuto(320)}>
-        <div style={cardBase}>
+        <div className="card card-hover" style={cardBase}>
           <CardHeader title="💰 Faturamento por mês" action="Ver financeiro" href="/admin/financeiro" />
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={faturamentoGrafico}>
@@ -377,7 +377,7 @@ export default function AdminHome() {
           </ResponsiveContainer>
         </div>
 
-        <div style={cardBase}>
+        <div className="card card-hover" style={cardBase}>
           <CardHeader title="📈 Crescimento (matrículas acumuladas)" />
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={crescimentoGrafico}>
@@ -402,7 +402,7 @@ export default function AdminHome() {
           { label: '📊 Financeiro', href: '/admin/financeiro' },
           { label: '📝 Posts', href: '/admin/posts' },
         ].map(l => (
-          <Link key={l.href} href={l.href} style={{
+          <Link key={l.href} href={l.href} className="card card-hover" style={{
             ...cardBase, padding: '12px 14px', fontSize: 13, fontWeight: 700, textDecoration: 'none', color: 'var(--text)',
             textAlign: 'center',
           }}>{l.label}</Link>
