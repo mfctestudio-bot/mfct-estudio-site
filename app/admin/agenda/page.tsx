@@ -325,9 +325,9 @@ function GradeSemanal() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })} style={navBtnStyle}>← Semana anterior</button>
+        <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })} className="btn btn-ghost btn-sm">← Semana anterior</button>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtBR(monday)} a {fmtBR(domingo)}</span>
-        <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })} style={navBtnStyle}>Próxima semana →</button>
+        <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })} className="btn btn-ghost btn-sm">Próxima semana →</button>
         <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: '#3fb950', borderColor: '#3fb950' }}>Hoje</button>
       </div>
 
@@ -441,17 +441,10 @@ function GradeSemanal() {
                       </div>
                       {movendoId !== a.id && (
                         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                          <button onClick={() => abrirMoverAgendamento(a)} style={{
-                            background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
-                            borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                          }}>
+                          <button onClick={() => abrirMoverAgendamento(a)} className="btn btn-ghost btn-sm" style={{ whiteSpace: 'nowrap' }}>
                             ✏️ Mudar
                           </button>
-                          <button onClick={() => cancelarAgendamentoIndividual(a)} disabled={cancelandoId === a.id} style={{
-                            background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                            borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                            opacity: cancelandoId === a.id ? 0.6 : 1,
-                          }}>
+                          <button onClick={() => cancelarAgendamentoIndividual(a)} disabled={cancelandoId === a.id} className="btn btn-outline-danger btn-sm" style={{ whiteSpace: 'nowrap' }}>
                             {cancelandoId === a.id ? '...' : '❌ Cancelar'}
                           </button>
                         </div>
@@ -467,12 +460,10 @@ function GradeSemanal() {
                           {horarios.map(h => <option key={h.id} value={h.id}>{h.horario.slice(0, 5)}</option>)}
                         </select>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => confirmarMoverAgendamento(a)} disabled={salvandoMover} style={{
-                            ...navBtnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: salvandoMover ? 0.6 : 1,
-                          }}>
+                          <button onClick={() => confirmarMoverAgendamento(a)} disabled={salvandoMover} className="btn btn-success" style={{ flex: 1 }}>
                             {salvandoMover ? 'Salvando...' : '✅ Confirmar mudança'}
                           </button>
-                          <button onClick={() => setMovendoId(null)} disabled={salvandoMover} style={navBtnStyle}>Cancelar</button>
+                          <button onClick={() => setMovendoId(null)} disabled={salvandoMover} className="btn btn-ghost btn-sm">Cancelar</button>
                         </div>
                       </div>
                     )}
@@ -508,12 +499,10 @@ function GradeSemanal() {
                   </label>
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  <button onClick={adicionarAlunoNoHorario} disabled={!alunoEscolhido || salvandoAgendamento} style={{
-                    ...navBtnStyle, flex: 1, background: '#3fb950', color: '#fff', opacity: (!alunoEscolhido || salvandoAgendamento) ? 0.6 : 1,
-                  }}>
+                  <button onClick={adicionarAlunoNoHorario} disabled={!alunoEscolhido || salvandoAgendamento} className="btn btn-success" style={{ flex: 1 }}>
                     {salvandoAgendamento ? 'Salvando...' : '✅ Confirmar'}
                   </button>
-                  <button onClick={() => setMostrarForm(false)} disabled={salvandoAgendamento} style={navBtnStyle}>Cancelar</button>
+                  <button onClick={() => setMostrarForm(false)} disabled={salvandoAgendamento} className="btn btn-ghost btn-sm">Cancelar</button>
                 </div>
               </div>
             )}
@@ -576,7 +565,7 @@ function GradeSemanal() {
               🔔 Encerrar este horário de vez (avisa todo mundo)
             </button>
 
-            <button onClick={() => setCélulaAberta(null)} style={{ ...navBtnStyle, width: '100%', marginTop: 8 }}>Fechar</button>
+            <button onClick={() => setCélulaAberta(null)} className="btn btn-ghost" style={{ width: '100%', marginTop: 8 }}>Fechar</button>
           </div>
         </div>
       )}
@@ -685,8 +674,7 @@ function ProximasAulas() {
           const first = items[0]
           const horario = first.horarios?.horario.slice(0, 5) || ''
           return (
-            <div key={key} style={{
-              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+            <div key={key} className="card card-hover" style={{
               padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
               <div>
@@ -698,11 +686,7 @@ function ProximasAulas() {
               <button
                 onClick={() => cancelarTurma(first.data, first.horario_id, horario)}
                 disabled={cancelando === key}
-                style={{
-                  background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                  borderRadius: 4, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  opacity: cancelando === key ? 0.6 : 1,
-                }}
+                className="btn btn-outline-danger btn-sm"
               >
                 {cancelando === key ? 'Cancelando...' : 'Cancelar aula'}
               </button>
@@ -910,9 +894,9 @@ function GradeHorarios() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 16 }}>
           {horariosDoDia.map(h => (
-            <div key={h.id} style={{
-              background: 'var(--card)', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--danger)'}`,
-              borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
+            <div key={h.id} className="card card-hover" style={{
+              borderColor: h.ativo ? 'var(--border)' : 'var(--danger)',
+              padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: h.ativo ? 1 : 0.55,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -930,7 +914,7 @@ function GradeHorarios() {
                       onChange={e => setCapacidadeTemp(e.target.value)}
                       style={{ width: 55, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
                     />
-                    <button onClick={() => salvarCapacidade(h)} style={{ background: '#3fb950', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
+                    <button onClick={() => salvarCapacidade(h)} className="btn btn-success btn-sm">OK</button>
                   </>
                 ) : (
                   <span
@@ -988,10 +972,7 @@ function GradeHorarios() {
                 <button
                   onClick={() => apagar(h)}
                   disabled={updating === h.id}
-                  style={{
-                    background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                    borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
-                  }}
+                  className="btn btn-outline-danger btn-sm"
                 >
                   🗑️
                 </button>
@@ -1062,16 +1043,10 @@ function GradeHorarios() {
           {erroForm && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={criarHorarios} disabled={salvandoNovo} style={{
-              background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
-              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvandoNovo ? 0.6 : 1,
-            }}>
+            <button onClick={criarHorarios} disabled={salvandoNovo} className="btn btn-success">
               {salvandoNovo ? 'Criando...' : '✅ Criar'}
             </button>
-            <button onClick={() => { setMostrarForm(false); setErroForm(''); setDiasEscolhidos([]) }} disabled={salvandoNovo} style={{
-              background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
-              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
+            <button onClick={() => { setMostrarForm(false); setErroForm(''); setDiasEscolhidos([]) }} disabled={salvandoNovo} className="btn btn-neutral">
               Cancelar
             </button>
           </div>
