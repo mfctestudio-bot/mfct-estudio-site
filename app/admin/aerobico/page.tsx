@@ -77,7 +77,7 @@ export default function AerobicoPage() {
             {aparelhos.map(ap => {
               const count = rows.filter(r => r.aparelho === ap).length
               return (
-                <div key={ap} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px', textAlign: 'center' }}>
+                <div key={ap} className="card card-hover" style={{ padding: '12px', textAlign: 'center' }}>
                   <div style={{ fontSize: 24 }}>{APARELHO_EMOJI[ap]}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4, textTransform: 'capitalize' }}>{ap}</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: count > 0 ? 'var(--accent)' : 'var(--text2)', marginTop: 2 }}>{count}</div>
@@ -89,8 +89,7 @@ export default function AerobicoPage() {
 
           {/* Lista */}
           {rows.map(r => (
-            <div key={r.id} style={{
-              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8,
+            <div key={r.id} className="card card-hover" style={{
               padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -102,10 +101,7 @@ export default function AerobicoPage() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => cancelar(r.id)} style={{
-                background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'
-              }}>
+              <button onClick={() => cancelar(r.id)} className="btn btn-outline-danger btn-sm">
                 Cancelar
               </button>
             </div>
