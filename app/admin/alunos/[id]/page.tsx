@@ -190,7 +190,8 @@ export default function AlunoPage() {
         <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Plano atual</div>
         <div
           onClick={() => router.push(`/admin/mensalidades/${id}`)}
-          style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '16px', cursor: 'pointer' }}
+          className="card card-hover"
+          style={{ padding: '16px', cursor: 'pointer' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div>
@@ -220,10 +221,10 @@ export default function AlunoPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-        <button onClick={salvar} disabled={saving} style={{ ...btnStyle, background: 'var(--accent2)', color: '#fff', opacity: saving ? 0.6 : 1 }}>
+        <button onClick={salvar} disabled={saving} className="btn btn-primary">
           {saving ? 'Salvando...' : 'Salvar alterações'}
         </button>
-        <button onClick={excluir} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
+        <button onClick={excluir} className="btn btn-neutral">
           Excluir aluno
         </button>
       </div>
