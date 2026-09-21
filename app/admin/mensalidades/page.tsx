@@ -142,10 +142,11 @@ export default function MensalidadesPage() {
               <div
                 key={a.id}
                 onClick={() => router.push(`/admin/mensalidades/${a.id}`)}
+                className="card card-hover"
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                  padding: '12px 14px', borderRadius: 8, flexWrap: 'wrap', cursor: 'pointer',
-                  background: 'var(--card)', border: `1px solid ${statusAtual === 'vencido' ? info.cor : 'var(--border)'}`,
+                  padding: '12px 14px', flexWrap: 'wrap', cursor: 'pointer',
+                  borderColor: statusAtual === 'vencido' ? info.cor : 'var(--border)',
                 }}
               >
                 <div>
