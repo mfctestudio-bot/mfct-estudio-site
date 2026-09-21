@@ -1,43 +1,62 @@
 import { waLink, WA_MESSAGES } from '@/lib/whatsapp'
+import { supabase, Plano, Servico } from '@/lib/supabase'
 
-const PLANOS = [
-  {
-    nome: '3x por semana',
-    valor: '129,90',
-    periodo: '/mês',
-    desc: 'Treine três vezes na semana, nos horários que tiver vaga.',
-    destaque: false,
-  },
-  {
-    nome: '4x por semana',
-    valor: '169,90',
-    periodo: '/mês',
-    desc: 'Treine quatro vezes na semana — mais consistência, mais resultado.',
-    destaque: true,
-  },
-  {
-    nome: 'Aula avulsa',
-    valor: '15',
-    periodo: '/aula (Pix)',
-    desc: 'Sem plano fixo. Pague apenas pelos dias que vier treinar.',
-    destaque: false,
-  },
-  {
-    nome: 'Avulsa — fim de semana',
-    valor: '30',
-    periodo: '/aula (Pix)',
-    desc: 'Sábado e domingo, das 8h ao meio-dia.',
-    destaque: false,
-  },
-]
+const DESCRICAO_SERVICO: Record<string, string> = {
+  'Aula Avulsa': 'Sem plano fixo. Pague apenas pelos dias que vier treinar (Pix).',
+  'Avaliação Física': 'Descubra sua taxa metabólica basal e monte um plano sob medida.',
+}
 
-export default function PlanCards() {
+function formatValor(v: number) {
+  return Number(v).toFixed(2).replace('.', ',').replace(',00', '')
+}
+
+type CardData = {
+  id: string
+  nome: string
+  valor: string
+  periodo: string
+  desc: string
+  destaque: boolean
+}
+
+async function getPlanos(): Promise<CardData[]> {
+  const [{ data: planosData }, { data: servicosData }] = await Promise.all([
+    supabase.from('planos').select('*').eq('ativo', true).order('vezes_semana'),
+    supabase.from('servicos').select('*').eq('ativo', true).order('created_at'),
+  ])
+
+  const planos = (planosData as Plano[] | null) || []
+  const servicos = (servicosData as Servico[] | null) || []
+
+  const cardsPlanos: CardData[] = planos.map((p, i) => ({
+    id: p.id,
+    nome: `${p.vezes_semana}x por semana`,
+    valor: formatValor(p.valor),
+    periodo: '/mês',
+    desc: `Treine ${p.vezes_semana} vezes na semana, nos horários que tiver vaga.`,
+    destaque: i === planos.length - 1, // o de mais vezes por semana fica em destaque
+  }))
+
+  const cardsServicos: CardData[] = servicos.map(s => ({
+    id: s.id,
+    nome: s.nome,
+    valor: formatValor(s.valor),
+    periodo: '/vez (Pix)',
+    desc: DESCRICAO_SERVICO[s.nome] || 'Fale com a gente pelo WhatsApp pra saber mais.',
+    destaque: false,
+  }))
+
+  return [...cardsPlanos, ...cardsServicos]
+}
+
+export default async function PlanCards() {
+  const cards = await getPlanos()
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14,
     }}>
-      {PLANOS.map(p => (
-        <div key={p.nome} style={{
+      {cards.map(p => (
+        <div key={p.id} style={{
           background: 'var(--card)',
           border: `1px solid ${p.destaque ? 'var(--accent2)' : 'var(--border)'}`,
           borderRadius: 6, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: 12,
