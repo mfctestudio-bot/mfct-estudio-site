@@ -126,10 +126,7 @@ export default function AvulsasPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
         <h1 style={{ fontSize: 28 }}>Aulas Avulsas</h1>
-        <button onClick={() => setNovoModal(true)} style={{
-          background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
-          padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setNovoModal(true)} className="btn btn-primary">
           + Registrar crédito
         </button>
       </div>
@@ -165,9 +162,9 @@ export default function AvulsasPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           {rows.map(c => (
-            <div key={c.id} style={{
-              background: 'var(--card)', border: `1px solid ${c.status === 'aguardando_confirmacao' ? '#f0a500' : 'var(--border)'}`,
-              borderRadius: 6, padding: '14px 16px',
+            <div key={c.id} className="card card-hover" style={{
+              borderColor: c.status === 'aguardando_confirmacao' ? '#f0a500' : 'var(--border)',
+              padding: '14px 16px',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div>
@@ -185,10 +182,7 @@ export default function AvulsasPage() {
                     {STATUS_LABEL[c.status] || c.status}
                   </span>
                   {(c.status === 'aguardando_confirmacao' || c.status === 'aguardando_pagamento') && (
-                    <button onClick={() => cancelar(c.id)} style={{
-                      background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                      borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
+                    <button onClick={() => cancelar(c.id)} className="btn btn-outline-danger btn-sm">
                       Cancelar
                     </button>
                   )}
@@ -216,12 +210,7 @@ export default function AvulsasPage() {
                   <button
                     onClick={() => confirmar(c.id)}
                     disabled={confirmando === c.id}
-                    style={{
-                      background: '#3fb950', border: 'none', color: '#fff',
-                      borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                      cursor: confirmando === c.id ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-                      opacity: confirmando === c.id ? 0.6 : 1,
-                    }}
+                    className="btn btn-success"
                   >
                     {confirmando === c.id ? 'Confirmando...' : '✅ Confirmar pagamento'}
                   </button>
@@ -257,17 +246,10 @@ export default function AvulsasPage() {
               <input type="number" step="0.01" value={novoValor} onChange={e => setNovoValor(e.target.value)} style={inputStyle} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={salvarNovo} disabled={salvandoNovo || !novoAlunoId} style={{
-                background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6, padding: '10px 18px',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flex: 1,
-                opacity: (salvandoNovo || !novoAlunoId) ? 0.6 : 1,
-              }}>
+              <button onClick={salvarNovo} disabled={salvandoNovo || !novoAlunoId} className="btn btn-success" style={{ flex: 1 }}>
                 {salvandoNovo ? 'Salvando...' : 'Salvar (aguardando confirmação)'}
               </button>
-              <button onClick={() => setNovoModal(false)} style={{
-                background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)',
-                borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              <button onClick={() => setNovoModal(false)} className="btn btn-neutral">
                 Cancelar
               </button>
             </div>
