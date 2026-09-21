@@ -24,6 +24,8 @@ function Icon({ name }: { name: string }) {
       return <svg {...common}><line x1="5" y1="20" x2="5" y2="12" /><line x1="12" y1="20" x2="12" y2="5" /><line x1="19" y1="20" x2="19" y2="15" /></svg>
     case 'file':
       return <svg {...common}><path d="M6 3h9l4 4v14H6z" /><line x1="9" y1="12" x2="15" y2="12" /><line x1="9" y1="16" x2="15" y2="16" /></svg>
+    case 'sliders':
+      return <svg {...common}><line x1="4" y1="6" x2="20" y2="6" /><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none" /><line x1="4" y1="12" x2="20" y2="12" /><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" /><line x1="4" y1="18" x2="20" y2="18" /><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none" /></svg>
     default:
       return null
   }
@@ -40,8 +42,15 @@ const GRUPOS = [
       { href: '/admin/alunos', label: 'Alunos', icon: 'users' },
       { href: '/admin/agenda', label: 'Agenda', icon: 'calendar' },
       { href: '/admin/professores', label: 'Professores', icon: 'users' },
-      { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
       { href: '/admin/aerobico', label: 'Aeróbico', icon: 'activity' },
+    ],
+  },
+  {
+    titulo: 'Serviços',
+    itens: [
+      { href: '/admin/servicos', label: 'Configurar Serviços', icon: 'sliders' },
+      { href: '/admin/avulsas', label: 'Aulas Avulsas', icon: 'tag' },
+      { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
     ],
   },
   {
@@ -50,7 +59,6 @@ const GRUPOS = [
       { href: '/admin/financeiro', label: 'Financeiro', icon: 'chart' },
       { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
       { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
-      { href: '/admin/avulsas', label: 'Aulas Avulsas', icon: 'tag' },
       { href: '/admin/planos', label: 'Planos', icon: 'tag' },
     ],
   },
