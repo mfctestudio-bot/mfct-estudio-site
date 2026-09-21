@@ -716,12 +716,22 @@ function GradeHorarios() {
 
   const [mostrarForm, setMostrarForm] = useState(false)
   const [novoHorario, setNovoHorario] = useState('18:00')
+  const [horariosEscolhidos, setHorariosEscolhidos] = useState<string[]>([])
   const [novaCapacidade, setNovaCapacidade] = useState('5')
   const [novoProfessorId, setNovoProfessorId] = useState('')
   const [novoTipoAgendaId, setNovoTipoAgendaId] = useState('')
   const [diasEscolhidos, setDiasEscolhidos] = useState<number[]>([])
   const [salvandoNovo, setSalvandoNovo] = useState(false)
   const [erroForm, setErroForm] = useState('')
+
+  function adicionarHorarioEscolhido() {
+    if (!novoHorario) return
+    setHorariosEscolhidos(prev => prev.includes(novoHorario) ? prev : [...prev, novoHorario].sort())
+  }
+
+  function removerHorarioEscolhido(h: string) {
+    setHorariosEscolhidos(prev => prev.filter(x => x !== h))
+  }
 
   const [editandoCapacidade, setEditandoCapacidade] = useState<string | null>(null)
   const [capacidadeTemp, setCapacidadeTemp] = useState('')
@@ -839,29 +849,36 @@ function GradeHorarios() {
   async function criarHorarios() {
     setErroForm('')
     if (diasEscolhidos.length === 0) { setErroForm('Escolhe pelo menos um dia da semana.'); return }
-    if (!novoHorario) { setErroForm('Escolhe um horário.'); return }
+    const listaHorarios = horariosEscolhidos.length > 0 ? horariosEscolhidos : (novoHorario ? [novoHorario] : [])
+    if (listaHorarios.length === 0) { setErroForm('Escolhe pelo menos um horário (clique em "+ Adicionar horário").'); return }
     const capacidade = parseInt(novaCapacidade, 10) || 5
 
     // Nao deixar criar duplicado (mesmo dia + mesmo horario)
-    const jaExiste = diasEscolhidos.filter(dia =>
-      horarios.some(h => h.dia_semana === dia && h.horario.slice(0, 5) === novoHorario)
-    )
-    if (jaExiste.length > 0) {
-      setErroForm(`Já existe horário das ${novoHorario} em: ${jaExiste.map(d => DIAS[d]).join(', ')}. Desmarque esses dias ou edite o horário existente.`)
+    const conflitos: string[] = []
+    for (const dia of diasEscolhidos) {
+      for (const hr of listaHorarios) {
+        if (horarios.some(h => h.dia_semana === dia && h.horario.slice(0, 5) === hr)) {
+          conflitos.push(`${hr} em ${DIAS[dia]}`)
+        }
+      }
+    }
+    if (conflitos.length > 0) {
+      setErroForm(`Já existe horário: ${conflitos.join(', ')}. Desmarque esses dias/horários ou edite o horário existente.`)
       return
     }
 
     setSalvandoNovo(true)
-    const novasLinhas = diasEscolhidos.map(dia => ({
+    const novasLinhas = diasEscolhidos.flatMap(dia => listaHorarios.map(hr => ({
       dia_semana: dia,
-      horario: novoHorario + ':00',
+      horario: hr + ':00',
       capacidade,
       ativo: true,
       professor_id: novoProfessorId || null,
       tipo_agenda_id: novoTipoAgendaId || null,
-    }))
+    })))
     const { data: inseridos } = await supabase.from('horarios').insert(novasLinhas).select('*')
     setHorarios(prev => [...prev, ...(inseridos || [])].sort((a, b) => a.dia_semana - b.dia_semana || a.horario.localeCompare(b.horario)))
+    setHorariosEscolhidos([])
     setSalvandoNovo(false)
     setMostrarForm(false)
     setDiasEscolhidos([])
@@ -1049,14 +1066,39 @@ function GradeHorarios() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Horário</label>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>
+              Horários (pode adicionar vários)
+            </label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
               <input
                 type="time" value={novoHorario} onChange={e => setNovoHorario(e.target.value)}
                 style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
               />
+              <button type="button" onClick={adicionarHorarioEscolhido} style={{
+                background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
+                borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                + Adicionar horário
+              </button>
             </div>
+            {horariosEscolhidos.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {horariosEscolhidos.map(h => (
+                  <span key={h} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: '#3fb95022', border: '1px solid #3fb950', color: '#3fb950',
+                    borderRadius: 6, padding: '4px 8px', fontSize: 12, fontWeight: 700,
+                  }}>
+                    {h}
+                    <span onClick={() => removerHorarioEscolhido(h)} style={{ cursor: 'pointer', fontWeight: 900 }}>×</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <div>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
               <input
