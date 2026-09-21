@@ -574,3 +574,34 @@ export async function editarInicioPeriodo(input: EditarInicioPeriodoInput): Prom
 
   return { periodoId: atualizado.id, dataInicio: atualizado.data_inicio, dataFim: atualizado.data_fim, status: atualizado.status }
 }
+
+type ExcluirPeriodoResult = {
+  periodoId: string
+  eraVigenteHoje: boolean
+}
+
+// Exclui um período (contrato) do histórico do aluno. Não mexe em status_plano
+// nem em pagamentos -- só remove o registro do período. Usado pra limpar
+// contratos antigos/errados. Passa sempre por aqui (nunca DELETE direto em
+// planos_periodos), mesma regra de autoridade central do resto do arquivo.
+export async function excluirPeriodo(periodoId: string): Promise<ExcluirPeriodoResult> {
+  const supabase = serviceClient()
+
+  const { data: periodo, error: periodoError } = await supabase
+    .from('planos_periodos')
+    .select('id, data_inicio, data_fim')
+    .eq('id', periodoId)
+    .single()
+  if (periodoError || !periodo) throw new Error(periodoError?.message || 'período não encontrado')
+
+  const hoje = isoDate(new Date())
+  const eraVigenteHoje = periodo.data_inicio <= hoje && periodo.data_fim >= hoje
+
+  const { error: deleteError } = await supabase
+    .from('planos_periodos')
+    .delete()
+    .eq('id', periodoId)
+  if (deleteError) throw new Error(deleteError.message)
+
+  return { periodoId, eraVigenteHoje }
+}
