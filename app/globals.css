@@ -105,3 +105,29 @@ img { max-width: 100%; height: auto; }
 
 .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
 .btn-ghost:hover:not(:disabled) { border-color: var(--border2); color: var(--text); }
+
+/* ---------------------------------------------------------------------
+   Cards padrão do admin. Mesmo visual base (fundo, borda, cantos) usado
+   em todas as telas, com uma reação leve ao passar o mouse (levanta um
+   pouco + brilho sutil na borda) pra dar um toque mais moderno sem
+   exagerar. Uso opcional -- só some quando .card-static for usado no
+   lugar (pra cards que não devem reagir, ex. dentro de listas muito
+   longas onde o efeito ficaria repetitivo).
+--------------------------------------------------------------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.card-hover:hover {
+  border-color: var(--border2);
+  box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.65);
+  transform: translateY(-2px);
+}
+
+/* Brilho sutil pra destacar algo importante (ex.: card selecionado,
+   aviso que precisa de atenção) sem precisar mudar a cor toda do card. */
+.glow-accent { box-shadow: 0 0 0 1px var(--accent2), 0 0 24px -6px color-mix(in srgb, var(--accent2) 55%, transparent); }
+.glow-danger { box-shadow: 0 0 0 1px var(--danger), 0 0 24px -6px color-mix(in srgb, var(--danger) 55%, transparent); }
+.glow-warning { box-shadow: 0 0 0 1px #f0a500, 0 0 24px -6px color-mix(in srgb, #f0a500 55%, transparent); }
