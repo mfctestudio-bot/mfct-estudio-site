@@ -6,6 +6,10 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { Aluno, Plano } from '@/lib/supabase'
 import { periodoAtualHoje, statusPeriodoHoje } from '@/lib/periodos'
 
+// Mesmo grupo de status que o card "Leads / em negociação" do Início conta.
+// Mantido igual em app/admin/page.tsx -- se mudar um, muda o outro.
+const STATUS_LEADS = ['lead', 'experimental', 'experimental_oferecida', 'experimental_agendada', 'experimental_realizada', 'em_negociacao']
+
 const STATUS_LABEL: Record<string, string> = {
   lead: 'Lead',
   experimental_oferecida: 'Exp. oferecida',
@@ -79,7 +83,11 @@ function AlunosContent() {
       efetivos[aluno.id] = atual ? 'ativo' : (vencido && aluno.status_plano === 'ativo') ? 'vencido' : aluno.status_plano
     }
     setStatusEfetivo(efetivos)
-    setAlunos((data || []).filter(a => statusFiltro === 'todos' || efetivos[a.id] === statusFiltro))
+    setAlunos((data || []).filter(a => {
+      if (statusFiltro === 'todos') return true
+      if (statusFiltro === 'leads') return STATUS_LEADS.includes(efetivos[a.id])
+      return efetivos[a.id] === statusFiltro
+    }))
     setLoading(false)
   }
 
@@ -122,6 +130,7 @@ function AlunosContent() {
           padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none',
         }}>
           <option value="todos">Todos os status</option>
+          <option value="leads">Leads / em negociação</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)} style={{
