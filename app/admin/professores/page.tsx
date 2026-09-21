@@ -100,9 +100,9 @@ export default function ProfessoresPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 16 }}>
           {professores.map(p => (
-            <div key={p.id} style={{
-              background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
-              borderRadius: 6, padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
+            <div key={p.id} className="card card-hover" style={{
+              borderColor: p.ativo ? 'var(--border)' : 'var(--danger)',
+              padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: p.ativo ? 1 : 0.55,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -122,7 +122,7 @@ export default function ProfessoresPage() {
                       style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
                     />
                     <span style={{ fontSize: 11, color: 'var(--text3)' }}>/aula</span>
-                    <button onClick={() => salvarValor(p)} style={{ background: '#3fb950', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>OK</button>
+                    <button onClick={() => salvarValor(p)} className="btn btn-success btn-sm">OK</button>
                   </>
                 ) : (
                   <span
@@ -152,10 +152,7 @@ export default function ProfessoresPage() {
                 <button
                   onClick={() => apagar(p)}
                   disabled={updating === p.id}
-                  style={{
-                    background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                    borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === p.id ? 0.6 : 1,
-                  }}
+                  className="btn btn-outline-danger btn-sm"
                 >
                   🗑️
                 </button>
@@ -196,16 +193,10 @@ export default function ProfessoresPage() {
           {erroForm && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>{erroForm}</p>}
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={adicionarProfessor} disabled={salvando} style={{
-              background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
-              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvando ? 0.6 : 1,
-            }}>
+            <button onClick={adicionarProfessor} disabled={salvando} className="btn btn-success">
               {salvando ? 'Salvando...' : '✅ Cadastrar'}
             </button>
-            <button onClick={() => { setMostrarForm(false); setErroForm(''); setNovoNome(''); setNovoValor('') }} disabled={salvando} style={{
-              background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
-              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
+            <button onClick={() => { setMostrarForm(false); setErroForm(''); setNovoNome(''); setNovoValor('') }} disabled={salvando} className="btn btn-neutral">
               Cancelar
             </button>
           </div>
