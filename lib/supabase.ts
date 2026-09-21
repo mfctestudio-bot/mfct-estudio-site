@@ -39,6 +39,14 @@ export type Professor = {
   created_at: string
 }
 
+export type TipoAgenda = {
+  id: string
+  nome: string
+  permite_plano_mensal: boolean
+  permite_avulsa: boolean
+  ativo: boolean
+}
+
 export type Horario = {
   id: string
   dia_semana: number
@@ -47,6 +55,8 @@ export type Horario = {
   ativo: boolean
   professor_id: string | null
   professores?: Professor | null
+  tipo_agenda_id: string | null
+  tipos_agenda?: TipoAgenda | null
 }
 
 export type Agendamento = {
