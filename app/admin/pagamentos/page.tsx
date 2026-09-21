@@ -247,10 +247,7 @@ export default function PagamentosPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 28, marginBottom: 4 }}>Pagamentos</h1>
-        <button onClick={abrirNovoModal} style={{
-          background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
-          padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={abrirNovoModal} className="btn btn-primary">
           + Registrar pagamento
         </button>
       </div>
@@ -294,9 +291,9 @@ export default function PagamentosPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           {rowsOrdenadas.map(p => (
-            <div key={p.id} style={{
-              background: 'var(--card)', border: `1px solid ${p.status === 'aguardando_confirmacao' ? '#f0a500' : 'var(--border)'}`,
-              borderRadius: 6, padding: '14px 16px',
+            <div key={p.id} className="card card-hover" style={{
+              borderColor: p.status === 'aguardando_confirmacao' ? '#f0a500' : 'var(--border)',
+              padding: '14px 16px',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div>
@@ -330,10 +327,7 @@ export default function PagamentosPage() {
                   }}>
                     {STATUS_LABEL[p.status] || p.status}
                   </span>
-                  <button onClick={() => abrirEdicao(p)} style={{
-                    background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
-                    borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
-                  }}>
+                  <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
                     ✏️ Editar
                   </button>
                 </div>
@@ -375,13 +369,8 @@ export default function PagamentosPage() {
                     <button
                       onClick={() => confirmarPagamento(p.id)}
                       disabled={confirmando === p.id || (p.status as string) === 'pago'}
-                      style={{
-                        background: '#3fb950', border: 'none', color: '#fff',
-                        borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                        cursor: confirmando === p.id || (p.status as string) === 'pago' ? 'not-allowed' : 'pointer',
-                        fontFamily: 'inherit', whiteSpace: 'nowrap',
-                        opacity: confirmando === p.id ? 0.6 : 1, marginTop: 18,
-                      }}
+                      className="btn btn-success"
+                      style={{ whiteSpace: 'nowrap', marginTop: 18 }}
                     >
                       {confirmando === p.id ? 'Confirmando...' : '✅ Confirmar pagamento'}
                     </button>
@@ -454,22 +443,13 @@ export default function PagamentosPage() {
             )}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button onClick={salvarEdicao} disabled={salvandoEdicao} style={{
-                flex: 1, background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
-                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvandoEdicao ? 0.6 : 1,
-              }}>
+              <button onClick={salvarEdicao} disabled={salvandoEdicao} className="btn btn-success" style={{ flex: 1 }}>
                 {salvandoEdicao ? 'Salvando...' : 'Salvar'}
               </button>
-              <button onClick={() => removerPagamento(editando.id)} disabled={salvandoEdicao} style={{
-                background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6,
-                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              <button onClick={() => removerPagamento(editando.id)} disabled={salvandoEdicao} className="btn btn-outline-danger">
                 🗑️ Remover
               </button>
-              <button onClick={() => setEditando(null)} disabled={salvandoEdicao} style={{
-                background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
-                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              <button onClick={() => setEditando(null)} disabled={salvandoEdicao} className="btn btn-neutral">
                 Cancelar
               </button>
             </div>
@@ -562,16 +542,10 @@ export default function PagamentosPage() {
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button onClick={salvarNovoPagamento} disabled={salvandoNovo || !novoAlunoId || !novoValor} style={{
-                flex: 1, background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
-                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: (salvandoNovo || !novoAlunoId || !novoValor) ? 0.6 : 1,
-              }}>
+              <button onClick={salvarNovoPagamento} disabled={salvandoNovo || !novoAlunoId || !novoValor} className="btn btn-success" style={{ flex: 1 }}>
                 {salvandoNovo ? 'Salvando...' : '✅ Registrar'}
               </button>
-              <button onClick={() => setNovoModal(false)} disabled={salvandoNovo} style={{
-                background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
-                padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              <button onClick={() => setNovoModal(false)} disabled={salvandoNovo} className="btn btn-neutral">
                 Cancelar
               </button>
             </div>
