@@ -118,9 +118,9 @@ export default function PlanosPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
           {planos.map(p => (
-            <div key={p.id} style={{
-              background: 'var(--card)', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
-              borderRadius: 6, padding: '14px 16px', opacity: p.ativo ? 1 : 0.55,
+            <div key={p.id} className="card card-hover" style={{
+              borderColor: p.ativo ? 'var(--border)' : 'var(--danger)',
+              padding: '14px 16px', opacity: p.ativo ? 1 : 0.55,
             }}>
               {editandoId === p.id ? (
                 <div>
@@ -130,8 +130,8 @@ export default function PlanosPage() {
                     <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => salvarEdicao(p.id)} style={{ background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Salvar</button>
-                    <button onClick={() => setEditandoId(null)} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                    <button onClick={() => salvarEdicao(p.id)} className="btn btn-primary btn-sm">Salvar</button>
+                    <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
                   </div>
                 </div>
               ) : (
@@ -144,10 +144,10 @@ export default function PlanosPage() {
                     {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} className="btn btn-ghost btn-sm">
                       🏷️ Descontos ({descontos.filter(d => d.plano_id === p.id && d.ativo).length})
                     </button>
-                    <button onClick={() => abrirEdicao(p)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
                       ✏️ Editar
                     </button>
                     <button onClick={() => toggleAtivo(p)} style={{
@@ -170,10 +170,10 @@ export default function PlanosPage() {
                       <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: d.ativo ? 1 : 0.5 }}>
                         <span style={{ fontSize: 12 }}>{d.nome} — R$ {Number(d.valor).toFixed(2)} de desconto{!d.ativo && ' (desativado)'}</span>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => toggleDescontoAtivo(d)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <button onClick={() => toggleDescontoAtivo(d)} className="btn btn-ghost btn-sm">
                             {d.ativo ? 'Desativar' : 'Ativar'}
                           </button>
-                          <button onClick={() => excluirDesconto(d.id)} style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <button onClick={() => excluirDesconto(d.id)} className="btn btn-outline-danger btn-sm">
                             Apagar
                           </button>
                         </div>
@@ -186,10 +186,7 @@ export default function PlanosPage() {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input value={novoDescNome} onChange={e => setNovoDescNome(e.target.value)} placeholder="Ex: Falta de dinheiro" style={{ ...inputStyle, flex: 2 }} />
                     <input type="number" step="0.01" value={novoDescValor} onChange={e => setNovoDescValor(e.target.value)} placeholder="Valor R$" style={{ ...inputStyle, flex: 1 }} />
-                    <button onClick={() => criarDesconto(p.id)} disabled={!novoDescNome.trim() || !novoDescValor} style={{
-                      background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6, padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                      opacity: (!novoDescNome.trim() || !novoDescValor) ? 0.6 : 1,
-                    }}>
+                    <button onClick={() => criarDesconto(p.id)} disabled={!novoDescNome.trim() || !novoDescValor} className="btn btn-primary btn-sm">
                       + Add
                     </button>
                   </div>
@@ -227,17 +224,10 @@ export default function PlanosPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={criar} disabled={salvando || !nome.trim() || !valor} style={{
-              background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
-              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              opacity: (salvando || !nome.trim() || !valor) ? 0.6 : 1,
-            }}>
+            <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">
               {salvando ? 'Criando...' : '✅ Criar plano'}
             </button>
-            <button onClick={() => setMostrarForm(false)} disabled={salvando} style={{
-              background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)', borderRadius: 6,
-              padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
+            <button onClick={() => setMostrarForm(false)} disabled={salvando} className="btn btn-neutral">
               Cancelar
             </button>
           </div>
