@@ -2,8 +2,9 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import NotificationBell from '@/components/admin/NotificationBell'
+import { supabase } from '@/lib/supabaseAdmin'
 
 function Icon({ name }: { name: string }) {
   const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -26,12 +27,17 @@ function Icon({ name }: { name: string }) {
       return <svg {...common}><path d="M6 3h9l4 4v14H6z" /><line x1="9" y1="12" x2="15" y2="12" /><line x1="9" y1="16" x2="15" y2="16" /></svg>
     case 'sliders':
       return <svg {...common}><line x1="4" y1="6" x2="20" y2="6" /><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none" /><line x1="4" y1="12" x2="20" y2="12" /><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" /><line x1="4" y1="18" x2="20" y2="18" /><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none" /></svg>
+    case 'chevron':
+      return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
     default:
       return null
   }
 }
 
-const GRUPOS = [
+type ItemMenu = { href: string; label: string; icon: string; accordion?: 'planos' | 'servicos' }
+type ItemAccordion = { id: string; nome: string; ativo: boolean }
+
+const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
   {
     titulo: null,
     itens: [{ href: '/admin', label: 'Início', icon: 'home' }],
@@ -48,7 +54,7 @@ const GRUPOS = [
   {
     titulo: 'Serviços',
     itens: [
-      { href: '/admin/servicos', label: 'Configurar Serviços', icon: 'sliders' },
+      { href: '/admin/servicos', label: 'Serviços', icon: 'sliders', accordion: 'servicos' },
       { href: '/admin/avulsas', label: 'Aulas Avulsas', icon: 'tag' },
       { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
     ],
@@ -59,7 +65,7 @@ const GRUPOS = [
       { href: '/admin/financeiro', label: 'Financeiro', icon: 'chart' },
       { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
       { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
-      { href: '/admin/planos', label: 'Planos', icon: 'tag' },
+      { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },
     ],
   },
   {
@@ -72,6 +78,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const router = useRouter()
   const [menuAberto, setMenuAberto] = useState(false)
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({})
+  const [planosLista, setPlanosLista] = useState<ItemAccordion[]>([])
+  const [servicosLista, setServicosLista] = useState<ItemAccordion[]>([])
+
+  useEffect(() => {
+    supabase.from('planos').select('id, nome, ativo').order('nome').then(({ data }) => {
+      setPlanosLista((data as ItemAccordion[]) || [])
+    })
+    supabase.from('servicos').select('id, nome, ativo').order('nome').then(({ data }) => {
+      setServicosLista((data as ItemAccordion[]) || [])
+    })
+  }, [])
+
+  function toggleAberto(chave: string) {
+    setAbertos(prev => ({ ...prev, [chave]: !prev[chave] }))
+  }
+
+  const listaPorAccordion: Record<'planos' | 'servicos', ItemAccordion[]> = {
+    planos: planosLista,
+    servicos: servicosLista,
+  }
 
   async function sair() {
     await fetch('/api/admin-auth', { method: 'DELETE' })
@@ -152,11 +179,62 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {grupo.itens.map(item => {
                     const active = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href))
+
+                    if (!item.accordion) {
+                      return (
+                        <Link key={item.href} href={item.href} onClick={() => setMenuAberto(false)} style={linkStyle(active)}>
+                          <Icon name={item.icon} />
+                          {item.label}
+                        </Link>
+                      )
+                    }
+
+                    const aberto = !!abertos[item.accordion]
+                    const lista = listaPorAccordion[item.accordion]
                     return (
-                      <Link key={item.href} href={item.href} onClick={() => setMenuAberto(false)} style={linkStyle(active)}>
-                        <Icon name={item.icon} />
-                        {item.label}
-                      </Link>
+                      <div key={item.href}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <button
+                            onClick={() => toggleAberto(item.accordion!)}
+                            style={{ ...linkStyle(active), flex: 1, border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <span style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease', display: 'flex' }}>
+                              <Icon name="chevron" />
+                            </span>
+                            <Icon name={item.icon} />
+                            {item.label}
+                          </button>
+                          <Link
+                            href={item.href}
+                            onClick={() => setMenuAberto(false)}
+                            title="Configuração geral"
+                            aria-label={`Configurar ${item.label}`}
+                            style={{ display: 'flex', alignItems: 'center', padding: '9px 10px', borderRadius: 6, color: 'var(--text2)' }}
+                          >
+                            <Icon name="sliders" />
+                          </Link>
+                        </div>
+                        {aberto && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginLeft: 30, borderLeft: '1px solid var(--border)', paddingLeft: 10 }}>
+                            {lista.map(row => (
+                              <Link
+                                key={row.id}
+                                href={`${item.href}?editar=${row.id}`}
+                                onClick={() => setMenuAberto(false)}
+                                style={{
+                                  padding: '7px 10px', borderRadius: 6, textDecoration: 'none', fontSize: 12,
+                                  color: row.ativo ? 'var(--text2)' : 'var(--text3)',
+                                }}
+                              >
+                                {row.nome}{!row.ativo && ' (desativado)'}
+                              </Link>
+                            ))}
+                            {!lista.length && (
+                              <span style={{ fontSize: 11, color: 'var(--text3)', padding: '7px 10px' }}>Nada configurado ainda</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
