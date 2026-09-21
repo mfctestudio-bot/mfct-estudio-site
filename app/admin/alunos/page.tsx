@@ -102,10 +102,7 @@ function AlunosContent() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <h1 style={{ fontSize: 28 }}>Alunos</h1>
-        <button onClick={() => setNovoOpen(true)} style={{
-          background: 'var(--accent2)', color: '#fff', border: 'none', borderRadius: 6,
-          padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setNovoOpen(true)} className="btn btn-primary">
           + Novo aluno
         </button>
       </div>
@@ -146,8 +143,7 @@ function AlunosContent() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
           {filtrados.map(a => (
-            <Link key={a.id} href={`/admin/alunos/${a.id}`} style={{
-              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+            <Link key={a.id} href={`/admin/alunos/${a.id}`} className="card card-hover" style={{
               padding: '14px 16px', textDecoration: 'none', color: 'var(--text)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
@@ -305,10 +301,10 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
           </select>
         </Campo>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={onClose} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text)' }}>
+          <button onClick={onClose} className="btn btn-neutral" style={{ flex: 1 }}>
             Cancelar
           </button>
-          <button onClick={salvar} disabled={saving || !nome.trim() || (!!possivelDuplicata && !forcarCriacao)} style={{ ...btnStyle, background: 'var(--accent2)', color: '#fff', opacity: (saving || !nome.trim() || (!!possivelDuplicata && !forcarCriacao)) ? 0.6 : 1 }}>
+          <button onClick={salvar} disabled={saving || !nome.trim() || (!!possivelDuplicata && !forcarCriacao)} className="btn btn-primary" style={{ flex: 1 }}>
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
@@ -330,11 +326,6 @@ const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
   padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   fontFamily: 'inherit',
-}
-
-const btnStyle: React.CSSProperties = {
-  flex: 1, border: 'none', borderRadius: 6, padding: '11px', fontSize: 13, fontWeight: 700,
-  cursor: 'pointer', fontFamily: 'inherit',
 }
 
 export default function AlunosPage() {
