@@ -54,6 +54,7 @@ export default function MensalidadeAlunoPage() {
   const [editandoPeriodoId, setEditandoPeriodoId] = useState<string | null>(null)
   const [novaDataInicio, setNovaDataInicio] = useState('')
   const [salvandoData, setSalvandoData] = useState(false)
+  const [excluindoPeriodoId, setExcluindoPeriodoId] = useState<string | null>(null)
 
   async function carregar() {
     const [{ data: alunoData }, { data: planosData }, { data: periodosData }] = await Promise.all([
@@ -242,6 +243,31 @@ export default function MensalidadeAlunoPage() {
     carregar()
   }
 
+  async function excluirPeriodo(periodo: Periodo) {
+    const status = statusPeriodoHoje(periodo)
+    const aviso = status === 'ativo'
+      ? '⚠️ Esse é o período VIGENTE HOJE desse aluno. Excluir vai deixar ele sem cobertura ativa até você cadastrar outro. Tem certeza que quer excluir mesmo assim?'
+      : status === 'agendado'
+      ? '⚠️ Esse é um período FUTURO já agendado. Excluir vai cancelar essa renovação futura. Tem certeza?'
+      : 'Excluir esse contrato antigo do histórico? Isso não pode ser desfeito.'
+    if (!confirm(aviso)) return
+
+    setExcluindoPeriodoId(periodo.id)
+    const resposta = await fetch('/api/admin-excluir-periodo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ periodoId: periodo.id }),
+    })
+    setExcluindoPeriodoId(null)
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      avisar(erro?.error || 'Não foi possível excluir esse período.', 4000)
+      return
+    }
+    avisar('Contrato excluído do histórico.')
+    carregar()
+  }
+
   if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
   if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
 
@@ -373,6 +399,14 @@ export default function MensalidadeAlunoPage() {
                         ✏️ Corrigir data
                       </button>
                     )}
+                    <button
+                      onClick={() => excluirPeriodo(periodo)}
+                      disabled={excluindoPeriodoId === periodo.id}
+                      className="btn btn-outline-danger btn-sm"
+                      style={{ opacity: excluindoPeriodoId === periodo.id ? 0.6 : 1 }}
+                    >
+                      🗑️ Excluir
+                    </button>
                   </div>
                 </div>
                 {editando && (
@@ -446,7 +480,7 @@ export default function MensalidadeAlunoPage() {
                     style={{ ...inputStyle, flex: 1 }}
                   >
                     <option value="0">Sem desconto</option>
-                    {[5, 10, 15, 20, 25, 30, 40, 50].map(p => <option key={p} value={p}>{p}%</option>)}
+                    {[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100].map(p => <option key={p} value={p}>{p}%</option>)}
                   </select>
                 ) : (
                   <input
