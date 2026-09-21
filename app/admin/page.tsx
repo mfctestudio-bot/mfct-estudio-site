@@ -237,7 +237,7 @@ export default function AdminHome() {
         {[
           { label: 'Alunos ativos', value: stats.ativos, href: '/admin/alunos?status=ativo', color: '#3fb950' },
           { label: 'Leads / em negociação', value: stats.leads, href: '/admin/alunos?status=leads', color: 'var(--accent)' },
-          { label: 'Aguard. confirmação', value: stats.aguardando, href: '/admin/pagamentos', color: '#f0a500' },
+          { label: 'Aguard. confirmação', value: stats.aguardando, href: '/admin/pagamentos?status=aguardando_confirmacao', color: '#f0a500' },
           { label: 'Planos vencidos', value: stats.vencidos, href: '/admin/alunos?status=vencido', color: 'var(--danger)' },
         ].map(c => (
           <Link key={c.label} href={c.href} className="card card-hover" style={{
@@ -283,7 +283,7 @@ export default function AdminHome() {
             title={stats.aguardando > 0 ? `⚠️ ${stats.aguardando} pagamento(s) aguardando` : 'Pagamentos'}
             color={stats.aguardando > 0 ? '#f0a500' : 'var(--text)'}
             action="Ver todos"
-            href="/admin/pagamentos"
+            href="/admin/pagamentos?status=aguardando_confirmacao"
           />
           {loading ? (
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
@@ -300,7 +300,7 @@ export default function AdminHome() {
                       {p.comprovante_recebido_em && ` · ${new Date(p.comprovante_recebido_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
                     </div>
                   </div>
-                  <Link href="/admin/pagamentos" style={{
+                  <Link href="/admin/pagamentos?status=aguardando_confirmacao" style={{
                     background: '#f0a500', color: '#000', borderRadius: 6, padding: '6px 12px',
                     fontSize: 11, fontWeight: 800, textDecoration: 'none',
                   }}>Confirmar</Link>
