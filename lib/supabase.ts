@@ -14,6 +14,16 @@ export type Plano = {
   created_at: string
 }
 
+export type Servico = {
+  id: string
+  nome: string
+  valor: number
+  quantidade_usos: number
+  tem_agenda: boolean
+  ativo: boolean
+  created_at: string
+}
+
 export type Aluno = {
   id: string
   nome: string
