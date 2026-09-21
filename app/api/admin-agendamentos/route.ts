@@ -20,13 +20,16 @@ async function validarAcessoECapacidade(
   const [alunoResp, periodosResp, horarioResp] = await Promise.all([
     supabase.from('alunos').select('id, status_plano').eq('id', alunoId).single(),
     supabase.from('planos_periodos').select('data_inicio, data_fim').eq('aluno_id', alunoId),
-    supabase.from('horarios').select('id, capacidade, ativo').eq('id', horarioId).single(),
+    supabase.from('horarios').select('id, capacidade, ativo, tipo_agenda_id, tipos_agenda(nome, permite_plano_mensal)').eq('id', horarioId).single(),
   ])
   const aluno = alunoResp.data as { id: string; status_plano: string } | null
   const alunoError = alunoResp.error
   const periodos = periodosResp.data as { data_inicio: string; data_fim: string }[] | null
   const periodosError = periodosResp.error
-  const horario = horarioResp.data as { id: string; capacidade: number; ativo: boolean } | null
+  const horario = horarioResp.data as {
+    id: string; capacidade: number; ativo: boolean; tipo_agenda_id: string | null
+    tipos_agenda: { nome: string; permite_plano_mensal: boolean } | null
+  } | null
   const horarioError = horarioResp.error
 
   if (alunoError || !aluno) return 'aluno não encontrado'
@@ -36,6 +39,11 @@ async function validarAcessoECapacidade(
   if (!periodoVigente) return 'o aluno não possui período vigente na data da aula'
   if (horarioError || !horario) return 'horário não encontrado'
   if (!horario.ativo) return 'horário inativo'
+  // Aluno de plano mensal só pode entrar em horários que aceitam plano mensal
+  // (horários marcados como exclusivos de aula avulsa ficam de fora)
+  if (horario.tipos_agenda && horario.tipos_agenda.permite_plano_mensal === false) {
+    return `este horário é exclusivo para aula avulsa (${horario.tipos_agenda.nome}) — não disponível para plano mensal`
+  }
 
   let consulta = supabase
     .from('agendamentos')
