@@ -34,7 +34,14 @@ function Icon({ name }: { name: string }) {
   }
 }
 
-type ItemMenu = { href: string; label: string; icon: string; accordion?: 'planos' | 'servicos' }
+type SubItemFixo = { href: string; label: string; icon: string }
+type ItemMenu = {
+  href: string
+  label: string
+  icon: string
+  accordion?: 'planos' | 'servicos' // sanfona dinâmica: subitens vêm do banco
+  subitens?: SubItemFixo[] // sanfona fixa: subitens são sempre os mesmos
+}
 type ItemAccordion = { id: string; nome: string; ativo: boolean }
 
 const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
@@ -46,25 +53,32 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
     titulo: 'Alunos & Agenda',
     itens: [
       { href: '/admin/alunos', label: 'Alunos', icon: 'users' },
-      { href: '/admin/agenda', label: 'Agenda', icon: 'calendar' },
-      { href: '/admin/professores', label: 'Professores', icon: 'users' },
-      { href: '/admin/aerobico', label: 'Aeróbico', icon: 'activity' },
+      {
+        href: '/admin/agenda', label: 'Agenda', icon: 'calendar',
+        subitens: [
+          { href: '/admin/professores', label: 'Professores', icon: 'users' },
+          { href: '/admin/aerobico', label: 'Aeróbico', icon: 'activity' },
+          { href: '/admin/servicos', label: 'Serviços', icon: 'sliders' },
+        ],
+      },
     ],
   },
   {
     titulo: 'Serviços',
     itens: [
       { href: '/admin/servicos', label: 'Serviços', icon: 'sliders', accordion: 'servicos' },
-      { href: '/admin/avulsas', label: 'Aulas Avulsas', icon: 'tag' },
-      { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
     ],
   },
   {
     titulo: 'Financeiro',
     itens: [
-      { href: '/admin/financeiro', label: 'Financeiro', icon: 'chart' },
-      { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
-      { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
+      {
+        href: '/admin/financeiro', label: 'Financeiro', icon: 'chart',
+        subitens: [
+          { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
+          { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
+        ],
+      },
       { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },
     ],
   },
@@ -180,7 +194,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   {grupo.itens.map(item => {
                     const active = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href))
 
-                    if (!item.accordion) {
+                    if (!item.accordion && !item.subitens) {
                       return (
                         <Link key={item.href} href={item.href} onClick={() => setMenuAberto(false)} style={linkStyle(active)}>
                           <Icon name={item.icon} />
@@ -189,13 +203,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       )
                     }
 
-                    const aberto = !!abertos[item.accordion]
-                    const lista = listaPorAccordion[item.accordion]
+                    const chaveAberto = item.accordion || item.href
+                    const aberto = !!abertos[chaveAberto]
+                    const listaDinamica = item.accordion ? listaPorAccordion[item.accordion] : null
+
                     return (
                       <div key={item.href}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <button
-                            onClick={() => toggleAberto(item.accordion!)}
+                            onClick={() => toggleAberto(chaveAberto)}
                             style={{ ...linkStyle(active), flex: 1, border: 'none', cursor: 'pointer', textAlign: 'left' }}
                           >
                             <span style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease', display: 'flex' }}>
@@ -216,7 +232,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                         {aberto && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginLeft: 30, borderLeft: '1px solid var(--border)', paddingLeft: 10 }}>
-                            {lista.map(row => (
+                            {listaDinamica && listaDinamica.map(row => (
                               <Link
                                 key={row.id}
                                 href={`${item.href}?editar=${row.id}`}
@@ -229,9 +245,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 {row.nome}{!row.ativo && ' (desativado)'}
                               </Link>
                             ))}
-                            {!lista.length && (
+                            {listaDinamica && !listaDinamica.length && (
                               <span style={{ fontSize: 11, color: 'var(--text3)', padding: '7px 10px' }}>Nada configurado ainda</span>
                             )}
+                            {item.subitens && item.subitens.map(sub => (
+                              <Link
+                                key={sub.href}
+                                href={sub.href}
+                                onClick={() => setMenuAberto(false)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  padding: '7px 10px', borderRadius: 6, textDecoration: 'none', fontSize: 12,
+                                  color: pathname?.startsWith(sub.href) ? 'var(--text)' : 'var(--text2)',
+                                }}
+                              >
+                                <Icon name={sub.icon} />
+                                {sub.label}
+                              </Link>
+                            ))}
                           </div>
                         )}
                       </div>
