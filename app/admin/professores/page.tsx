@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
-import { Professor } from '@/lib/supabase'
+import { Professor, Horario } from '@/lib/supabase'
+
+const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 export default function ProfessoresPage() {
   const [professores, setProfessores] = useState<Professor[]>([])
@@ -16,6 +18,8 @@ export default function ProfessoresPage() {
 
   const [editandoValor, setEditandoValor] = useState<string | null>(null)
   const [valorTemp, setValorTemp] = useState('')
+
+  const [expandidoId, setExpandidoId] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -102,61 +106,76 @@ export default function ProfessoresPage() {
           {professores.map(p => (
             <div key={p.id} className="card card-hover" style={{
               borderColor: p.ativo ? 'var(--border)' : 'var(--danger)',
-              padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: p.ativo ? 1 : 0.55,
+              padding: '12px 16px', opacity: p.ativo ? 1 : 0.55,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontWeight: 700, fontSize: 14, textDecoration: p.ativo ? 'none' : 'line-through' }}>
-                  {p.nome}
-                </span>
-                {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)' }}>(inativo)</span>}
-              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, textDecoration: p.ativo ? 'none' : 'line-through' }}>
+                    {p.nome}
+                  </span>
+                  {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)' }}>(inativo)</span>}
+                </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {editandoValor === p.id ? (
-                  <>
-                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$</span>
-                    <input
-                      type="number" min={0} step="0.01" value={valorTemp}
-                      onChange={e => setValorTemp(e.target.value)}
-                      style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
-                    />
-                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>/aula</span>
-                    <button onClick={() => salvarValor(p)} className="btn btn-success btn-sm">OK</button>
-                  </>
-                ) : (
-                  <span
-                    onClick={() => abrirEdicaoValor(p)}
-                    title="Clique pra editar"
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {editandoValor === p.id ? (
+                    <>
+                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$</span>
+                      <input
+                        type="number" min={0} step="0.01" value={valorTemp}
+                        onChange={e => setValorTemp(e.target.value)}
+                        style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--text3)' }}>/aula</span>
+                      <button onClick={() => salvarValor(p)} className="btn btn-success btn-sm">OK</button>
+                    </>
+                  ) : (
+                    <span
+                      onClick={() => abrirEdicaoValor(p)}
+                      title="Clique pra editar"
+                      style={{
+                        fontSize: 12, fontWeight: 700, color: 'var(--text2)', background: 'var(--bg)',
+                        border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+                      }}
+                    >
+                      R$ {Number(p.valor_por_aula).toFixed(2)}/aula ✏️
+                    </span>
+                  )}
+
+                  <button
+                    onClick={() => setExpandidoId(expandidoId === p.id ? null : p.id)}
                     style={{
-                      fontSize: 12, fontWeight: 700, color: 'var(--text2)', background: 'var(--bg)',
-                      border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+                      background: expandidoId === p.id ? '#3fb95022' : 'transparent',
+                      border: `1px solid ${expandidoId === p.id ? '#3fb950' : 'var(--border)'}`,
+                      color: expandidoId === p.id ? '#3fb950' : 'var(--text2)', borderRadius: 4, padding: '6px 12px',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
-                    R$ {Number(p.valor_por_aula).toFixed(2)}/aula ✏️
-                  </span>
-                )}
+                    📅 {expandidoId === p.id ? 'Fechar agenda' : 'Ver agenda'}
+                  </button>
 
-                <button
-                  onClick={() => toggleAtivo(p)}
-                  disabled={updating === p.id}
-                  style={{
-                    background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
-                    color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px',
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === p.id ? 0.6 : 1,
-                  }}
-                >
-                  {p.ativo ? 'Desativar' : 'Ativar'}
-                </button>
+                  <button
+                    onClick={() => toggleAtivo(p)}
+                    disabled={updating === p.id}
+                    style={{
+                      background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
+                      color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === p.id ? 0.6 : 1,
+                    }}
+                  >
+                    {p.ativo ? 'Desativar' : 'Ativar'}
+                  </button>
 
-                <button
-                  onClick={() => apagar(p)}
-                  disabled={updating === p.id}
-                  className="btn btn-outline-danger btn-sm"
-                >
-                  🗑️
-                </button>
+                  <button
+                    onClick={() => apagar(p)}
+                    disabled={updating === p.id}
+                    className="btn btn-outline-danger btn-sm"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
+
+              {expandidoId === p.id && <AgendaDoProfessor professorId={p.id} />}
             </div>
           ))}
         </div>
@@ -200,6 +219,95 @@ export default function ProfessoresPage() {
               Cancelar
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AgendaDoProfessor({ professorId }: { professorId: string }) {
+  const [horarios, setHorarios] = useState<Horario[]>([])
+  const [tiposAgendaOpt, setTiposAgendaOpt] = useState<{ id: string; nome: string }[]>([])
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState<string | null>(null)
+
+  async function load() {
+    setLoading(true)
+    const [{ data: hData }, { data: tData }] = await Promise.all([
+      supabase.from('horarios')
+        .select('*, tipos_agenda(id, nome, permite_plano_mensal, permite_avulsa)')
+        .eq('professor_id', professorId)
+        .order('dia_semana').order('horario'),
+      supabase.from('tipos_agenda').select('id, nome').eq('ativo', true).order('created_at'),
+    ])
+    setHorarios(hData || [])
+    setTiposAgendaOpt(tData || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [professorId])
+
+  async function toggle(h: Horario) {
+    setUpdating(h.id)
+    await supabase.from('horarios').update({ ativo: !h.ativo }).eq('id', h.id)
+    setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, ativo: !x.ativo } : x))
+    setUpdating(null)
+  }
+
+  async function mudarTipoAgenda(h: Horario, tipoAgendaId: string) {
+    setUpdating(h.id)
+    await supabase.from('horarios').update({ tipo_agenda_id: tipoAgendaId || null }).eq('id', h.id)
+    await load()
+  }
+
+  if (loading) return <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 12 }}>Carregando agenda...</p>
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+      <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>
+        Dias e horários que esse professor está disposto a dar aula. Pra criar um horário novo pra ele, use Agenda → Grade de horários.
+      </p>
+      {horarios.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--text3)' }}>Esse professor ainda não está em nenhum horário da grade.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {horarios.map(h => (
+            <div key={h.id} style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px',
+              opacity: h.ativo ? 1 : 0.5,
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 700, minWidth: 90 }}>
+                {DIAS[h.dia_semana]} · {h.horario.slice(0, 5)}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text2)' }}>{h.capacidade} vaga{h.capacidade === 1 ? '' : 's'}</span>
+              <select
+                value={h.tipo_agenda_id || ''}
+                onChange={e => mudarTipoAgenda(h, e.target.value)}
+                disabled={updating === h.id}
+                style={{
+                  background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 4,
+                  padding: '4px 6px', color: 'var(--text)', fontSize: 11, fontFamily: 'inherit',
+                }}
+              >
+                <option value="">— sem tipo —</option>
+                {tiposAgendaOpt.map(t => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => toggle(h)}
+                disabled={updating === h.id}
+                style={{
+                  background: 'transparent', border: `1px solid ${h.ativo ? 'var(--border2)' : 'var(--danger)'}`,
+                  color: h.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '3px 8px',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto',
+                }}
+              >
+                {h.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
