@@ -97,7 +97,7 @@ export default function PostsPage() {
           {imagemUrl ? (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <img src={imagemUrl} alt="Preview" style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-              <button onClick={removerImagem} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '8px 14px' }}>
+              <button onClick={removerImagem} className="btn btn-outline-danger btn-sm">
                 Remover imagem
               </button>
             </div>
@@ -113,14 +113,11 @@ export default function PostsPage() {
           {uploading && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>Enviando imagem...</p>}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={salvarRascunho} disabled={saving || !titulo.trim() || !conteudo.trim()} style={{
-            ...btnStyle, background: 'var(--accent2)', color: '#fff',
-            opacity: saving || !titulo.trim() || !conteudo.trim() ? 0.6 : 1,
-          }}>
+          <button onClick={salvarRascunho} disabled={saving || !titulo.trim() || !conteudo.trim()} className="btn btn-primary">
             {saving ? 'Salvando...' : editId ? 'Salvar alterações' : 'Salvar rascunho'}
           </button>
           {editId && (
-            <button onClick={novo} style={{ ...btnStyle, background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)' }}>
+            <button onClick={novo} className="btn btn-neutral">
               Cancelar
             </button>
           )}
@@ -134,8 +131,7 @@ export default function PostsPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
           {posts.map(p => (
-            <div key={p.id} style={{
-              background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+            <div key={p.id} className="card card-hover" style={{
               padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}>
               {p.imagem_url && (
@@ -152,7 +148,7 @@ export default function PostsPage() {
                 <button onClick={() => publicar(p.id, p.publicado)} style={smallBtn(p.publicado ? 'var(--accent)' : '#3fb950')}>
                   {p.publicado ? 'Despublicar' : 'Publicar no site'}
                 </button>
-                <button onClick={() => excluir(p.id)} style={smallBtn('var(--danger)')}>Excluir</button>
+                <button onClick={() => excluir(p.id)} className="btn btn-outline-danger btn-sm">Excluir</button>
               </div>
             </div>
           ))}
@@ -170,11 +166,6 @@ const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
   padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   fontFamily: 'inherit',
-}
-
-const btnStyle: React.CSSProperties = {
-  border: 'none', borderRadius: 6, padding: '11px 18px', fontSize: 13, fontWeight: 700,
-  cursor: 'pointer', fontFamily: 'inherit',
 }
 
 function smallBtn(color: string): React.CSSProperties {
