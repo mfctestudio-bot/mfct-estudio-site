@@ -718,6 +718,7 @@ function GradeHorarios() {
   const [novoHorario, setNovoHorario] = useState('18:00')
   const [novaCapacidade, setNovaCapacidade] = useState('5')
   const [novoProfessorId, setNovoProfessorId] = useState('')
+  const [novoTipoAgendaId, setNovoTipoAgendaId] = useState('')
   const [diasEscolhidos, setDiasEscolhidos] = useState<number[]>([])
   const [salvandoNovo, setSalvandoNovo] = useState(false)
   const [erroForm, setErroForm] = useState('')
@@ -726,16 +727,20 @@ function GradeHorarios() {
   const [capacidadeTemp, setCapacidadeTemp] = useState('')
 
   const [professoresOpt, setProfessoresOpt] = useState<{ id: string; nome: string }[]>([])
+  const [tiposAgendaOpt, setTiposAgendaOpt] = useState<{ id: string; nome: string }[]>([])
 
   async function load() {
     setLoading(true)
-    const [{ data: hData }, { data: pData }] = await Promise.all([
-      supabase.from('horarios').select('*, professores(nome)').order('dia_semana').order('horario'),
+    const [{ data: hData }, { data: pData }, { data: tData }] = await Promise.all([
+      supabase.from('horarios').select('*, professores(nome), tipos_agenda(id, nome, permite_plano_mensal, permite_avulsa)').order('dia_semana').order('horario'),
       supabase.from('professores').select('id, nome').eq('ativo', true).order('created_at'),
+      supabase.from('tipos_agenda').select('id, nome').eq('ativo', true).order('created_at'),
     ])
     setHorarios(hData || [])
     setProfessoresOpt(pData || [])
+    setTiposAgendaOpt(tData || [])
     if (pData && pData.length > 0) setNovoProfessorId(pData[0].id)
+    if (tData && tData.length > 0) setNovoTipoAgendaId(tData[0].id)
     setLoading(false)
   }
 
@@ -747,6 +752,12 @@ function GradeHorarios() {
     const prof = professoresOpt.find(p => p.id === professorId)
     setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, professor_id: professorId || null, professores: prof ? { ...prof, valor_por_aula: 0, ativo: true, created_at: '' } : null } : x))
     setUpdating(null)
+  }
+
+  async function mudarTipoAgenda(h: Horario, tipoAgendaId: string) {
+    setUpdating(h.id)
+    await supabase.from('horarios').update({ tipo_agenda_id: tipoAgendaId || null }).eq('id', h.id)
+    await load()
   }
 
   async function toggle(h: Horario) {
@@ -847,6 +858,7 @@ function GradeHorarios() {
       capacidade,
       ativo: true,
       professor_id: novoProfessorId || null,
+      tipo_agenda_id: novoTipoAgendaId || null,
     }))
     const { data: inseridos } = await supabase.from('horarios').insert(novasLinhas).select('*')
     setHorarios(prev => [...prev, ...(inseridos || [])].sort((a, b) => a.dia_semana - b.dia_semana || a.horario.localeCompare(b.horario)))
@@ -904,6 +916,15 @@ function GradeHorarios() {
                   {h.horario.slice(0, 5)}
                 </span>
                 {!h.ativo && <span style={{ fontSize: 11, color: 'var(--danger)' }}>(desativado)</span>}
+                {h.tipos_agenda && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                    color: h.tipos_agenda.permite_plano_mensal ? '#3fb950' : '#f0a500',
+                    border: `1px solid ${h.tipos_agenda.permite_plano_mensal ? '#3fb950' : '#f0a500'}`,
+                  }}>
+                    {h.tipos_agenda.nome}
+                  </span>
+                )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -943,6 +964,23 @@ function GradeHorarios() {
                   <option value="">— sem professor —</option>
                   {professoresOpt.map(p => (
                     <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={h.tipo_agenda_id || ''}
+                  onChange={e => mudarTipoAgenda(h, e.target.value)}
+                  disabled={updating === h.id}
+                  title="Tipo de agenda — quem pode marcar nesse horário"
+                  style={{
+                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                    padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit',
+                    maxWidth: 160,
+                  }}
+                >
+                  <option value="">— sem tipo —</option>
+                  {tiposAgendaOpt.map(t => (
+                    <option key={t.id} value={t.id}>{t.nome}</option>
                   ))}
                 </select>
 
@@ -1035,6 +1073,18 @@ function GradeHorarios() {
                 <option value="">— sem professor —</option>
                 {professoresOpt.map(p => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo de agenda</label>
+              <select
+                value={novoTipoAgendaId} onChange={e => setNovoTipoAgendaId(e.target.value)}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+              >
+                <option value="">— sem tipo —</option>
+                {tiposAgendaOpt.map(t => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
                 ))}
               </select>
             </div>
