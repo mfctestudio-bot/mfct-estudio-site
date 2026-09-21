@@ -225,11 +225,28 @@ export default function ProfessoresPage() {
   )
 }
 
+const DIAS_ABREV_PROF = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
 function AgendaDoProfessor({ professorId }: { professorId: string }) {
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [tiposAgendaOpt, setTiposAgendaOpt] = useState<{ id: string; nome: string }[]>([])
   const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState<string | null>(null)
+  const [salvando, setSalvando] = useState(false)
+  const [toast, setToast] = useState('')
+
+  // célula clicada: preenchida (edição) ou vazia (criação)
+  const [célula, setCélula] = useState<{ diaSemana: number; horario: string; existente: Horario | null } | null>(null)
+  const [capacidadeTemp, setCapacidadeTemp] = useState('5')
+  const [tipoAgendaTemp, setTipoAgendaTemp] = useState('')
+  const [ativoTemp, setAtivoTemp] = useState(true)
+
+  // form pra adicionar um horário novo na grade (linha nova)
+  const [mostrarNovoHorario, setMostrarNovoHorario] = useState(false)
+  const [novoHorarioValor, setNovoHorarioValor] = useState('18:00')
+  const [novosDiasEscolhidos, setNovosDiasEscolhidos] = useState<number[]>([])
+  const [novaCapacidade, setNovaCapacidade] = useState('5')
+  const [novoTipoAgendaId, setNovoTipoAgendaId] = useState('')
+  const [erroNovoHorario, setErroNovoHorario] = useState('')
 
   async function load() {
     setLoading(true)
@@ -242,76 +259,262 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
     ])
     setHorarios(hData || [])
     setTiposAgendaOpt(tData || [])
+    if (tData && tData.length > 0) setNovoTipoAgendaId(tData[0].id)
     setLoading(false)
   }
 
   useEffect(() => { load() }, [professorId])
 
-  async function toggle(h: Horario) {
-    setUpdating(h.id)
-    await supabase.from('horarios').update({ ativo: !h.ativo }).eq('id', h.id)
-    setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, ativo: !x.ativo } : x))
-    setUpdating(null)
+  function horarioNaCelula(diaSemana: number, hr: string) {
+    return horarios.find(h => h.dia_semana === diaSemana && h.horario === hr)
   }
 
-  async function mudarTipoAgenda(h: Horario, tipoAgendaId: string) {
-    setUpdating(h.id)
-    await supabase.from('horarios').update({ tipo_agenda_id: tipoAgendaId || null }).eq('id', h.id)
+  function abrirCelula(diaSemana: number, hr: string) {
+    const existente = horarioNaCelula(diaSemana, hr) || null
+    setCélula({ diaSemana, horario: hr, existente })
+    setCapacidadeTemp(String(existente?.capacidade ?? 5))
+    setTipoAgendaTemp(existente?.tipo_agenda_id || (tiposAgendaOpt[0]?.id ?? ''))
+    setAtivoTemp(existente?.ativo ?? true)
+  }
+
+  async function salvarCelula() {
+    if (!célula) return
+    const capacidade = parseInt(capacidadeTemp, 10) || 5
+    setSalvando(true)
+    if (célula.existente) {
+      await supabase.from('horarios').update({
+        capacidade,
+        tipo_agenda_id: tipoAgendaTemp || null,
+        ativo: ativoTemp,
+      }).eq('id', célula.existente.id)
+    } else {
+      await supabase.from('horarios').insert({
+        dia_semana: célula.diaSemana,
+        horario: célula.horario,
+        capacidade,
+        ativo: true,
+        professor_id: professorId,
+        tipo_agenda_id: tipoAgendaTemp || null,
+      })
+    }
+    setSalvando(false)
+    setCélula(null)
+    await load()
+  }
+
+  async function apagarCelula() {
+    if (!célula?.existente) return
+    if (!confirm(`Apagar de vez o horário das ${célula.horario.slice(0, 5)} (${DIAS[célula.diaSemana]}) desse professor? Isso não pode ser desfeito. Se preferir só parar de oferecer, desative em vez de apagar.`)) return
+    setSalvando(true)
+    const { error } = await supabase.from('horarios').delete().eq('id', célula.existente.id)
+    if (error) {
+      setToast('Não consegui apagar — provavelmente já tem aluno agendado nesse horário. Desative em vez de apagar.')
+      setTimeout(() => setToast(''), 5000)
+    }
+    setSalvando(false)
+    setCélula(null)
+    await load()
+  }
+
+  function toggleDiaEscolhido(dia: number) {
+    setNovosDiasEscolhidos(prev => prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia])
+  }
+
+  async function criarNovoHorario() {
+    setErroNovoHorario('')
+    if (novosDiasEscolhidos.length === 0) { setErroNovoHorario('Escolhe pelo menos um dia da semana.'); return }
+    if (!novoHorarioValor) { setErroNovoHorario('Escolhe um horário.'); return }
+    const conflitos = novosDiasEscolhidos
+      .filter(dia => horarioNaCelula(dia, novoHorarioValor + ':00'))
+      .map(dia => DIAS[dia])
+    if (conflitos.length > 0) {
+      setErroNovoHorario(`Esse professor já tem horário nesse dia/hora: ${conflitos.join(', ')}.`)
+      return
+    }
+    setSalvando(true)
+    const capacidade = parseInt(novaCapacidade, 10) || 5
+    const novasLinhas = novosDiasEscolhidos.map(dia => ({
+      dia_semana: dia,
+      horario: novoHorarioValor + ':00',
+      capacidade,
+      ativo: true,
+      professor_id: professorId,
+      tipo_agenda_id: novoTipoAgendaId || null,
+    }))
+    await supabase.from('horarios').insert(novasLinhas)
+    setSalvando(false)
+    setMostrarNovoHorario(false)
+    setNovosDiasEscolhidos([])
+    setNovoHorarioValor('18:00')
+    setNovaCapacidade('5')
     await load()
   }
 
   if (loading) return <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 12 }}>Carregando agenda...</p>
 
+  const horariosUnicos = Array.from(new Set(horarios.map(h => h.horario))).sort()
+
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
       <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>
-        Dias e horários que esse professor está disposto a dar aula. Pra criar um horário novo pra ele, use Agenda → Grade de horários.
+        Clique numa célula preenchida pra editar (vagas, tipo, ativar/desativar/apagar). Clique numa célula vazia pra criar um horário novo nesse dia/hora pra esse professor.
       </p>
-      {horarios.length === 0 ? (
-        <p style={{ fontSize: 12, color: 'var(--text3)' }}>Esse professor ainda não está em nenhum horário da grade.</p>
+      {toast && <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 8 }}>{toast}</p>}
+
+      {horariosUnicos.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Esse professor ainda não está em nenhum horário da grade. Adicione um abaixo.</p>
       ) : (
-        <div style={{ display: 'grid', gap: 6 }}>
-          {horarios.map(h => (
-            <div key={h.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px',
-              opacity: h.ativo ? 1 : 0.5,
-            }}>
-              <span style={{ fontSize: 12, fontWeight: 700, minWidth: 90 }}>
-                {DIAS[h.dia_semana]} · {h.horario.slice(0, 5)}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--text2)' }}>{h.capacidade} vaga{h.capacidade === 1 ? '' : 's'}</span>
-              <select
-                value={h.tipo_agenda_id || ''}
-                onChange={e => mudarTipoAgenda(h, e.target.value)}
-                disabled={updating === h.id}
-                style={{
-                  background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 4,
-                  padding: '4px 6px', color: 'var(--text)', fontSize: 11, fontFamily: 'inherit',
-                }}
-              >
-                <option value="">— sem tipo —</option>
-                {tiposAgendaOpt.map(t => (
-                  <option key={t.id} value={t.id}>{t.nome}</option>
-                ))}
-              </select>
-              <button
-                onClick={() => toggle(h)}
-                disabled={updating === h.id}
-                style={{
-                  background: 'transparent', border: `1px solid ${h.ativo ? 'var(--border2)' : 'var(--danger)'}`,
-                  color: h.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '3px 8px',
-                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto',
-                }}
-              >
-                {h.ativo ? 'Desativar' : 'Ativar'}
+        <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+            <thead>
+              <tr>
+                <th style={thStyleProf}>Horário</th>
+                {DIAS_ABREV_PROF.map((d, i) => <th key={i} style={thStyleProf}>{d}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {horariosUnicos.map(hr => (
+                <tr key={hr}>
+                  <td style={{ ...tdStyleProf, fontWeight: 700, color: 'var(--text2)' }}>{hr.slice(0, 5)}</td>
+                  {DIAS_ABREV_PROF.map((_, dia) => {
+                    const h = horarioNaCelula(dia, hr)
+                    if (!h) {
+                      return (
+                        <td key={dia} onClick={() => abrirCelula(dia, hr)} style={{ ...tdStyleProf, color: 'var(--text3)', cursor: 'pointer' }} title="Clique pra criar horário aqui">
+                          +
+                        </td>
+                      )
+                    }
+                    return (
+                      <td key={dia} onClick={() => abrirCelula(dia, hr)} style={{
+                        ...tdStyleProf, cursor: 'pointer',
+                        background: !h.ativo ? '#e0565622' : h.tipos_agenda?.permite_plano_mensal === false ? '#f0a50022' : '#3fb95022',
+                        opacity: h.ativo ? 1 : 0.7,
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: !h.ativo ? '#e05656' : h.tipos_agenda?.permite_plano_mensal === false ? '#f0a500' : '#3fb950' }}>
+                          {h.capacidade}v
+                        </div>
+                        {h.tipos_agenda && <div style={{ fontSize: 9, color: 'var(--text3)' }}>{h.tipos_agenda.nome.slice(0, 10)}</div>}
+                        {!h.ativo && <div style={{ fontSize: 9, color: '#e05656' }}>desativado</div>}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!mostrarNovoHorario ? (
+        <button onClick={() => setMostrarNovoHorario(true)} style={{
+          background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
+          borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          + Adicionar horário à grade desse professor
+        </button>
+      ) : (
+        <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
+          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Em quais dias?</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {DIAS.map((nome, i) => (
+              <button key={i} onClick={() => toggleDiaEscolhido(i)} style={{
+                background: novosDiasEscolhidos.includes(i) ? '#3fb95022' : 'transparent',
+                color: novosDiasEscolhidos.includes(i) ? '#3fb950' : 'var(--text2)',
+                border: `1.5px solid ${novosDiasEscolhidos.includes(i) ? '#3fb950' : 'var(--border)'}`,
+                borderRadius: 6, padding: '5px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                {nome}
               </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Horário</label>
+              <input type="time" value={novoHorarioValor} onChange={e => setNovoHorarioValor(e.target.value)} style={inputStyleProf} />
             </div>
-          ))}
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
+              <input type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)} style={{ ...inputStyleProf, width: 70 }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo de agenda</label>
+              <select value={novoTipoAgendaId} onChange={e => setNovoTipoAgendaId(e.target.value)} style={inputStyleProf}>
+                <option value="">— sem tipo —</option>
+                {tiposAgendaOpt.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </select>
+            </div>
+          </div>
+          {erroNovoHorario && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>{erroNovoHorario}</p>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={criarNovoHorario} disabled={salvando} className="btn btn-success">
+              {salvando ? 'Criando...' : '✅ Criar'}
+            </button>
+            <button onClick={() => { setMostrarNovoHorario(false); setErroNovoHorario(''); setNovosDiasEscolhidos([]) }} disabled={salvando} className="btn btn-neutral">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {célula && (
+        <div onClick={() => setCélula(null)} style={{
+          position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 340 }}>
+            <h3 style={{ fontSize: 15, marginBottom: 4 }}>{DIAS[célula.diaSemana]} · {célula.horario.slice(0, 5)}</h3>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14 }}>
+              {célula.existente ? 'Editar esse horário.' : 'Criar horário novo pra esse professor aqui.'}
+            </p>
+
+            <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
+            <input type="number" min={1} value={capacidadeTemp} onChange={e => setCapacidadeTemp(e.target.value)} style={{ ...inputStyleProf, width: '100%', marginBottom: 10 }} />
+
+            <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo de agenda</label>
+            <select value={tipoAgendaTemp} onChange={e => setTipoAgendaTemp(e.target.value)} style={{ ...inputStyleProf, width: '100%', marginBottom: 10 }}>
+              <option value="">— sem tipo —</option>
+              {tiposAgendaOpt.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+
+            {célula.existente && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontSize: 13 }}>
+                <input type="checkbox" checked={ativoTemp} onChange={e => setAtivoTemp(e.target.checked)} />
+                Ativo
+              </label>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <button onClick={salvarCelula} disabled={salvando} className="btn btn-success" style={{ flex: 1 }}>
+                {salvando ? 'Salvando...' : '✅ Salvar'}
+              </button>
+              <button onClick={() => setCélula(null)} disabled={salvando} className="btn btn-ghost btn-sm">Cancelar</button>
+            </div>
+
+            {célula.existente && (
+              <button onClick={apagarCelula} disabled={salvando} className="btn btn-outline-danger btn-sm" style={{ width: '100%' }}>
+                🗑️ Apagar esse horário de vez
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
   )
+}
+
+const thStyleProf: React.CSSProperties = {
+  border: '1px solid var(--border)', padding: '6px 4px', textAlign: 'center',
+  fontSize: 10, fontWeight: 800, color: '#3fb950', letterSpacing: '0.5px',
+  background: 'var(--bg2)', textTransform: 'uppercase' as const,
+}
+
+const tdStyleProf: React.CSSProperties = {
+  border: '1px solid var(--border)', padding: '8px 4px', textAlign: 'center', fontSize: 12,
+}
+
+const inputStyleProf: React.CSSProperties = {
+  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+  padding: '7px 9px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit',
 }
 
 type ConfigPagamento = {
