@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 
 type PagamentoRow = {
@@ -47,11 +48,12 @@ const inputStyle = {
   borderRadius: 6, padding: '8px 12px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const,
 }
 
-export default function PagamentosPage() {
+function PagamentosContent() {
+  const params = useSearchParams()
   const [rows, setRows] = useState<PagamentoRow[]>([])
   const [ordenacao, setOrdenacao] = useState('recentes')
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState('todos')
+  const [filtro, setFiltro] = useState(params.get('status') || 'todos')
   const [confirmando, setConfirmando] = useState<string | null>(null)
   const [dataConfirm, setDataConfirm] = useState<Record<string, string>>({})
   const [metodoConfirm, setMetodoConfirm] = useState<Record<string, string>>({})
@@ -568,4 +570,8 @@ export default function PagamentosPage() {
       )}
     </div>
   )
+}
+
+export default function PagamentosPage() {
+  return <Suspense><PagamentosContent /></Suspense>
 }
