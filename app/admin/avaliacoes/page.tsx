@@ -272,11 +272,7 @@ export default function AvaliacoesPage() {
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <h2 style={{ fontSize: 18 }}>{alunoAtual?.nome}</h2>
-            <button onClick={() => mostrarForm ? fecharForm() : setMostrarForm(true)} style={{
-              background: mostrarForm ? 'transparent' : '#3fb950', border: mostrarForm ? '1px solid var(--border2)' : 'none',
-              color: mostrarForm ? 'var(--text2)' : '#fff', borderRadius: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>
+            <button onClick={() => mostrarForm ? fecharForm() : setMostrarForm(true)} className={mostrarForm ? 'btn btn-neutral' : 'btn btn-success'}>
               {mostrarForm ? 'Cancelar' : '+ Registrar avaliação'}
             </button>
           </div>
@@ -446,10 +442,7 @@ export default function AvaliacoesPage() {
                 />
               </div>
 
-              <button onClick={salvarAvaliacao} disabled={salvando} style={{
-                background: '#3fb950', border: 'none', color: '#fff', borderRadius: 6,
-                padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: salvando ? 0.6 : 1,
-              }}>
+              <button onClick={salvarAvaliacao} disabled={salvando} className="btn btn-success">
                 {salvando ? 'Salvando...' : editandoId ? '✅ Atualizar avaliação' : '✅ Salvar avaliação'}
               </button>
             </div>
@@ -469,7 +462,7 @@ export default function AvaliacoesPage() {
                   const fotosAval = fotos.filter(f => f.avaliacao_id === a.id)
                   const dataFmt = new Date(a.data + 'T12:00:00').toLocaleDateString('pt-BR')
                   return (
-                    <div key={a.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 16px' }}>
+                    <div key={a.id} className="card card-hover" style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 14 }}>{dataFmt}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -479,7 +472,7 @@ export default function AvaliacoesPage() {
                           <button onClick={() => abrirEdicao(a)} style={{ background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                             ✏️ Editar
                           </button>
-                          <button onClick={() => apagarAvaliacao(a.id)} style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <button onClick={() => apagarAvaliacao(a.id)} className="btn btn-outline-danger btn-sm">
                             🗑️
                           </button>
                         </div>
@@ -556,7 +549,7 @@ function MiniLineChart({ titulo, avaliacoes, campo, cor }: { titulo: string; ava
 
   if (pontos.length < 2) {
     return (
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
+      <div className="card card-hover" style={{ padding: '14px 16px' }}>
         <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>{titulo}</div>
         <p style={{ fontSize: 11, color: 'var(--text3)' }}>Dados insuficientes pra esse gráfico ainda.</p>
       </div>
@@ -583,7 +576,7 @@ function MiniLineChart({ titulo, avaliacoes, campo, cor }: { titulo: string; ava
   const melhorou = campo === 'massa_muscular_pct' ? diff >= 0 : diff <= 0
 
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
+    <div className="card card-hover" style={{ padding: '14px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <span style={{ fontSize: 12, color: 'var(--text2)' }}>{titulo}</span>
         <span style={{ fontSize: 12, fontWeight: 700, color: diff === 0 ? 'var(--text3)' : melhorou ? '#3fb950' : 'var(--danger)' }}>
