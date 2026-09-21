@@ -619,10 +619,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
             onChange={e => setNovoValor(e.target.value)}
             style={{ width: 90, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
           />
-          <button onClick={adicionarCategoria} style={{
-            background: 'var(--accent2)', border: 'none', color: '#fff', borderRadius: 6,
-            padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-          }}>
+          <button onClick={adicionarCategoria} className="btn btn-primary btn-sm">
             + Adicionar
           </button>
         </div>
@@ -715,7 +712,7 @@ function HistoricoMensal({ historico, mesAberto, setMesAberto, semanalData, anua
         {historico.map(m => {
           const aberto = mesAberto === m.chave
           return (
-            <div key={m.chave} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+            <div key={m.chave} className="card card-hover" style={{ overflow: 'hidden' }}>
               <div
                 onClick={() => setMesAberto(aberto ? null : m.chave)}
                 style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, cursor: 'pointer' }}
@@ -941,8 +938,7 @@ function HorasTrabalhadas() {
           {linhas.map(l => {
             const aberto = expandido === l.professorId
             return (
-              <div key={l.professorId} style={{
-                background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
+              <div key={l.professorId} className="card card-hover" style={{
                 padding: '14px 16px', opacity: l.ativo ? 1 : 0.55,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
@@ -966,10 +962,7 @@ function HorasTrabalhadas() {
 
                 <button
                   onClick={() => setExpandido(aberto ? null : l.professorId)}
-                  style={{
-                    background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)',
-                    borderRadius: 4, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
+                  className="btn btn-ghost btn-sm"
                 >
                   {aberto ? '▲ Esconder aulas do mês' : `▼ Ver aulas do mês (${l.sessoesMes.length}${l.faltasMesDetalhe.length > 0 ? ` + ${l.faltasMesDetalhe.length} falta(s)` : ''})`}
                 </button>
@@ -996,11 +989,7 @@ function HorasTrabalhadas() {
                               <button
                                 onClick={() => marcarFalta(l.professorId, s)}
                                 disabled={marcando === chave}
-                                style={{
-                                  background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)',
-                                  borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
-                                  opacity: marcando === chave ? 0.6 : 1,
-                                }}
+                                className="btn btn-outline-danger btn-sm"
                               >
                                 {marcando === chave ? '...' : 'Professor faltou'}
                               </button>
@@ -1058,7 +1047,7 @@ function HorasTrabalhadas() {
 
 function Card({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem' }}>
+    <div className="card card-hover" style={{ padding: '1.25rem' }}>
       <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 28, color: accent || 'var(--accent)' }}>{value}</div>
       <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>{label}</div>
       {sub && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sub}</div>}
