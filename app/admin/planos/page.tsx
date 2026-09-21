@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 
 type Plano = {
@@ -25,7 +26,8 @@ const inputStyle: React.CSSProperties = {
   padding: '9px 12px', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
 }
 
-export default function PlanosPage() {
+function PlanosContent() {
+  const params = useSearchParams()
   const [planos, setPlanos] = useState<Plano[]>([])
   const [descontos, setDescontos] = useState<Desconto[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +56,17 @@ export default function PlanosPage() {
   }
 
   useEffect(() => { carregar() }, [])
+
+  // Atalho do menu: clicar num plano específico na lista suspensa do menu
+  // já abre direto a edição dele aqui, via ?editar=<id> na URL.
+  useEffect(() => {
+    const editarId = params.get('editar')
+    if (editarId && planos.some(p => p.id === editarId)) {
+      const plano = planos.find(p => p.id === editarId)
+      if (plano) abrirEdicao(plano)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planos, params])
 
   async function criarDesconto(planoId: string) {
     if (!novoDescNome.trim() || !novoDescValor) return
@@ -235,4 +248,8 @@ export default function PlanosPage() {
       )}
     </div>
   )
+}
+
+export default function PlanosPage() {
+  return <Suspense><PlanosContent /></Suspense>
 }
