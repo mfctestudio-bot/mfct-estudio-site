@@ -262,9 +262,11 @@ export async function verificarVencimentos(
 
 const { data: alunosAtivos, error: alunosError } = await supabase
   .from('alunos')
-  .select('id')
+  .select('id, status_desde')
   .eq('status_plano', 'ativo')
   if (alunosError) throw new Error(alunosError.message)
+  const statusDesdePorAluno = new Map<string, string | null>()
+  for (const a of alunosAtivos || []) statusDesdePorAluno.set(a.id, a.status_desde ?? null)
 
 const cancelados: VerificarVencimentosResult['cancelados'] = []
   const avisos: string[] = []
@@ -288,7 +290,29 @@ const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string
 for (const alunoId of alunoIds) {
   const listaPeriodos = periodosPorAluno.get(alunoId)
   if (!listaPeriodos || listaPeriodos.length === 0) {
-    avisos.push(`aluno ${alunoId}: status ativo sem periodo registrado -- nao avaliado automaticamente`)
+    // Bug real encontrado em 22/09/2026 (caso Cleiciane): aluno "ativo" sem NENHUM periodo
+    // registrado ficava para sempre sem ser avaliado por aqui, porque nao ha data_fim pra medir
+    // dias de vencido. Em vez de pular pra sempre, damos 1 dia de folga (pro periodo ainda estar
+    // sendo criado logo apos a ativacao) e, passado isso, marcamos "vencido" pra revisao manual --
+    // nao "cancelado" direto, porque sem nenhum periodo nao da pra saber ha quanto tempo isso
+    // acontece nem se e so um cadastro incompleto.
+    const statusDesde = statusDesdePorAluno.get(alunoId) || null
+    if (statusDesde && statusDesde >= hojeIso) {
+      avisos.push(`aluno ${alunoId}: status ativo sem periodo registrado, ativado hoje -- ainda nao avaliado`)
+      continue
+    }
+    const { error: updateError } = await supabase
+      .from('alunos')
+      .update({ status_plano: 'vencido' })
+      .eq('id', alunoId)
+      .eq('status_plano', 'ativo')
+      .select('id')
+      .single()
+    if (updateError) {
+      avisos.push(`aluno ${alunoId}: ${updateError.message}`)
+    } else {
+      avisos.push(`aluno ${alunoId}: status ativo sem NENHUM periodo registrado -- marcado vencido pra revisao manual`)
+    }
     continue
   }
 
