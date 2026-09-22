@@ -944,10 +944,11 @@ function GradeHorarios() {
     setEditandoCapacidade(null)
   }
 
-  // Arrastar um horário pra outro dia da semana. Bloqueia (em vez de inventar um
-  // cancelamento em cascata) se já existir o mesmo horário nesse dia, ou se tiver
-  // aluno/aula fixa dependendo desse slot -- nesses casos, usar "Encerrar c/ aviso"
-  // primeiro, que já cuida de avisar todo mundo.
+  // Arrastar um horário pra outro dia da semana. Se tiver aluno (aula futura
+  // confirmada ou horário fixo), as aulas já marcadas vão junto pro novo dia
+  // (mesmo horário, data recalculada), e cada aluno afetado pode ser avisado
+  // por WhatsApp -- só se o Matheus confirmar que quer avisar. Bloqueia só se
+  // já existir outro horário igual no dia de destino.
   async function moverHorarioParaDia(h: Horario, novoDia: number) {
     if (novoDia === h.dia_semana) return
     if (horarios.some(x => x.id !== h.id && x.dia_semana === novoDia && x.horario === h.horario)) {
@@ -955,27 +956,42 @@ function GradeHorarios() {
       setTimeout(() => setToast(''), 5000)
       return
     }
-    setUpdating(h.id)
     const hoje = new Date().toISOString().slice(0, 10)
     const [{ count: countAgendamentos }, { count: countFixos }] = await Promise.all([
       supabase.from('agendamentos').select('*', { count: 'exact', head: true }).eq('horario_id', h.id).eq('status', 'confirmado').gte('data', hoje),
       supabase.from('horarios_fixos').select('*', { count: 'exact', head: true }).eq('horario_id', h.id).eq('ativo', true),
     ])
-    if ((countAgendamentos || 0) > 0 || (countFixos || 0) > 0) {
-      setToast(`Esse horário tem ${countAgendamentos || 0} aula(s) futura(s) e/ou ${countFixos || 0} horário(s) fixo(s) marcados. Use "🔔 Encerrar c/ aviso" primeiro pra liberar geral, depois mova.`)
-      setTimeout(() => setToast(''), 6000)
-      setUpdating(null)
-      return
-    }
-    const { error } = await supabase.from('horarios').update({ dia_semana: novoDia }).eq('id', h.id)
-    if (error) {
-      setToast(`Erro ao mover: ${error.message}`)
-      setTimeout(() => setToast(''), 5000)
+    const totalAfetados = (countAgendamentos || 0) + (countFixos || 0)
+
+    let avisar = false
+    if (totalAfetados > 0) {
+      if (!confirm(`Mover o horário das ${h.horario.slice(0, 5)} de ${DIAS[h.dia_semana]} pra ${DIAS[novoDia]}? As ${countAgendamentos || 0} aula(s) futura(s) já marcadas vão junto, remarcadas pro novo dia.`)) return
+      avisar = confirm(`Quer avisar os alunos afetados por WhatsApp sobre a mudança de dia?`)
     } else {
-      setToast(`Horário das ${h.horario.slice(0, 5)} movido pra ${DIAS[novoDia]}.`)
-      setTimeout(() => setToast(''), 3000)
-      setDiaAtivo(novoDia)
-      await load()
+      if (!confirm(`Mover o horário das ${h.horario.slice(0, 5)} de ${DIAS[h.dia_semana]} pra ${DIAS[novoDia]}? Não tem ninguém agendado nele agora.`)) return
+    }
+
+    setUpdating(h.id)
+    try {
+      const resp = await fetch('/api/mover-horario-dia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ horario_id: h.id, novo_dia: novoDia, avisar }),
+      })
+      const json = await resp.json()
+      if (!resp.ok) {
+        setToast(`Erro ao mover: ${json?.error || 'falha na validação'}`)
+        setTimeout(() => setToast(''), 5000)
+      } else {
+        const pendencia = json.aulasNaoMovidas?.length > 0 ? ` ${json.aulasNaoMovidas.length} aula(s) não puderam ser movidas automaticamente (${json.aulasNaoMovidas.map((x: { nome: string; motivo: string }) => `${x.nome}: ${x.motivo}`).join('; ')}) — ajuste na mão.` : ''
+        setToast(`Horário das ${h.horario.slice(0, 5)} movido pra ${DIAS[novoDia]}. ${json.aulasMovidas} aula(s) remarcada(s) junto.${avisar ? ` ${json.avisosEnviados} aviso(s) enviado(s).` : ''}${pendencia}`)
+        setTimeout(() => setToast(''), pendencia ? 9000 : 5000)
+        setDiaAtivo(novoDia)
+        await load()
+      }
+    } catch (e) {
+      setToast(`Erro ao mover: ${e instanceof Error ? e.message : 'falha desconhecida'}`)
+      setTimeout(() => setToast(''), 5000)
     }
     setUpdating(null)
   }
