@@ -144,9 +144,9 @@ export default function ProfessoresPage() {
                   <button
                     onClick={() => setExpandidoId(expandidoId === p.id ? null : p.id)}
                     style={{
-                      background: expandidoId === p.id ? '#3fb95022' : 'transparent',
-                      border: `1px solid ${expandidoId === p.id ? '#3fb950' : 'var(--border)'}`,
-                      color: expandidoId === p.id ? '#3fb950' : 'var(--text2)', borderRadius: 4, padding: '6px 12px',
+                      background: expandidoId === p.id ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'transparent',
+                      border: `1px solid ${expandidoId === p.id ? 'var(--accent2)' : 'var(--border)'}`,
+                      color: expandidoId === p.id ? 'var(--accent2)' : 'var(--text2)', borderRadius: 4, padding: '6px 12px',
                       fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
@@ -388,14 +388,14 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
                     return (
                       <td key={dia} onClick={() => abrirCelula(dia, hr)} style={{
                         ...tdStyleProf, cursor: 'pointer',
-                        background: !h.ativo ? '#e0565622' : h.tipos_agenda?.permite_plano_mensal === false ? '#f0a50022' : '#3fb95022',
+                        background: !h.ativo ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : 'var(--bg2)',
                         opacity: h.ativo ? 1 : 0.7,
                       }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: !h.ativo ? '#e05656' : h.tipos_agenda?.permite_plano_mensal === false ? '#f0a500' : '#3fb950' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: !h.ativo ? 'var(--danger)' : 'var(--text)' }}>
                           {h.capacidade}v
                         </div>
                         {h.tipos_agenda && <div style={{ fontSize: 9, color: 'var(--text3)' }}>{h.tipos_agenda.nome.slice(0, 10)}</div>}
-                        {!h.ativo && <div style={{ fontSize: 9, color: '#e05656' }}>desativado</div>}
+                        {!h.ativo && <div style={{ fontSize: 9, color: 'var(--danger)' }}>desativado</div>}
                       </td>
                     )
                   })}
@@ -504,7 +504,7 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
 
 const thStyleProf: React.CSSProperties = {
   border: '1px solid var(--border)', padding: '6px 4px', textAlign: 'center',
-  fontSize: 10, fontWeight: 800, color: '#3fb950', letterSpacing: '0.5px',
+  fontSize: 10, fontWeight: 800, color: 'var(--text2)', letterSpacing: '0.5px',
   background: 'var(--bg2)', textTransform: 'uppercase' as const,
 }
 
