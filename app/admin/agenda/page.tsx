@@ -488,7 +488,7 @@ function GradeSemanal() {
                                 onClick={e => { e.stopPropagation(); abrirCelula(dataISO, h.id) }}
                                 title="Arraste pra outro horário/dia pra remarcar, ou solte na lixeira pra cancelar"
                                 style={{
-                                  fontSize: 11, fontWeight: 700, padding: '4px 8px 4px 7px', borderRadius: 6,
+                                  fontSize: 11, fontWeight: 700, padding: '4px 6px', borderRadius: 6,
                                   background: a.tipo === 'experimental' ? 'color-mix(in srgb, #f0a500 14%, var(--card))' : 'var(--card)',
                                   borderTop: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)',
                                   borderLeft: `3px solid ${a.tipo === 'experimental' ? '#f0a500' : 'var(--accent2)'}`,
@@ -496,7 +496,8 @@ function GradeSemanal() {
                                   cursor: arrastandoId === a.id ? 'grabbing' : 'grab',
                                   opacity: arrastandoId === a.id ? 0.35 : 1,
                                   transition: 'opacity 0.12s ease, transform 0.12s ease',
-                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100,
+                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                  width: '100%', boxSizing: 'border-box' as const, textAlign: 'center' as const,
                                 }}
                               >
                                 {a.alunos?.nome?.split(' ')[0] || '?'}
