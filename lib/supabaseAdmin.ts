@@ -14,4 +14,10 @@ const proxyBase =
 
 export const supabase = createClient(proxyBase, 'admin-proxy', {
   auth: { persistSession: false },
+  global: {
+    // Reforca o "sem cache" tambem do lado do navegador (alem do header que a rota
+    // /api/admin-proxy ja manda) -- evita telas do admin mostrando dado desatualizado
+    // depois de uma alteracao, sem precisar dar reload na forca.
+    fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+  },
 })
