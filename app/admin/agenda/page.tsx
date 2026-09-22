@@ -88,6 +88,8 @@ function GradeSemanal() {
   const [toast, setToast] = useState('')
   const [tipoAula, setTipoAula] = useState<'aula' | 'experimental'>('aula')
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null)
+  const [celulaSobrevoada, setCelulaSobrevoada] = useState<string | null>(null)
 
   const monday = segundaDaSemana(refDate)
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -213,30 +215,29 @@ function GradeSemanal() {
     setNovoHorarioMover(a.horario_id)
   }
 
-  async function confirmarMoverAgendamento(agendamento: AgendamentoRow) {
-    if (!novaDataMover || !novoHorarioMover) return
-    setSalvandoMover(true)
-
+  // Lógica central de "mover uma aula" -- usada tanto pelo botão "Mudar" (modal)
+  // quanto pelo arrastar-e-soltar na grade. Sempre passa pela mesma validação
+  // do servidor (matrícula ativa, período vigente, capacidade) antes de mexer
+  // no banco -- nenhum atalho novo aqui.
+  async function moverAgendamento(agendamento: AgendamentoRow, novaData: string, novoHorarioId: string): Promise<boolean> {
     const resposta = await fetch('/api/admin-agendamentos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         agendamentoId: agendamento.id,
-        data: novaDataMover,
-        horarioId: novoHorarioMover,
+        data: novaData,
+        horarioId: novoHorarioId,
       }),
     })
     if (!resposta.ok) {
       const resultado = await resposta.json().catch(() => null)
       setToast(`Erro ao remarcar: ${resultado?.error || 'falha na validação'}`)
       setTimeout(() => setToast(''), 4000)
-      setMovendoId(null)
-      setSalvandoMover(false)
-      return
+      return false
     }
 
     // Sincroniza com o Google Calendar (mesmo padrão do "remarcar" da Elen — atualiza o evento existente)
-    const horarioObj = horarios.find(h => h.id === novoHorarioMover)
+    const horarioObj = horarios.find(h => h.id === novoHorarioId)
     try {
       await fetch('/api/sync-calendario', {
         method: 'POST',
@@ -246,7 +247,7 @@ function GradeSemanal() {
           agendamento_id: agendamento.id,
           aluno_nome: agendamento.alunos?.nome || '',
           telefone: agendamento.alunos?.telefone || '',
-          data: novaDataMover,
+          data: novaData,
           horario: horarioObj?.horario?.slice(0, 5) || '',
           tipo: agendamento.tipo,
           origem: 'admin (mudança de horário manual)',
@@ -265,7 +266,7 @@ function GradeSemanal() {
             telefone: agendamento.alunos.telefone,
             nome: agendamento.alunos.nome,
             tipo: 'movido',
-            data: novaDataMover,
+            data: novaData,
             horario: horarioObj?.horario?.slice(0, 5) || '',
           }),
         })
@@ -278,11 +279,43 @@ function GradeSemanal() {
       }
     }
 
-    setMovendoId(null)
-    setSalvandoMover(false)
     setToast(`Horário atualizado.${avisoWhats}`)
     setTimeout(() => setToast(''), avisoWhats ? 6000 : 2500)
     await recarregarAgendamentos()
+    return true
+  }
+
+  async function confirmarMoverAgendamento(agendamento: AgendamentoRow) {
+    if (!novaDataMover || !novoHorarioMover) return
+    setSalvandoMover(true)
+    await moverAgendamento(agendamento, novaDataMover, novoHorarioMover)
+    setMovendoId(null)
+    setSalvandoMover(false)
+  }
+
+  // Arrastar-e-soltar: pega o id do agendamento arrastado e solta numa célula
+  // (data + horário) da grade. Reusa a mesma validação/aviso do "Mudar" manual.
+  function iniciarArrasto(e: React.DragEvent, agendamentoId: string) {
+    e.dataTransfer.setData('text/plain', agendamentoId)
+    e.dataTransfer.effectAllowed = 'move'
+    setArrastandoId(agendamentoId)
+  }
+
+  function finalizarArrasto() {
+    setArrastandoId(null)
+    setCelulaSobrevoada(null)
+  }
+
+  async function soltarNaCelula(e: React.DragEvent, dataISO: string, horarioId: string) {
+    e.preventDefault()
+    const agendamentoId = e.dataTransfer.getData('text/plain') || arrastandoId
+    setCelulaSobrevoada(null)
+    setArrastandoId(null)
+    if (!agendamentoId) return
+    const agendamento = agendamentos.find(a => a.id === agendamentoId)
+    if (!agendamento) return
+    if (agendamento.data === dataISO && agendamento.horario_id === horarioId) return // soltou na mesma célula
+    await moverAgendamento(agendamento, dataISO, horarioId)
   }
 
   async function cancelarAgendamentoIndividual(a: AgendamentoRow) {
@@ -331,7 +364,7 @@ function GradeSemanal() {
         <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: 'var(--accent2)', borderColor: 'var(--accent2)' }}>Hoje</button>
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado.</p>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado, ou arraste o nome do aluno pra outro dia/horário pra remarcar (a validação e o aviso por WhatsApp acontecem automaticamente).</p>
 
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>
@@ -390,21 +423,50 @@ function GradeSemanal() {
                     const lista = agendamentosDaCelula(dataISO, h.id)
                     const ocupacao = lista.length
                     const cheio = ocupacao >= h.capacidade
+                    const chaveCelula = `${dataISO}|${h.id}`
+                    const sobrevoada = celulaSobrevoada === chaveCelula
                     return (
                       <td
                         key={i}
                         onClick={() => abrirCelula(dataISO, h.id)}
+                        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (celulaSobrevoada !== chaveCelula) setCelulaSobrevoada(chaveCelula) }}
+                        onDragLeave={() => setCelulaSobrevoada(prev => (prev === chaveCelula ? null : prev))}
+                        onDrop={e => soltarNaCelula(e, dataISO, h.id)}
                         style={{
-                          ...tdStyle, cursor: 'pointer',
-                          background: ocupacao === 0 ? 'transparent' : cheio ? 'color-mix(in srgb, #3fb950 16%, transparent)' : 'var(--bg2)',
+                          ...tdStyle, cursor: 'pointer', verticalAlign: 'top',
+                          background: sobrevoada
+                            ? 'color-mix(in srgb, var(--accent2) 22%, transparent)'
+                            : ocupacao === 0 ? 'transparent' : cheio ? 'color-mix(in srgb, #3fb950 16%, transparent)' : 'var(--bg2)',
+                          outline: sobrevoada ? '2px dashed var(--accent2)' : 'none',
+                          outlineOffset: -2,
                         }}
                       >
-                        <span style={{
-                          fontSize: 12, fontWeight: 700,
-                          color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : 'var(--accent2)',
-                        }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : 'var(--accent2)', marginBottom: ocupacao > 0 ? 4 : 0 }}>
                           {ocupacao}/{h.capacidade}
-                        </span>
+                        </div>
+                        {lista.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {lista.map(a => (
+                              <div
+                                key={a.id}
+                                draggable
+                                onDragStart={e => { e.stopPropagation(); iniciarArrasto(e, a.id) }}
+                                onDragEnd={finalizarArrasto}
+                                onClick={e => { e.stopPropagation(); abrirCelula(dataISO, h.id) }}
+                                title="Arraste pra outro horário/dia pra remarcar"
+                                style={{
+                                  fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                                  background: a.tipo === 'experimental' ? 'color-mix(in srgb, #f0a500 20%, transparent)' : 'var(--card)',
+                                  border: '1px solid var(--border)', color: 'var(--text)',
+                                  cursor: 'grab', opacity: arrastandoId === a.id ? 0.4 : 1,
+                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 90,
+                                }}
+                              >
+                                {a.alunos?.nome?.split(' ')[0] || '?'}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                     )
                   })}
