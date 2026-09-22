@@ -742,7 +742,7 @@ function GradeHorarios() {
   async function load() {
     setLoading(true)
     const [{ data: hData }, { data: pData }, { data: tData }] = await Promise.all([
-      supabase.from('horarios').select('*, professores(nome), tipos_agenda(id, nome, permite_plano_mensal, permite_avulsa)').order('dia_semana').order('horario'),
+      supabase.from('horarios').select('*, professores!horarios_professor_id_fkey(nome), tipos_agenda(id, nome, permite_plano_mensal, permite_avulsa)').order('dia_semana').order('horario'),
       supabase.from('professores').select('id, nome').eq('ativo', true).order('created_at'),
       supabase.from('tipos_agenda').select('id, nome').eq('ativo', true).order('created_at'),
     ])
