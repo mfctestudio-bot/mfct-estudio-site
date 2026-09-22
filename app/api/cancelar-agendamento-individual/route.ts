@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   // Cancela o evento no Google Calendar
   try {
-    await fetch('https://primary-production-4716.up.railway.app/webhook/mfct-sync-calendar', {
+    await fetch('https://wetgoose-n8n.cloudfy.live/webhook/mfct-sync-calendar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ acao: 'cancelar', agendamento_id }),
