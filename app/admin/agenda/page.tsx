@@ -91,6 +91,8 @@ function GradeSemanal() {
   const [arrastandoId, setArrastandoId] = useState<string | null>(null)
   const [celulaSobrevoada, setCelulaSobrevoada] = useState<string | null>(null)
   const [lixeiraSobrevoada, setLixeiraSobrevoada] = useState(false)
+  const [arrastandoCelula, setArrastandoCelula] = useState<{ dataISO: string; horarioId: string } | null>(null)
+  const [celulaMouseOver, setCelulaMouseOver] = useState<string | null>(null)
 
   const monday = segundaDaSemana(refDate)
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -319,10 +321,54 @@ function GradeSemanal() {
     await cancelarAgendamentoIndividual(agendamento)
   }
 
+  // Arrastar a célula inteira (o quadrado de um dia/horário, com todo mundo
+  // que está nele) pra outro dia/horário. Move cada aluno um por um pela mesma
+  // rota central (moverAgendamento) -- mesma validação e mesmo aviso por
+  // WhatsApp de sempre, só que pra todos de uma vez.
+  function iniciarArrastoCelula(e: React.DragEvent, dataISO: string, horarioId: string) {
+    e.dataTransfer.setData('application/x-mfct-celula', JSON.stringify({ dataISO, horarioId }))
+    e.dataTransfer.effectAllowed = 'move'
+    setArrastandoCelula({ dataISO, horarioId })
+  }
+
+  function finalizarArrastoCelula() {
+    setArrastandoCelula(null)
+    setCelulaSobrevoada(null)
+  }
+
+  async function moverCelulaInteira(origem: { dataISO: string; horarioId: string }, destino: { dataISO: string; horarioId: string }) {
+    const alunosNaCelula = agendamentosDaCelula(origem.dataISO, origem.horarioId)
+    if (alunosNaCelula.length === 0) return
+    const dataOrigemFmt = new Date(origem.dataISO + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
+    const dataDestinoFmt = new Date(destino.dataISO + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
+    if (!confirm(`Mover ${alunosNaCelula.length} aula(s) de ${dataOrigemFmt} pra ${dataDestinoFmt}? Cada aluno vai ser avisado por WhatsApp.`)) return
+    let sucesso = 0
+    for (const a of alunosNaCelula) {
+      const ok = await moverAgendamento(a, destino.dataISO, destino.horarioId)
+      if (ok) sucesso++
+    }
+    setToast(`${sucesso}/${alunosNaCelula.length} aula(s) movida(s) com sucesso.`)
+    setTimeout(() => setToast(''), 4000)
+  }
+
   async function soltarNaCelula(e: React.DragEvent, dataISO: string, horarioId: string) {
     e.preventDefault()
-    const agendamentoId = e.dataTransfer.getData('text/plain') || arrastandoId
     setCelulaSobrevoada(null)
+
+    // Arrasto de célula inteira (todos os alunos daquele quadrado juntos)
+    const celulaData = e.dataTransfer.getData('application/x-mfct-celula')
+    if (celulaData) {
+      setArrastandoCelula(null)
+      try {
+        const origem = JSON.parse(celulaData) as { dataISO: string; horarioId: string }
+        if (origem.dataISO === dataISO && origem.horarioId === horarioId) return // soltou na mesma célula
+        await moverCelulaInteira(origem, { dataISO, horarioId })
+      } catch {}
+      return
+    }
+
+    // Arrasto de um aluno individual
+    const agendamentoId = e.dataTransfer.getData('text/plain') || arrastandoId
     setArrastandoId(null)
     if (!agendamentoId) return
     const agendamento = agendamentos.find(a => a.id === agendamentoId)
@@ -377,7 +423,7 @@ function GradeSemanal() {
         <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: 'var(--accent2)', borderColor: 'var(--accent2)' }}>Hoje</button>
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado, ou arraste o nome do aluno pra outro dia/horário pra remarcar (a validação e o aviso por WhatsApp acontecem automaticamente). Solte na lixeira que aparece embaixo pra cancelar a aula.</p>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado. Arraste o nome de um aluno pra remarcar só ele, ou arraste o quadrado inteiro (o fundo da célula) pra mover todo mundo daquele horário de uma vez — a validação e o aviso por WhatsApp acontecem automaticamente pra cada aluno. Solte na lixeira que aparece embaixo pra cancelar a aula.</p>
 
       {/* Lixeira flutuante: só fica clicável enquanto uma aula está sendo arrastada, mas o espaço já existe (transição suave em vez de aparecer/sumir de repente) */}
       <div
@@ -458,20 +504,31 @@ function GradeSemanal() {
                     const cheio = ocupacao >= h.capacidade
                     const chaveCelula = `${dataISO}|${h.id}`
                     const sobrevoada = celulaSobrevoada === chaveCelula
+                    const emMouseOver = celulaMouseOver === chaveCelula
                     return (
                       <td
                         key={i}
+                        draggable={ocupacao > 0}
+                        onDragStart={e => iniciarArrastoCelula(e, dataISO, h.id)}
+                        onDragEnd={finalizarArrastoCelula}
+                        onMouseEnter={() => setCelulaMouseOver(chaveCelula)}
+                        onMouseLeave={() => setCelulaMouseOver(prev => (prev === chaveCelula ? null : prev))}
                         onClick={() => abrirCelula(dataISO, h.id)}
                         onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (celulaSobrevoada !== chaveCelula) setCelulaSobrevoada(chaveCelula) }}
                         onDragLeave={() => setCelulaSobrevoada(prev => (prev === chaveCelula ? null : prev))}
                         onDrop={e => soltarNaCelula(e, dataISO, h.id)}
+                        title={ocupacao > 0 ? 'Clique pra ver quem está aqui, ou arraste o quadrado inteiro pra outro dia/horário' : 'Clique pra ver ou marcar um aluno aqui'}
                         style={{
-                          ...tdStyle, cursor: 'pointer', verticalAlign: 'top',
+                          ...tdStyle, cursor: ocupacao > 0 ? (arrastandoCelula ? 'grabbing' : 'grab') : 'pointer', verticalAlign: 'top',
                           background: sobrevoada
                             ? 'color-mix(in srgb, var(--accent2) 22%, transparent)'
-                            : ocupacao === 0 ? 'transparent' : cheio ? 'color-mix(in srgb, #3fb950 16%, transparent)' : 'var(--bg2)',
-                          outline: sobrevoada ? '2px dashed var(--accent2)' : 'none',
+                            : emMouseOver && ocupacao > 0
+                              ? 'color-mix(in srgb, var(--accent2) 14%, transparent)'
+                              : ocupacao === 0 ? 'transparent' : cheio ? 'color-mix(in srgb, #3fb950 16%, transparent)' : 'var(--bg2)',
+                          outline: sobrevoada ? '2px dashed var(--accent2)' : emMouseOver && ocupacao > 0 ? '1.5px solid var(--accent2)' : 'none',
                           outlineOffset: -2,
+                          opacity: arrastandoCelula && arrastandoCelula.dataISO === dataISO && arrastandoCelula.horarioId === h.id ? 0.4 : 1,
+                          transition: 'background 0.1s ease',
                         }}
                       >
                         <div style={{ fontSize: 11, fontWeight: 700, color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : 'var(--accent2)', marginBottom: ocupacao > 0 ? 4 : 0 }}>
