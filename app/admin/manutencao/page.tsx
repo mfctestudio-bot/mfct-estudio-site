@@ -6,7 +6,7 @@ function cardStyle(): React.CSSProperties {
   return {
     background: 'var(--card)',
     border: '1px solid var(--border)',
-    borderRadius: 10,
+    borderRadius: 8,
     padding: 20,
     marginBottom: 16,
   }
@@ -17,11 +17,12 @@ function botaoStyle(perigo = false): React.CSSProperties {
     background: perigo ? 'transparent' : 'var(--accent2)',
     color: perigo ? 'var(--danger)' : '#fff',
     border: perigo ? '1px solid var(--danger)' : 'none',
-    borderRadius: 8,
-    padding: '10px 16px',
+    borderRadius: 6,
+    padding: '8px 16px',
     fontSize: 13,
     fontWeight: 700,
     cursor: 'pointer',
+    fontFamily: 'inherit',
   }
 }
 
@@ -72,9 +73,9 @@ export default function ManutencaoPage() {
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Manutenção</h1>
-      <p style={{ color: 'var(--text2)', fontSize: 13, marginBottom: 20 }}>
+    <div>
+      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Manutenção</h1>
+      <p style={{ color: 'var(--text2)', fontSize: 13, marginBottom: 20, maxWidth: 640 }}>
         Limpeza de dados antigos que já não são mais úteis no dia a dia. Isso não afeta alunos, planos, agendamentos
         ou pagamentos — só histórico e notificações já vistas.
       </p>
