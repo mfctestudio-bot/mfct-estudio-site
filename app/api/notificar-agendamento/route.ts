@@ -48,5 +48,11 @@ export async function POST(req: NextRequest) {
     whatsappErro = e instanceof Error ? e.message : 'Falha desconhecida ao enviar WhatsApp'
   }
 
+  // Registra no histórico da Elen pra ela ficar sabendo do aviso -- se o aluno
+  // responder algo em seguida, ela precisa ter visto essa mensagem antes.
+  if (whatsappEnviado) {
+    await supabase.from('bot_historico_conversas').insert({ phone: telefone, message: msg, role: 'assistant' })
+  }
+
   return NextResponse.json({ ok: true, whatsappEnviado, whatsappErro })
 }
