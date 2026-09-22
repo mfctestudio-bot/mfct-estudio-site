@@ -365,7 +365,7 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
         <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Esse professor ainda não está em nenhum horário da grade. Adicione um abaixo.</p>
       ) : (
         <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+          <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', background: 'var(--bg)', border: '1px solid var(--border)' }}>
             <thead>
               <tr>
                 <th style={thStyleProf}>Horário</th>
@@ -387,15 +387,19 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
                     }
                     return (
                       <td key={dia} onClick={() => abrirCelula(dia, hr)} style={{
-                        ...tdStyleProf, cursor: 'pointer',
-                        background: !h.ativo ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : 'var(--bg2)',
-                        opacity: h.ativo ? 1 : 0.7,
+                        ...tdStyleProf, cursor: 'pointer', minWidth: 90,
+                        background: !h.ativo ? 'color-mix(in srgb, var(--danger) 10%, transparent)' : 'var(--bg2)',
+                        opacity: h.ativo ? 1 : 0.65,
                       }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: !h.ativo ? 'var(--danger)' : 'var(--text)' }}>
-                          {h.capacidade}v
+                        <div style={{ fontSize: 12, fontWeight: 700, color: !h.ativo ? 'var(--danger)' : 'var(--text)' }}>
+                          {h.capacidade} vaga{h.capacidade === 1 ? '' : 's'}
                         </div>
-                        {h.tipos_agenda && <div style={{ fontSize: 9, color: 'var(--text3)' }}>{h.tipos_agenda.nome.slice(0, 10)}</div>}
-                        {!h.ativo && <div style={{ fontSize: 9, color: 'var(--danger)' }}>desativado</div>}
+                        {h.tipos_agenda && (
+                          <div style={{ fontSize: 9, color: 'var(--text2)', marginTop: 2, whiteSpace: 'normal', lineHeight: 1.2 }}>
+                            {h.tipos_agenda.nome}
+                          </div>
+                        )}
+                        {!h.ativo && <div style={{ fontSize: 9, color: 'var(--danger)', marginTop: 2 }}>desativado</div>}
                       </td>
                     )
                   })}
