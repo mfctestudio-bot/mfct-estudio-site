@@ -328,7 +328,7 @@ function GradeSemanal() {
         <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })} className="btn btn-ghost btn-sm">← Semana anterior</button>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtBR(monday)} a {fmtBR(domingo)}</span>
         <button onClick={() => setRefDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })} className="btn btn-ghost btn-sm">Próxima semana →</button>
-        <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: '#3fb950', borderColor: '#3fb950' }}>Hoje</button>
+        <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: 'var(--accent2)', borderColor: 'var(--accent2)' }}>Hoje</button>
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado.</p>
@@ -396,12 +396,12 @@ function GradeSemanal() {
                         onClick={() => abrirCelula(dataISO, h.id)}
                         style={{
                           ...tdStyle, cursor: 'pointer',
-                          background: ocupacao === 0 ? 'transparent' : cheio ? '#3fb95022' : 'var(--bg2)',
+                          background: ocupacao === 0 ? 'transparent' : cheio ? 'color-mix(in srgb, #3fb950 16%, transparent)' : 'var(--bg2)',
                         }}
                       >
                         <span style={{
                           fontSize: 12, fontWeight: 700,
-                          color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : '#4a90d9',
+                          color: ocupacao === 0 ? 'var(--text3)' : cheio ? '#3fb950' : 'var(--accent2)',
                         }}>
                           {ocupacao}/{h.capacidade}
                         </span>
@@ -524,7 +524,7 @@ function GradeSemanal() {
                 await recarregarAgendamentos()
                 setSalvandoAgendamento(false)
               }}
-              style={{ ...navBtnStyle, width: '100%', marginTop: 8, color: '#e05656', borderColor: '#e05656' }}
+              style={{ ...navBtnStyle, width: '100%', marginTop: 8, color: 'var(--danger)', borderColor: 'var(--danger)' }}
             >
               ⏸️ Desativar esse horário (some da grade, ninguém é avisado)
             </button>
@@ -560,7 +560,7 @@ function GradeSemanal() {
                 }
                 setSalvandoAgendamento(false)
               }}
-              style={{ ...navBtnStyle, width: '100%', color: '#4a90d9', borderColor: '#4a90d9', marginTop: 8 }}
+              style={{ ...navBtnStyle, width: '100%', color: 'var(--accent2)', borderColor: 'var(--accent2)', marginTop: 8 }}
             >
               🔔 Encerrar este horário de vez (avisa todo mundo)
             </button>
@@ -585,7 +585,7 @@ const inputStyleGrade: React.CSSProperties = {
 
 const thStyle: React.CSSProperties = {
   border: '1px solid var(--border)', padding: '8px 6px', textAlign: 'center',
-  fontSize: 11, fontWeight: 800, color: '#3fb950', letterSpacing: '0.5px',
+  fontSize: 11, fontWeight: 800, color: 'var(--text2)', letterSpacing: '0.5px',
   background: 'var(--bg2)', textTransform: 'uppercase' as const,
 }
 
@@ -904,9 +904,9 @@ function GradeHorarios() {
             key={i}
             onClick={() => setDiaAtivo(i)}
             style={{
-              background: diaAtivo === i ? '#3fb95022' : 'transparent',
-              color: diaAtivo === i ? '#3fb950' : 'var(--text2)',
-              border: `1.5px solid ${diaAtivo === i ? '#3fb950' : 'var(--border)'}`,
+              background: diaAtivo === i ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'transparent',
+              color: diaAtivo === i ? 'var(--accent2)' : 'var(--text2)',
+              border: `1.5px solid ${diaAtivo === i ? 'var(--accent2)' : 'var(--border)'}`,
               borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
@@ -936,8 +936,8 @@ function GradeHorarios() {
                 {h.tipos_agenda && (
                   <span style={{
                     fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                    color: h.tipos_agenda.permite_plano_mensal ? '#3fb950' : '#f0a500',
-                    border: `1px solid ${h.tipos_agenda.permite_plano_mensal ? '#3fb950' : '#f0a500'}`,
+                    color: 'var(--text2)', background: 'var(--bg2)',
+                    border: '1px solid var(--border2)',
                   }}>
                     {h.tipos_agenda.nome}
                   </span>
@@ -1017,7 +1017,7 @@ function GradeHorarios() {
                   onClick={() => encerrarComAviso(h)}
                   disabled={updating === h.id}
                   style={{
-                    background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9',
+                    background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
                     borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
                   }}
                 >
