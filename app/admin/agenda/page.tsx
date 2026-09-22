@@ -90,6 +90,7 @@ function GradeSemanal() {
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
   const [arrastandoId, setArrastandoId] = useState<string | null>(null)
   const [celulaSobrevoada, setCelulaSobrevoada] = useState<string | null>(null)
+  const [lixeiraSobrevoada, setLixeiraSobrevoada] = useState(false)
 
   const monday = segundaDaSemana(refDate)
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -304,6 +305,18 @@ function GradeSemanal() {
   function finalizarArrasto() {
     setArrastandoId(null)
     setCelulaSobrevoada(null)
+    setLixeiraSobrevoada(false)
+  }
+
+  async function soltarNaLixeira(e: React.DragEvent) {
+    e.preventDefault()
+    const agendamentoId = e.dataTransfer.getData('text/plain') || arrastandoId
+    setLixeiraSobrevoada(false)
+    setArrastandoId(null)
+    if (!agendamentoId) return
+    const agendamento = agendamentos.find(a => a.id === agendamentoId)
+    if (!agendamento) return
+    await cancelarAgendamentoIndividual(agendamento)
   }
 
   async function soltarNaCelula(e: React.DragEvent, dataISO: string, horarioId: string) {
@@ -364,7 +377,27 @@ function GradeSemanal() {
         <button onClick={() => setRefDate(hojeSP())} style={{ ...navBtnStyle, color: 'var(--accent2)', borderColor: 'var(--accent2)' }}>Hoje</button>
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado, ou arraste o nome do aluno pra outro dia/horário pra remarcar (a validação e o aviso por WhatsApp acontecem automaticamente).</p>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Clique em um horário pra ver quem está agendado, ou arraste o nome do aluno pra outro dia/horário pra remarcar (a validação e o aviso por WhatsApp acontecem automaticamente). Solte na lixeira que aparece embaixo pra cancelar a aula.</p>
+
+      {/* Lixeira flutuante: só fica clicável enquanto uma aula está sendo arrastada, mas o espaço já existe (transição suave em vez de aparecer/sumir de repente) */}
+      <div
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (!lixeiraSobrevoada) setLixeiraSobrevoada(true) }}
+        onDragLeave={() => setLixeiraSobrevoada(false)}
+        onDrop={soltarNaLixeira}
+        style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: `translateX(-50%) translateY(${arrastandoId ? '0' : '16px'})`,
+          zIndex: 10000, display: 'flex', alignItems: 'center', gap: 8,
+          background: lixeiraSobrevoada ? 'var(--danger)' : 'var(--card)',
+          color: lixeiraSobrevoada ? '#fff' : 'var(--danger)',
+          border: `2px dashed ${lixeiraSobrevoada ? '#fff' : 'var(--danger)'}`,
+          borderRadius: 999, padding: '12px 22px', fontSize: 13, fontWeight: 700,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+          opacity: arrastandoId ? 1 : 0, pointerEvents: arrastandoId ? 'auto' : 'none',
+          transition: 'opacity 0.15s ease, transform 0.15s ease, background 0.1s ease',
+        }}
+      >
+        🗑️ {lixeiraSobrevoada ? 'Solte pra cancelar a aula' : 'Arraste aqui pra cancelar'}
+      </div>
 
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>
@@ -445,7 +478,7 @@ function GradeSemanal() {
                           {ocupacao}/{h.capacidade}
                         </div>
                         {lista.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {lista.map(a => (
                               <div
                                 key={a.id}
@@ -453,13 +486,17 @@ function GradeSemanal() {
                                 onDragStart={e => { e.stopPropagation(); iniciarArrasto(e, a.id) }}
                                 onDragEnd={finalizarArrasto}
                                 onClick={e => { e.stopPropagation(); abrirCelula(dataISO, h.id) }}
-                                title="Arraste pra outro horário/dia pra remarcar"
+                                title="Arraste pra outro horário/dia pra remarcar, ou solte na lixeira pra cancelar"
                                 style={{
-                                  fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                                  background: a.tipo === 'experimental' ? 'color-mix(in srgb, #f0a500 20%, transparent)' : 'var(--card)',
-                                  border: '1px solid var(--border)', color: 'var(--text)',
-                                  cursor: 'grab', opacity: arrastandoId === a.id ? 0.4 : 1,
-                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 90,
+                                  fontSize: 11, fontWeight: 700, padding: '4px 8px 4px 7px', borderRadius: 6,
+                                  background: a.tipo === 'experimental' ? 'color-mix(in srgb, #f0a500 14%, var(--card))' : 'var(--card)',
+                                  borderTop: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)',
+                                  borderLeft: `3px solid ${a.tipo === 'experimental' ? '#f0a500' : 'var(--accent2)'}`,
+                                  color: 'var(--text)', boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                                  cursor: arrastandoId === a.id ? 'grabbing' : 'grab',
+                                  opacity: arrastandoId === a.id ? 0.35 : 1,
+                                  transition: 'opacity 0.12s ease, transform 0.12s ease',
+                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100,
                                 }}
                               >
                                 {a.alunos?.nome?.split(' ')[0] || '?'}
@@ -800,6 +837,8 @@ function GradeHorarios() {
 
   const [professoresOpt, setProfessoresOpt] = useState<{ id: string; nome: string }[]>([])
   const [tiposAgendaOpt, setTiposAgendaOpt] = useState<{ id: string; nome: string }[]>([])
+  const [arrastandoHorarioId, setArrastandoHorarioId] = useState<string | null>(null)
+  const [diaSobrevoado, setDiaSobrevoado] = useState<number | null>(null)
 
   async function load() {
     setLoading(true)
@@ -904,6 +943,42 @@ function GradeHorarios() {
     setEditandoCapacidade(null)
   }
 
+  // Arrastar um horário pra outro dia da semana. Bloqueia (em vez de inventar um
+  // cancelamento em cascata) se já existir o mesmo horário nesse dia, ou se tiver
+  // aluno/aula fixa dependendo desse slot -- nesses casos, usar "Encerrar c/ aviso"
+  // primeiro, que já cuida de avisar todo mundo.
+  async function moverHorarioParaDia(h: Horario, novoDia: number) {
+    if (novoDia === h.dia_semana) return
+    if (horarios.some(x => x.id !== h.id && x.dia_semana === novoDia && x.horario === h.horario)) {
+      setToast(`Já existe um horário das ${h.horario.slice(0, 5)} em ${DIAS[novoDia]}. Apague ou desative um dos dois antes de mover.`)
+      setTimeout(() => setToast(''), 5000)
+      return
+    }
+    setUpdating(h.id)
+    const hoje = new Date().toISOString().slice(0, 10)
+    const [{ count: countAgendamentos }, { count: countFixos }] = await Promise.all([
+      supabase.from('agendamentos').select('*', { count: 'exact', head: true }).eq('horario_id', h.id).eq('status', 'confirmado').gte('data', hoje),
+      supabase.from('horarios_fixos').select('*', { count: 'exact', head: true }).eq('horario_id', h.id).eq('ativo', true),
+    ])
+    if ((countAgendamentos || 0) > 0 || (countFixos || 0) > 0) {
+      setToast(`Esse horário tem ${countAgendamentos || 0} aula(s) futura(s) e/ou ${countFixos || 0} horário(s) fixo(s) marcados. Use "🔔 Encerrar c/ aviso" primeiro pra liberar geral, depois mova.`)
+      setTimeout(() => setToast(''), 6000)
+      setUpdating(null)
+      return
+    }
+    const { error } = await supabase.from('horarios').update({ dia_semana: novoDia }).eq('id', h.id)
+    if (error) {
+      setToast(`Erro ao mover: ${error.message}`)
+      setTimeout(() => setToast(''), 5000)
+    } else {
+      setToast(`Horário das ${h.horario.slice(0, 5)} movido pra ${DIAS[novoDia]}.`)
+      setTimeout(() => setToast(''), 3000)
+      setDiaAtivo(novoDia)
+      await load()
+    }
+    setUpdating(null)
+  }
+
   function toggleDiaEscolhido(dia: number) {
     setDiasEscolhidos(prev => prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia])
   }
@@ -956,21 +1031,31 @@ function GradeHorarios() {
     <div>
       {toast && <p style={{ fontSize: 12, color: '#3fb950', marginBottom: 10 }}>{toast}</p>}
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
-        Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez.
+        Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez. Pra mudar um horário de dia, arraste o card dele até a aba do dia certo.
       </p>
 
-      {/* Abas de dia da semana */}
+      {/* Abas de dia da semana -- também servem de zona pra soltar um horário arrastado */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         {DIAS.map((nome, i) => (
           <button
             key={i}
             onClick={() => setDiaAtivo(i)}
+            onDragOver={e => { if (arrastandoHorarioId) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (diaSobrevoado !== i) setDiaSobrevoado(i) } }}
+            onDragLeave={() => setDiaSobrevoado(prev => (prev === i ? null : prev))}
+            onDrop={e => {
+              e.preventDefault()
+              setDiaSobrevoado(null)
+              const id = e.dataTransfer.getData('text/plain') || arrastandoHorarioId
+              setArrastandoHorarioId(null)
+              const h = horarios.find(x => x.id === id)
+              if (h) moverHorarioParaDia(h, i)
+            }}
             style={{
-              background: diaAtivo === i ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'transparent',
-              color: diaAtivo === i ? 'var(--accent2)' : 'var(--text2)',
-              border: `1.5px solid ${diaAtivo === i ? 'var(--accent2)' : 'var(--border)'}`,
+              background: diaSobrevoado === i ? 'color-mix(in srgb, var(--accent2) 30%, transparent)' : diaAtivo === i ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'transparent',
+              color: diaAtivo === i || diaSobrevoado === i ? 'var(--accent2)' : 'var(--text2)',
+              border: `1.5px ${diaSobrevoado === i ? 'dashed' : 'solid'} ${diaAtivo === i || diaSobrevoado === i ? 'var(--accent2)' : 'var(--border)'}`,
               borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.1s ease, border-color 0.1s ease',
             }}
           >
             {nome}
@@ -985,12 +1070,24 @@ function GradeHorarios() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 16 }}>
           {horariosDoDia.map(h => (
-            <div key={h.id} className="card card-hover" style={{
-              borderColor: h.ativo ? 'var(--border)' : 'var(--danger)',
-              padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: h.ativo ? 1 : 0.55,
-            }}>
+            <div
+              key={h.id}
+              draggable
+              onDragStart={e => { e.dataTransfer.setData('text/plain', h.id); e.dataTransfer.effectAllowed = 'move'; setArrastandoHorarioId(h.id) }}
+              onDragEnd={() => { setArrastandoHorarioId(null); setDiaSobrevoado(null) }}
+              className="card card-hover"
+              title="Arraste até uma aba de dia pra mover esse horário"
+              style={{
+                borderColor: h.ativo ? 'var(--border)' : 'var(--danger)',
+                padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                opacity: arrastandoHorarioId === h.id ? 0.4 : h.ativo ? 1 : 0.55,
+                cursor: arrastandoHorarioId === h.id ? 'grabbing' : 'grab',
+                transition: 'opacity 0.12s ease',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: 'var(--text3)', fontSize: 13, cursor: 'grab' }}>⠿</span>
                 <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
                   {h.horario.slice(0, 5)}
                 </span>
