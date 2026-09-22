@@ -351,6 +351,33 @@ function GradeSemanal() {
     setTimeout(() => setToast(''), 4000)
   }
 
+  // Soltar uma célula em cima de um dia/horário que ainda não existe na grade:
+  // cria (ou reativa) esse horário -- mesma ação do clique no "+" -- e depois
+  // move a(s) aula(s) pra lá.
+  async function garantirHorarioEMover(origem: { dataISO: string; horarioId: string }, diaSemana: number, hr: string, dataDestino: string) {
+    const alunosNaCelula = agendamentosDaCelula(origem.dataISO, origem.horarioId)
+    if (alunosNaCelula.length === 0) return
+    const diaLabel = DIAS_ABREV[diaSemana]
+    if (!confirm(`Não existe horário das ${hr.slice(0, 5)} na ${diaLabel}. Criar esse horário (5 vagas) e mover ${alunosNaCelula.length} aula(s) pra lá?`)) return
+
+    const { data: existente } = await supabase.from('horarios').select('id').eq('dia_semana', diaSemana).eq('horario', hr).maybeSingle()
+    let horarioId = existente?.id as string | undefined
+    if (existente) {
+      await supabase.from('horarios').update({ ativo: true }).eq('id', existente.id)
+    } else {
+      const { data: novo } = await supabase.from('horarios').insert({ dia_semana: diaSemana, horario: hr, capacidade: 5, ativo: true }).select('id').single()
+      horarioId = novo?.id
+    }
+    const { data: hData } = await supabase.from('horarios').select('*').eq('ativo', true).order('horario')
+    setHorarios(hData || [])
+    if (!horarioId) {
+      setToast('Não foi possível criar o horário.')
+      setTimeout(() => setToast(''), 4000)
+      return
+    }
+    await moverCelulaInteira(origem, { dataISO: dataDestino, horarioId })
+  }
+
   async function soltarNaCelula(e: React.DragEvent, dataISO: string, horarioId: string) {
     e.preventDefault()
     setCelulaSobrevoada(null)
@@ -469,6 +496,8 @@ function GradeSemanal() {
                     const diaSemana = d.getDay()
                     const h = horarioNoDia(diaSemana, hr)
                     if (!h) {
+                      const chaveNovo = `novo|${fmtISO(d)}|${hr}`
+                      const sobrevoadaNovo = celulaSobrevoada === chaveNovo
                       return (
                         <td
                           key={i}
@@ -491,8 +520,31 @@ function GradeSemanal() {
                             const { data: hData } = await supabase.from('horarios').select('*').eq('ativo', true).order('horario')
                             setHorarios(hData || [])
                           }}
-                          style={{ ...tdStyle, color: 'var(--text3)', cursor: 'pointer' }}
-                          title="Clique pra habilitar esse horário nesse dia"
+                          onDragOver={e => {
+                            if (!arrastandoCelula) return
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                            if (celulaSobrevoada !== chaveNovo) setCelulaSobrevoada(chaveNovo)
+                          }}
+                          onDragLeave={() => setCelulaSobrevoada(prev => (prev === chaveNovo ? null : prev))}
+                          onDrop={e => {
+                            e.preventDefault()
+                            setCelulaSobrevoada(null)
+                            const celulaData = e.dataTransfer.getData('application/x-mfct-celula')
+                            setArrastandoCelula(null)
+                            if (!celulaData) return
+                            try {
+                              const origem = JSON.parse(celulaData) as { dataISO: string; horarioId: string }
+                              garantirHorarioEMover(origem, diaSemana, hr, fmtISO(d))
+                            } catch {}
+                          }}
+                          style={{
+                            ...tdStyle, color: 'var(--text3)', cursor: 'pointer',
+                            background: sobrevoadaNovo ? 'color-mix(in srgb, var(--accent2) 22%, transparent)' : 'transparent',
+                            outline: sobrevoadaNovo ? '2px dashed var(--accent2)' : 'none',
+                            outlineOffset: -2,
+                          }}
+                          title="Clique pra habilitar esse horário nesse dia, ou arraste um quadrado com aluno até aqui"
                         >
                           + <span style={{ opacity: 0.4 }}>—</span>
                         </td>
