@@ -62,6 +62,10 @@ async function forward(req: NextRequest, path: string[]) {
   if (contentType) resHeaders.set('content-type', contentType)
   const contentRange = upstream.headers.get('content-range')
   if (contentRange) resHeaders.set('content-range', contentRange)
+  // Sem isso, o navegador pode guardar em cache a resposta de uma consulta (ex: lista de
+  // alunos, agenda) e mostrar dado desatualizado depois de uma alteracao, ate a pessoa dar
+  // reload na forca. Toda leitura do admin passa por aqui, entao isso cobre o painel inteiro.
+  resHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate')
 
   // Respostas 204/205/304 não podem ter corpo, mesmo vazio, ou o Response() quebra
   const semCorpo = [204, 205, 304].includes(upstream.status)
