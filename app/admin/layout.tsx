@@ -86,6 +86,10 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
     titulo: 'Site',
     itens: [{ href: '/admin/posts', label: 'Posts', icon: 'file' }],
   },
+  {
+    titulo: 'Sistema',
+    itens: [{ href: '/admin/manutencao', label: 'Manutenção', icon: 'sliders' }],
+  },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
