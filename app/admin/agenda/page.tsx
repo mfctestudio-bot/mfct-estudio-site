@@ -1048,7 +1048,7 @@ function GradeHorarios() {
     <div>
       {toast && <p style={{ fontSize: 12, color: '#3fb950', marginBottom: 10 }}>{toast}</p>}
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
-        Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez. Pra mudar um horário de dia, arraste o card dele até a aba do dia certo.
+        Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez. Pra mudar um horário de dia, use o menu &quot;Mover pra dia...&quot; no card dele.
       </p>
 
       {/* Abas de dia da semana -- também servem de zona pra soltar um horário arrastado */}
@@ -1093,18 +1093,15 @@ function GradeHorarios() {
               onDragStart={e => { e.dataTransfer.setData('text/plain', h.id); e.dataTransfer.effectAllowed = 'move'; setArrastandoHorarioId(h.id) }}
               onDragEnd={() => { setArrastandoHorarioId(null); setDiaSobrevoado(null) }}
               className="card card-hover"
-              title="Arraste até uma aba de dia pra mover esse horário"
               style={{
                 borderColor: h.ativo ? 'var(--border)' : 'var(--danger)',
                 padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center', gap: 12, flexWrap: 'wrap',
                 opacity: arrastandoHorarioId === h.id ? 0.4 : h.ativo ? 1 : 0.55,
-                cursor: arrastandoHorarioId === h.id ? 'grabbing' : 'grab',
                 transition: 'opacity 0.12s ease',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ color: 'var(--text3)', fontSize: 13, cursor: 'grab' }}>⠿</span>
                 <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
                   {h.horario.slice(0, 5)}
                 </span>
@@ -1174,6 +1171,26 @@ function GradeHorarios() {
                   <option value="">— sem tipo —</option>
                   {tiposAgendaOpt.map(t => (
                     <option key={t.id} value={t.id}>{t.nome}</option>
+                  ))}
+                </select>
+
+                <select
+                  value=""
+                  onChange={e => {
+                    const novoDia = parseInt(e.target.value, 10)
+                    e.target.value = ''
+                    if (!Number.isNaN(novoDia)) moverHorarioParaDia(h, novoDia)
+                  }}
+                  disabled={updating === h.id}
+                  title="Mover esse horário pra outro dia da semana"
+                  style={{
+                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                    padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit',
+                  }}
+                >
+                  <option value="">Mover pra dia...</option>
+                  {DIAS.map((nome, i) => i === h.dia_semana ? null : (
+                    <option key={i} value={i}>{nome}</option>
                   ))}
                 </select>
 
