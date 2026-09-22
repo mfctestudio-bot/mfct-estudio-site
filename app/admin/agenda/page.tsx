@@ -1092,11 +1092,12 @@ function GradeHorarios() {
               draggable
               onDragStart={e => { e.dataTransfer.setData('text/plain', h.id); e.dataTransfer.effectAllowed = 'move'; setArrastandoHorarioId(h.id) }}
               onDragEnd={() => { setArrastandoHorarioId(null); setDiaSobrevoado(null) }}
-              className="card card-hover"
+              className="card"
+              title="Arraste até uma aba de dia pra mover esse horário"
               style={{
                 borderColor: h.ativo ? 'var(--border)' : 'var(--danger)',
                 padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                alignItems: 'center', gap: 12, flexWrap: 'wrap', cursor: 'grab',
                 opacity: arrastandoHorarioId === h.id ? 0.4 : h.ativo ? 1 : 0.55,
                 transition: 'opacity 0.12s ease',
               }}
