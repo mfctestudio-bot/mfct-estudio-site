@@ -224,7 +224,7 @@ return {
 }
 }
 
-  export const DIAS_CARENCIA_VENCIMENTO = 14
+  export const DIAS_CARENCIA_VENCIMENTO = 3
 
 // Quantos dias inteiros ja se passaram desde que o periodo venceu.
 // dataFim e o ultimo dia coberto (o aluno ainda tem direito de treinar nesse
@@ -242,17 +242,24 @@ export type VerificarVencimentosResult = {
   avisos: string[]
 }
 
-// Vencimento -> Cancelado: aluno com matricula ativa cujo periodo mais recente
-// venceu (data_fim no passado) e que ficou `diasCarencia` dias sem renovar
-// (sem periodo novo cobrindo hoje ou o futuro) e cancelado automaticamente,
-// com o mesmo efeito de liberacao de agenda do cancelamento manual.
+// Decisao de negocio (22/09/2026, a pedido do Matheus): acesso a horario (fixo
+// ou avulso) so continua com matricula ativa + periodo vigente -- sem carencia
+// de acesso. O que existe e uma carencia curta so pra CANCELAR o plano de vez
+// (liberar a vaga pra outro aluno), dando um tempinho pro pagamento cair.
 //
-// Enquanto estiver dentro da carencia (vencido, mas ha menos de `diasCarencia`
-// dias), o status_plano continua 'ativo' -- e a UI (statusPeriodoHoje) que ja
-// mostra esse aluno como "vencido" a partir da data_fim, com base nas datas
-// reais do periodo. Isso preserva a cobranca: so depois de cancelado e que o
-// aluno some das telas de cobranca (mensalidades, mensalidades e dashboard ja
-// tratam status_plano === 'cancelado' como nao cobravel).
+// Dois estagios, os dois decididos SO AQUI (unica autoridade -- antes existia
+// um robo separado no n8n que tambem mexia em status_plano por conta propria,
+// e como ele rodava mais tarde que este cron, ele pisava na carencia e ainda
+// deixava o aluno preso em "vencido" pra sempre, sem nunca cancelar de verdade
+// nem liberar a agenda. Esse robo foi corrigido pra parar de mexer em
+// status_plano e so cuidar do aviso de renovacao):
+//
+//   1) ATIVO -> VENCIDO: no primeiro dia em que nenhum periodo cobre hoje.
+//      A partir daqui o aluno ja aparece pra cobranca (robo de cobranca
+//      automatica), mesmo sem ter passado nenhum dia de carencia.
+//   2) VENCIDO -> CANCELADO: depois de `diasCarencia` dias vencido sem
+//      renovar, cancela de vez e libera a agenda (mesmo efeito do
+//      cancelamento manual) -- so entao o aluno some das telas de cobranca.
 export async function verificarVencimentos(
   diasCarencia = DIAS_CARENCIA_VENCIMENTO,
   supabaseClient?: SupabaseClient,
@@ -260,21 +267,15 @@ export async function verificarVencimentos(
   const supabase = supabaseClient || serviceClient()
   const hojeIso = hojeISOSaoPaulo()
 
-const { data: alunosAtivos, error: alunosError } = await supabase
+const { data: alunosRelevantes, error: alunosError } = await supabase
   .from('alunos')
-  .select('id, status_desde, nome, telefone')
-  .eq('status_plano', 'ativo')
+  .select('id, status_plano, status_desde, nome, telefone')
+  .in('status_plano', ['ativo', 'vencido'])
   if (alunosError) throw new Error(alunosError.message)
-  const statusDesdePorAluno = new Map<string, string | null>()
-  const nomeTelefonePorAluno = new Map<string, { nome: string | null; telefone: string | null }>()
-  for (const a of alunosAtivos || []) {
-    statusDesdePorAluno.set(a.id, a.status_desde ?? null)
-    nomeTelefonePorAluno.set(a.id, { nome: a.nome ?? null, telefone: a.telefone ?? null })
-  }
 
 const cancelados: VerificarVencimentosResult['cancelados'] = []
   const avisos: string[] = []
-    const alunoIds = (alunosAtivos || []).map(a => a.id)
+  const alunoIds = (alunosRelevantes || []).map(a => a.id)
   if (alunoIds.length === 0) return { verificados: 0, cancelados, avisos }
 
 const { data: periodos, error: periodosError } = await supabase
@@ -291,58 +292,51 @@ const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string
     periodosPorAluno.set(periodo.aluno_id, lista)
   }
 
-for (const alunoId of alunoIds) {
-  const listaPeriodos = periodosPorAluno.get(alunoId)
-  if (!listaPeriodos || listaPeriodos.length === 0) {
-    // Bug real encontrado em 22/09/2026 (caso Cleiciane): aluno "ativo" sem NENHUM periodo
-    // registrado ficava para sempre sem ser avaliado por aqui, porque nao ha data_fim pra medir
-    // dias de vencido. Em vez de pular pra sempre, damos 1 dia de folga (pro periodo ainda estar
-    // sendo criado logo apos a ativacao) e, passado isso, marcamos "vencido" pra revisao manual --
-    // nao "cancelado" direto, porque sem nenhum periodo nao da pra saber ha quanto tempo isso
-    // acontece nem se e so um cadastro incompleto.
-    const statusDesde = statusDesdePorAluno.get(alunoId) || null
-    if (statusDesde && statusDesde >= hojeIso) {
-      avisos.push(`aluno ${alunoId}: status ativo sem periodo registrado, ativado hoje -- ainda nao avaliado`)
-      continue
+for (const aluno of alunosRelevantes || []) {
+  const alunoId = aluno.id
+  const listaPeriodos = periodosPorAluno.get(alunoId) || []
+
+  // Hoje esta coberto por algum periodo (passado, atual ou ja agendado)? entao esta em dia,
+  // mesmo que exista tambem um periodo futuro ja cadastrado.
+  const coberto = listaPeriodos.some(p => p.data_inicio <= hojeIso && p.data_fim >= hojeIso)
+  if (coberto) {
+    if (aluno.status_plano === 'vencido') {
+      // Reconciliacao de seguranca: nao deveria acontecer (renovar via ativarPlano ja bota
+      // 'ativo' direto), mas se por algum motivo o periodo passou a cobrir hoje enquanto o
+      // aluno ainda estava marcado vencido, corrige.
+      await supabase.from('alunos').update({ status_plano: 'ativo' }).eq('id', alunoId).eq('status_plano', 'vencido')
+      avisos.push(`aluno ${alunoId}: tinha periodo cobrindo hoje mas estava 'vencido' -- corrigido pra 'ativo'`)
     }
+    continue
+  }
+
+  // Nao ha periodo cobrindo hoje. Estagio 1: ainda 'ativo' -> vira 'vencido' hoje mesmo,
+  // sem carencia de acesso (matricula ativa + periodo vigente = direito de treinar).
+  if (aluno.status_plano === 'ativo') {
     const { error: updateError } = await supabase
       .from('alunos')
-      .update({ status_plano: 'vencido' })
+      .update({ status_plano: 'vencido', status_desde: hojeIso })
       .eq('id', alunoId)
-      .eq('status_plano', 'ativo')
-      .select('id')
-      .single()
+      .eq('status_plano', 'ativo') // evita corrida com uma renovacao/alteracao concorrente
     if (updateError) {
       avisos.push(`aluno ${alunoId}: ${updateError.message}`)
     } else {
-      avisos.push(`aluno ${alunoId}: status ativo sem NENHUM periodo registrado -- marcado vencido pra revisao manual`)
+      avisos.push(`aluno ${alunoId}: sem periodo cobrindo hoje -- marcado vencido`)
     }
     continue
   }
 
-  // Hoje esta coberto por algum periodo (passado, atual ou ja agendado)? entao nao venceu,
-  // mesmo que exista tambem um periodo futuro ja cadastrado.
-  const coberto = listaPeriodos.some(p => p.data_inicio <= hojeIso && p.data_fim >= hojeIso)
-  if (coberto) continue
-
-  // Nao ha periodo cobrindo hoje. O que importa pra saber ha quanto tempo esta vencido
-  // e o periodo passado mais recente (o ultimo que de fato cobriu o aluno) -- nunca um
-  // periodo futuro ja agendado, que nao diz nada sobre um buraco no meio.
-  const periodosPassados = listaPeriodos.filter(p => p.data_fim < hojeIso)
-  if (periodosPassados.length === 0) {
-    avisos.push(`aluno ${alunoId}: so tem periodo(s) futuro(s) agendado(s), sem cobertura ate hoje -- nao avaliado automaticamente`)
-    continue
-  }
-  const dataFim = periodosPassados.reduce((maior, p) => (p.data_fim > maior ? p.data_fim : maior), periodosPassados[0].data_fim)
-
-  const dias = diasVencido(dataFim, hojeIso)
-  if (dias < diasCarencia) continue // vencido, mas ainda dentro da carencia -- continua ativo e cobravel
+  // Estagio 2: ja estava 'vencido'. So cancela de vez depois de `diasCarencia` dias
+  // vencido, contados a partir de quando ficou vencido (status_desde).
+  const desde = aluno.status_desde || hojeIso
+  const dias = diasVencido(desde, hojeIso)
+  if (dias < diasCarencia) continue // vencido, mas ainda dentro do prazo de tolerancia pra pagar
 
   const { error: updateError } = await supabase
   .from('alunos')
   .update({ status_plano: 'cancelado' })
   .eq('id', alunoId)
-  .eq('status_plano', 'ativo') // evita corrida com uma renovacao/alteracao de status concorrente
+  .eq('status_plano', 'vencido') // evita corrida com uma renovacao/alteracao de status concorrente
   .select('id')
   .single()
   if (updateError) {
@@ -352,16 +346,15 @@ for (const alunoId of alunoIds) {
 
   const liberacao = await liberarAgendaDoAluno(supabase, alunoId)
   avisos.push(...liberacao.avisos)
-  cancelados.push({ alunoId, dataFim, diasVencido: dias })
+  cancelados.push({ alunoId, dataFim: desde, diasVencido: dias })
 
   // Avisa o aluno que o plano foi cancelado por falta de pagamento -- mesmo padrao
   // ja usado em verificarPausasExpiradas pra pausa cancelada por prazo. Sem isso,
   // o aluno so descobria que perdeu acesso quando tentasse agendar de novo.
-  const dadosAluno = nomeTelefonePorAluno.get(alunoId)
-  if (dadosAluno?.telefone) {
+  if (aluno.telefone) {
     await enviarWhatsAppAluno(
-      dadosAluno.telefone,
-      `Oi${dadosAluno.nome ? `, ${dadosAluno.nome.split(' ')[0]}` : ''}! Sua mensalidade no MFCT Estúdio venceu há ${dias} dias e o plano foi cancelado -- por isso o acesso aos horários (fixo ou avulso) fica em espera. Pra voltar a treinar é só regularizar o pagamento que eu já libero de novo. Qualquer dúvida me chama por aqui! 💪`
+      aluno.telefone,
+      `Oi${aluno.nome ? `, ${aluno.nome.split(' ')[0]}` : ''}! Sua mensalidade no MFCT Estúdio está vencida há ${dias} dias e o plano foi cancelado -- por isso o acesso aos horários (fixo ou avulso) fica em espera. Pra voltar a treinar é só regularizar o pagamento que eu já libero de novo. Qualquer dúvida me chama por aqui! 💪`
     )
   }
 }
