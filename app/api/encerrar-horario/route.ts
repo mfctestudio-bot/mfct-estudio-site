@@ -6,9 +6,12 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdah
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabase = createClient(SUPA_URL, SERVICE_KEY)
 
-const EVOLUTION_URL = 'https://ribbitingshoebill-evolution.cloudfy.live'
+// Correcao (23/09/2026): apontava pro Cloudfy antigo (ribbitingshoebill), abandonado --
+// essa mensagem vinha falhando silenciosamente desde a migracao. Agora usa as mesmas
+// variaveis de ambiente (EVO_URL/EVO_KEY) ja configuradas certinho no Vercel.
+const EVOLUTION_URL = process.env.EVO_URL || ''
 const EVOLUTION_INSTANCE = 'MFCT-ESTUDIO'
-const EVOLUTION_API_KEY = 'MMxqYf3msawylWCBW2PSU4uUdJAY6mL3'
+const EVOLUTION_API_KEY = process.env.EVO_KEY || ''
 
 const DIAS_NOMES = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
 
