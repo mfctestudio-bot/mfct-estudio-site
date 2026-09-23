@@ -89,6 +89,13 @@ export default function AlunoPage() {
     if (resposta.ok) {
       setToast('Alterações salvas')
       setTimeout(() => setToast(''), 2500)
+    } else {
+      // Correcao (23/09/2026): quando o PATCH falhava (ex.: erro de banco, campo
+      // invalido), a tela nao avisava nada -- so parava de "Salvando..." e ficava
+      // do jeito que estava, sem erro nem confirmacao. Parecia que tinha travado
+      // ou que simplesmente nao tinha ido. Agora mostra o erro de verdade.
+      const erro = await resposta.json().catch(() => null)
+      alert(erro?.error || 'Não foi possível salvar as alterações. Tente de novo.')
     }
   }
 
