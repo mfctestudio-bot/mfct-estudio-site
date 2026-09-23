@@ -105,8 +105,19 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
       .eq('aluno_id', input.alunoId)
       .single()
     if (error || !pagamento) throw new Error(error?.message || 'pagamento não encontrado para o aluno')
+
+    // Correcao (23/09/2026): faltava travar contra confirmar o mesmo pagamento duas vezes
+    // (duplo-clique, duas abas abertas, ou clique + F5). Sem isso, a segunda chamada
+    // recriava um segundo periodo pro mesmo pagamento, bagunçando o vencimento do aluno.
+    if (pagamento.status === 'pago') {
+      throw new Error('Esse pagamento já foi confirmado antes -- não dá pra ativar o plano de novo pra ele (evita duplicar o período). Atualize a tela.')
+    }
     pagamentoAnterior = pagamento
-    const { error: updateError } = await supabase.from('pagamentos').update({
+
+    // O UPDATE só "ganha" se o status ainda for o que acabamos de ler (.eq('status', pagamento.status)).
+    // Se duas confirmações chegarem quase juntas, a que perder essa corrida recebe 0 linhas
+    // afetadas e é barrada abaixo, antes de criar um segundo período duplicado.
+    const { data: pagamentoAtualizado, error: updateError } = await supabase.from('pagamentos').update({
       plano_id: input.planoId,
       valor: input.valor,
       valor_original: input.valorOriginal,
@@ -116,10 +127,28 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
       confirmado_por: 'admin',
       data_pagamento: dataPagamento.toISOString(),
       data_vencimento: dataVencimento.toISOString().slice(0, 10),
-        metodo_pagamento: input.metodoPagamento || 'manual',
-    }).eq('id', pagamentoId).eq('aluno_id', input.alunoId)
+      metodo_pagamento: input.metodoPagamento || 'manual',
+    }).eq('id', pagamentoId).eq('aluno_id', input.alunoId).eq('status', pagamento.status).select('id')
     if (updateError) throw new Error(updateError.message)
+    if (!pagamentoAtualizado || pagamentoAtualizado.length === 0) {
+      throw new Error('Esse pagamento já foi confirmado por outra ação ao mesmo tempo -- nada foi duplicado, só atualize a tela.')
+    }
   } else {
+    // Correcao (23/09/2026): mesma corrida do caso acima, mas pra ativação SEM um pagamento
+    // existente (ex.: primeira mensalidade de um aluno novo). Aqui não há linha de pagamento
+    // pra travar por status, então a trava é: não deixar nascer um segundo período com a
+    // MESMA data de início pro mesmo aluno -- se duas chamadas concorrentes calcularam o
+    // mesmo dataInicio (porque nenhuma tinha commitado ainda), a segunda é barrada aqui.
+    const { data: possivelDuplicado } = await supabase
+      .from('planos_periodos')
+      .select('id')
+      .eq('aluno_id', input.alunoId)
+      .eq('data_inicio', dataInicio)
+      .maybeSingle()
+    if (possivelDuplicado) {
+      throw new Error('Já existe um período começando nessa mesma data pra esse aluno -- parece um clique duplicado. Atualize a tela antes de tentar de novo.')
+    }
+
     const { data: pagamento, error } = await supabase.from('pagamentos').insert({
       aluno_id: input.alunoId,
       plano_id: input.planoId,
