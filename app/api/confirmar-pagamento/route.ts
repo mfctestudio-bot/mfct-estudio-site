@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/lib/api-auth'
 
-const EVO_URL = 'https://ribbitingshoebill-evolution.cloudfy.live'
-const EVO_KEY = 'MMxqYf3msawylWCBW2PSU4uUdJAY6mL3'
+// Correcao (23/09/2026): essas credenciais estavam fixas apontando pro Cloudfy ANTIGO
+// (ribbitingshoebill), que foi abandonado quando o MFCT migrou pra uma conta nova do
+// Cloudfy (wetgoose). Como esse dominio antigo nao existe mais, TODA mensagem daqui vinha
+// falhando silenciosamente (o fetch falha, o chamador engole o erro com try/catch vazio) --
+// inclusive o link da ficha de anamnese, que nunca mais chegou pro aluno depois da migracao.
+// Agora usa as mesmas variaveis de ambiente (EVO_URL/EVO_KEY) que lib/planos.ts ja usa,
+// configuradas certinho no Vercel apontando pro Cloudfy atual.
+const EVO_URL = process.env.EVO_URL || ''
+const EVO_KEY = process.env.EVO_KEY || ''
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -24,22 +31,13 @@ export async function POST(req: NextRequest) {
   if (alunoError || !aluno?.telefone) return NextResponse.json({ error: 'aluno não encontrado ou sem telefone' }, { status: 404 })
 
   const phone = aluno.telefone
-  const nomeAluno = aluno.nome
 
-  const msg = `✅ *Pagamento confirmado!*\n\nOlá ${nomeAluno?.split(' ')[0] || ''}! Seu pagamento foi confirmado pelo Matheus. Você já pode agendar suas aulas normalmente! 💪\n\nQualquer dúvida, é só me chamar.`
+  // Correcao (23/09/2026): removida a mensagem de "pagamento confirmado" daqui -- ela agora
+  // e mandada direto por ativarPlano() (lib/planos.ts), que roda ANTES desta rota em toda tela
+  // que chama as duas (pagamentos e mensalidades/[id]), e ja manda com a data de vencimento
+  // certinha. Sem essa remocao, o aluno receberia a mesma confirmacao duas vezes.
 
-  // Avisa a Eleniria que essas mensagens "fromMe" são automáticas, pra não pausar o bot por engano
-  await supabase.from('mensagens_automaticas').insert({ telefone: phone, origem: 'confirmar-pagamento' })
-
-  await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
-    body: JSON.stringify({ number: phone, text: msg }),
-  })
-
-  // Aguardar 2 segundos e mandar link da anamnese
-  await new Promise(r => setTimeout(r, 2000))
-
+  // Avisa a Eleniria que essa mensagem "fromMe" é automática, pra não pausar o bot por engano
   await supabase.from('mensagens_automaticas').insert({ telefone: phone, origem: 'confirmar-pagamento' })
 
   await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
