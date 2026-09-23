@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
-import { periodoAtualHoje, statusPeriodoHoje } from '@/lib/periodos'
+import { periodoAtualHoje } from '@/lib/periodos'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -133,15 +133,14 @@ export default function AdminHome() {
         periodosPorAluno.set(periodo.aluno_id, lista)
       }
       const ativos = (alunosComPeriodos || []).filter(a => periodoAtualHoje(periodosPorAluno.get(a.id) || [])).length
-      const vencidos = (alunosComPeriodos || []).filter(a => {
-        // Só conta como "vencido" (pendente de cobrança/renovação) quem ainda
-        // está cobrável (ativo ou já marcado vencido -- status_plano vira
-        // 'vencido' assim que o período para de cobrir hoje, sem carência de
-        // acesso). Pausado/cancelado não entra nessa conta.
-        if (!['ativo', 'vencido'].includes(a.status_plano)) return false
-        const periodosAluno = periodosPorAluno.get(a.id) || []
-        return !periodoAtualHoje(periodosAluno) && periodosAluno.some(p => statusPeriodoHoje(p) === 'vencido')
-      }).length
+      // Correcao (23/09/2026): antes so contava como "vencido" quem, ALEM de status_plano
+      // vencido, tambem tivesse um planos_periodos com status='vencido' calculado por data.
+      // Isso fazia o card mostrar so 1 de 4 vencidos de verdade -- 3 alunos (Karol, Cleiciane,
+      // Risolene) nunca tiveram nenhum periodo cadastrado na tabela planos_periodos, entao a
+      // segunda condicao nunca batia pra eles, mesmo com status_plano='vencido' certinho.
+      // alunos.status_plano ja e a autoridade unica dessa informacao no sistema (verificarVencimentos
+      // em lib/planos.ts) -- nao precisa cruzar com planos_periodos de novo aqui.
+      const vencidos = (alunosComPeriodos || []).filter(a => a.status_plano === 'vencido').length
       setStats({ ativos, leads: leads || 0, aguardando: aguardando || 0, vencidos })
 
       setAulasHoje((agendamentos || []).map((a: any) => ({
