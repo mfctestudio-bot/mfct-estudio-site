@@ -5,8 +5,11 @@ import { requireAdmin } from '@/lib/api-auth'
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-const EVO_URL = 'https://ribbitingshoebill-evolution.cloudfy.live'
-const EVO_KEY = 'MMxqYf3msawylWCBW2PSU4uUdJAY6mL3'
+// Correcao (23/09/2026): apontava pro Cloudfy antigo (ribbitingshoebill), abandonado --
+// essa mensagem vinha falhando silenciosamente desde a migracao. Agora usa as mesmas
+// variaveis de ambiente (EVO_URL/EVO_KEY) ja configuradas certinho no Vercel.
+const EVO_URL = process.env.EVO_URL || ''
+const EVO_KEY = process.env.EVO_KEY || ''
 
 export async function POST(req: NextRequest) {
   const authError = requireAdmin(req)
