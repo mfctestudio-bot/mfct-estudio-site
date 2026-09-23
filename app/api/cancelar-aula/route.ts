@@ -5,9 +5,13 @@ import { requireAdmin } from '@/lib/api-auth'
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-const EVOLUTION_URL = process.env.EVOLUTION_URL || 'https://ribbitingshoebill-evolution.cloudfy.live'
-const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'MFCT-ESTUDIO'
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || ''
+// Correcao (23/09/2026): as variaveis EVOLUTION_URL/EVOLUTION_API_KEY nunca existiram no
+// Vercel (so EVO_URL/EVO_KEY, usadas em lib/planos.ts) -- entao isso sempre caia no fallback
+// pro Cloudfy antigo (ribbitingshoebill), abandonado, e a mensagem de aula cancelada vinha
+// falhando silenciosamente desde a migracao. Agora usa as mesmas EVO_URL/EVO_KEY.
+const EVOLUTION_URL = process.env.EVO_URL || ''
+const EVOLUTION_INSTANCE = 'MFCT-ESTUDIO'
+const EVOLUTION_API_KEY = process.env.EVO_KEY || ''
 
 export async function POST(req: NextRequest) {
   const authError = requireAdmin(req)
