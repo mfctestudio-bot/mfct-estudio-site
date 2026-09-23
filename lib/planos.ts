@@ -262,11 +262,15 @@ export async function verificarVencimentos(
 
 const { data: alunosAtivos, error: alunosError } = await supabase
   .from('alunos')
-  .select('id, status_desde')
+  .select('id, status_desde, nome, telefone')
   .eq('status_plano', 'ativo')
   if (alunosError) throw new Error(alunosError.message)
   const statusDesdePorAluno = new Map<string, string | null>()
-  for (const a of alunosAtivos || []) statusDesdePorAluno.set(a.id, a.status_desde ?? null)
+  const nomeTelefonePorAluno = new Map<string, { nome: string | null; telefone: string | null }>()
+  for (const a of alunosAtivos || []) {
+    statusDesdePorAluno.set(a.id, a.status_desde ?? null)
+    nomeTelefonePorAluno.set(a.id, { nome: a.nome ?? null, telefone: a.telefone ?? null })
+  }
 
 const cancelados: VerificarVencimentosResult['cancelados'] = []
   const avisos: string[] = []
@@ -349,6 +353,17 @@ for (const alunoId of alunoIds) {
   const liberacao = await liberarAgendaDoAluno(supabase, alunoId)
   avisos.push(...liberacao.avisos)
   cancelados.push({ alunoId, dataFim, diasVencido: dias })
+
+  // Avisa o aluno que o plano foi cancelado por falta de pagamento -- mesmo padrao
+  // ja usado em verificarPausasExpiradas pra pausa cancelada por prazo. Sem isso,
+  // o aluno so descobria que perdeu acesso quando tentasse agendar de novo.
+  const dadosAluno = nomeTelefonePorAluno.get(alunoId)
+  if (dadosAluno?.telefone) {
+    await enviarWhatsAppAluno(
+      dadosAluno.telefone,
+      `Oi${dadosAluno.nome ? `, ${dadosAluno.nome.split(' ')[0]}` : ''}! Sua mensalidade no MFCT Estúdio venceu há ${dias} dias e o plano foi cancelado -- por isso o acesso aos horários (fixo ou avulso) fica em espera. Pra voltar a treinar é só regularizar o pagamento que eu já libero de novo. Qualquer dúvida me chama por aqui! 💪`
+    )
+  }
 }
 
 return { verificados: alunoIds.length, cancelados, avisos }
