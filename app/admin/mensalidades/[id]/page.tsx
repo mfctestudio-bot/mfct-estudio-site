@@ -1,415 +1,550 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
-import { periodoAtualHoje, statusPeriodoHoje } from '@/lib/periodos'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Aluno, Plano } from '@/lib/supabase'
+import { statusPeriodoHoje } from '@/lib/periodos'
 
-const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const STATUS_LABEL: Record<string, { label: string; cor: string; bg: string }> = {
+  ativo: { label: 'Em dia', cor: '#3fb950', bg: '#3fb95015' },
+  vencido: { label: 'Vencido', cor: 'var(--danger)', bg: 'var(--danger)15' },
+  agendado: { label: 'Agendado', cor: '#5b9bd5', bg: '#5b9bd515' },
+}
 
-type AulaHoje = {
-  horario: string
-  aluno_nome: string
-  aluno_telefone: string
-  tipo: string
+type Periodo = {
+  id: string
+  aluno_id: string
+  pagamento_id: string | null
+  data_inicio: string
+  data_fim: string
   status: string
 }
 
-type PagPendente = {
+type Pagamento = {
   id: string
-  aluno_nome: string
   valor: number
-  comprovante_url: string | null
-  comprovante_recebido_em: string | null
+  valor_original: number | null
+  desconto: number | null
+  status: string
+  data_pagamento: string | null
+  metodo_pagamento: string | null
+  observacao: string | null
 }
 
-type Aniversariante = {
-  id: string
-  nome: string
-  dia: number
-  ehHoje: boolean
-}
+export default function MensalidadeAlunoPage() {
+  const params = useParams()
+  const id = params.id as string
 
-type VencendoEmBreve = {
-  id: string
-  nome: string
-  dataFim: string
-  dias: number
-}
+  const [aluno, setAluno] = useState<Aluno | null>(null)
+  const [planos, setPlanos] = useState<Plano[]>([])
+  const [periodos, setPeriodos] = useState<Periodo[]>([])
+  const [pagamentos, setPagamentos] = useState<Record<string, Pagamento>>({})
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState('')
 
-// ---- Padrão visual compartilhado desta tela (cards, seções, grids) ----
-// Todo card usa o mesmo fundo/borda/raio/padding, pra parar de ter tamanhos
-// diferentes espalhados pela tela. Toda grade usa auto-fit + minmax, que é o
-// que faz o layout responder sozinho em celular (empilha) sem precisar de
-// media query pra cada bloco.
-const cardBase: React.CSSProperties = {
-  padding: '1.1rem',
-}
+  const [modalPlano, setModalPlano] = useState<Plano | null>(null)
+  const [modalValor, setModalValor] = useState('')
+  const [modalDesconto, setModalDesconto] = useState('')
+  const [modalDescontoTipo, setModalDescontoTipo] = useState<'valor' | 'percentual'>('valor')
+  const [modalData, setModalData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [modalSaving, setModalSaving] = useState(false)
+  const [modalTrocaInfo, setModalTrocaInfo] = useState<{ planoAtualNome: string; planoAtualValor: number; diferenca: number } | null>(null)
 
-function gridAuto(minWidth: number): React.CSSProperties {
-  return { display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}px, 1fr))`, gap: 14 }
-}
+  const [editandoPeriodoId, setEditandoPeriodoId] = useState<string | null>(null)
+  const [novaDataInicio, setNovaDataInicio] = useState('')
+  const [salvandoData, setSalvandoData] = useState(false)
+  const [excluindoPeriodoId, setExcluindoPeriodoId] = useState<string | null>(null)
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+  async function carregar() {
+    const [{ data: alunoData }, { data: planosData }, { data: periodosData }] = await Promise.all([
+      supabase.from('alunos').select('*').eq('id', id).single(),
+      supabase.from('planos').select('*').order('valor'),
+      supabase.from('planos_periodos').select('id, aluno_id, pagamento_id, data_inicio, data_fim, status').eq('aluno_id', id).order('data_fim', { ascending: false }),
+    ])
+    setAluno(alunoData)
+    setPlanos(planosData || [])
+    const listaPeriodos = periodosData || []
+    setPeriodos(listaPeriodos)
+
+    const pagamentoIds = listaPeriodos.map(p => p.pagamento_id).filter((v): v is string => !!v)
+    if (pagamentoIds.length) {
+      const { data: pagamentosData } = await supabase
+        .from('pagamentos')
+        .select('id, valor, valor_original, desconto, status, data_pagamento, metodo_pagamento, observacao')
+        .in('id', pagamentoIds)
+      const mapa: Record<string, Pagamento> = {}
+      for (const p of pagamentosData || []) mapa[p.id] = p
+      setPagamentos(mapa)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { carregar() }, [id])
+
+  function avisar(msg: string, ms = 3000) {
+    setToast(msg)
+    setTimeout(() => setToast(''), ms)
+  }
+
+  const periodoAtual = periodos.find(p => statusPeriodoHoje(p) === 'ativo') || null
+  const periodoFuturo = periodos.find(p => statusPeriodoHoje(p) === 'agendado') || null
+  // Correção (22/09/2026): status_plano vira 'vencido' assim que o período para
+  // de cobrir hoje (sem carência de acesso -- só o cancelamento definitivo tem
+  // carência). Por isso checamos os dois status aqui, não só 'ativo'.
+  const estaVencido = (aluno?.status_plano === 'ativo' || aluno?.status_plano === 'vencido') && !periodoAtual
+
+  function abrirModalAtivacao(planoId?: string) {
+    if (!aluno) return
+    const plano = planos.find(p => p.id === (planoId || aluno.plano_id)) || planos[0]
+    if (!plano) { avisar('Cadastre um plano antes de ativar.'); return }
+
+    const ehTrocaRealDePlano = !!planoId && aluno.plano_id && planoId !== aluno.plano_id && !!periodoAtual
+    if (ehTrocaRealDePlano) {
+      const planoAtualObj = planos.find(p => p.id === aluno.plano_id)
+      if (planoAtualObj) {
+        const diferenca = Math.max(0, Number(plano.valor) - Number(planoAtualObj.valor))
+        setModalPlano(plano)
+        setModalValor(String(diferenca))
+        setModalDesconto('0')
+        setModalData(new Date().toISOString().slice(0, 10))
+        setModalTrocaInfo({ planoAtualNome: planoAtualObj.nome, planoAtualValor: Number(planoAtualObj.valor), diferenca })
+        return
+      }
+    }
+
+    setModalTrocaInfo(null)
+    setModalPlano(plano)
+    setModalValor(String(plano.valor))
+    setModalDesconto('0')
+    setModalData(new Date().toISOString().slice(0, 10))
+  }
+
+  async function confirmarAtivacao() {
+    if (!aluno || !modalPlano) return
+    setModalSaving(true)
+    const valorOriginal = Number(modalPlano.valor)
+    const desconto = modalDescontoTipo === 'percentual'
+      ? Math.round(valorOriginal * (Number(modalDesconto || 0) / 100) * 100) / 100
+      : Number(modalDesconto || 0)
+    const valorFinal = Number(modalValor || 0)
+
+    const resposta = await fetch('/api/admin-ativar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alunoId: id,
+        planoId: modalPlano.id,
+        valor: valorFinal,
+        valorOriginal,
+        desconto,
+        dataPagamento: modalData,
+      }),
+    })
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      setModalSaving(false)
+      avisar(erro?.error || 'Não foi possível ativar o plano.', 3500)
+      return
+    }
+
+    try {
+      await fetch('/api/confirmar-pagamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alunoId: id })
+      })
+    } catch {}
+
+    setModalSaving(false)
+    setModalPlano(null)
+    setModalTrocaInfo(null)
+    avisar('Plano ativado e pagamento registrado! Aluno notificado.')
+    carregar()
+  }
+
+  async function cancelarPlano() {
+    if (!aluno || !confirm('Cancelar o plano deste aluno? Isso encerra a relação — se for algo temporário, use "Pausar" em vez disso.')) return
+    const resp = await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'cancelado' }) })
+    const dados = await resp.json().catch(() => null)
+    const extra = dados?.agendamentos_futuros_liberados ? ` ${dados.agendamentos_futuros_liberados} aula(s) futura(s) liberada(s) da agenda.` : ''
+    avisar('Plano cancelado.' + extra, 3500)
+    carregar()
+  }
+
+  async function pausarPlano() {
+    if (!aluno || !confirm('Pausar o plano deste aluno? Ele fica temporariamente suspenso, sem cancelar de vez. As aulas futuras já marcadas serão liberadas da agenda enquanto ele estiver pausado.')) return
+    const resp = await fetch('/api/admin-aluno-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alunoId: id, status: 'pausado' }) })
+    const dados = await resp.json().catch(() => null)
+    const extra = dados?.agendamentos_futuros_liberados ? ` ${dados.agendamentos_futuros_liberados} aula(s) futura(s) liberada(s) da agenda.` : ''
+    avisar('Plano pausado.' + extra + ' Ao reativar, será preciso remarcar os horários fixos.', 4000)
+    carregar()
+  }
+
+  async function continuarPlanoHandler() {
+    if (!aluno) return
+    const resp = await fetch('/api/admin-continuar-plano', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alunoId: id }),
+    })
+    const dados = await resp.json().catch(() => null)
+    if (!resp.ok) {
+      avisar(dados?.error || 'Não foi possível continuar o plano.', 4500)
+      return
+    }
+    avisar(`Plano reativado sem cobrança. Novo vencimento: ${new Date(dados.dataFimNova + 'T00:00:00').toLocaleDateString('pt-BR')}.`, 4500)
+    carregar()
+  }
+
+  async function notificarVencimentoHandler() {
+    if (!aluno) return
+    const resp = await fetch('/api/admin-notificar-vencimento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alunoId: id }),
+    })
+    const dados = await resp.json().catch(() => null)
+    if (!resp.ok) {
+      avisar(dados?.error || 'Não foi possível enviar a cobrança.', 4500)
+      return
+    }
+    avisar(`Cobrança enviada pelo WhatsApp (${dados.diasVencido} dia(s) de atraso).`, 4000)
+  }
+
+  async function alterarVencimento(dia: number) {
+    if (!aluno) return
+    await supabase.from('alunos').update({ dia_vencimento: dia }).eq('id', id)
+    setAluno(prev => prev ? { ...prev, dia_vencimento: dia } : prev)
+    avisar('Vencimento alterado.', 2500)
+  }
+
+  function abrirEdicaoData(periodo: Periodo) {
+    setEditandoPeriodoId(periodo.id)
+    setNovaDataInicio(periodo.data_inicio)
+  }
+
+  async function salvarNovaData(periodoId: string) {
+    if (!novaDataInicio) return
+    setSalvandoData(true)
+    const resposta = await fetch('/api/admin-editar-periodo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ periodoId, novaDataInicio }),
+    })
+    setSalvandoData(false)
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      avisar(erro?.error || 'Não foi possível corrigir a data.', 4000)
+      return
+    }
+    setEditandoPeriodoId(null)
+    avisar('Data corrigida. O período foi recalculado (30 dias a partir dessa data).')
+    carregar()
+  }
+
+  async function excluirPeriodo(periodo: Periodo) {
+    const status = statusPeriodoHoje(periodo)
+    const aviso = status === 'ativo'
+      ? '⚠️ Esse é o período VIGENTE HOJE desse aluno. Excluir vai deixar ele sem cobertura ativa até você cadastrar outro. Tem certeza que quer excluir mesmo assim?'
+      : status === 'agendado'
+      ? '⚠️ Esse é um período FUTURO já agendado. Excluir vai cancelar essa renovação futura. Tem certeza?'
+      : 'Excluir esse contrato antigo do histórico? Isso não pode ser desfeito.'
+    if (!confirm(aviso)) return
+
+    setExcluindoPeriodoId(periodo.id)
+    const resposta = await fetch('/api/admin-excluir-periodo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ periodoId: periodo.id }),
+    })
+    setExcluindoPeriodoId(null)
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      avisar(erro?.error || 'Não foi possível excluir esse período.', 4000)
+      return
+    }
+    avisar('Contrato excluído do histórico.')
+    carregar()
+  }
+
+  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '28px 0 12px' }}>
-      <span style={{ width: 4, height: 16, borderRadius: 2, background: 'var(--accent2)', display: 'inline-block' }} />
-      <h2 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-        {children}
-      </h2>
-    </div>
-  )
-}
+    <div>
+      <Link href={`/admin/alunos/${id}`} style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← {aluno.nome}</Link>
+      <h1 style={{ fontSize: 24, margin: '8px 0 4px' }}>Mensalidade de {aluno.nome}</h1>
+      <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
+        Plano, pagamentos e histórico de períodos desse aluno.
+      </p>
 
-// Título sempre em cima, link de ação sempre embaixo -- de propósito. Título
-// e ação lado a lado (comum em telas largas) quebra feio em card estreito
-// quando o título é grande: o texto do título vira duas linhas e o link fica
-// "grudado" na primeira linha, sobrepondo a segunda. Empilhar sempre evita
-// esse problema em qualquer largura de tela, sem precisar de media query.
-function CardHeader({ title, color, action, href }: { title: string; color?: string; action?: string; href?: string }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <h3 style={{ fontSize: 13, fontWeight: 800, color: color || 'var(--text)', letterSpacing: 0.5, lineHeight: 1.3 }}>
-        {title}
-      </h3>
-      {action && href && (
-        <Link href={href} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent2)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}>{action} →</Link>
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>
+              {planos.find(p => p.id === aluno.plano_id)?.nome || 'Sem plano definido'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+              {periodoAtual
+                ? `Vale de ${new Date(periodoAtual.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(periodoAtual.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                : 'Nenhum período vigente no momento'}
+              {periodoFuturo && ` · Renovado até ${new Date(periodoFuturo.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`}
+            </div>
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
+            color: aluno.status_plano === 'ativo' ? '#3fb950' : aluno.status_plano === 'pausado' ? '#5b9bd5' : 'var(--danger)',
+            background: aluno.status_plano === 'ativo' ? '#3fb95015' : aluno.status_plano === 'pausado' ? '#5b9bd515' : 'var(--danger)15',
+          }}>
+            {aluno.status_plano}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          {aluno.status_plano === 'cancelado' && (
+            <button onClick={() => abrirModalAtivacao()} className="btn btn-success">
+              🔄 Reativar
+            </button>
+          )}
+          {aluno.status_plano === 'pausado' && (
+            <button onClick={continuarPlanoHandler} className="btn btn-success">
+              ▶️ Continuar
+            </button>
+          )}
+          {estaVencido && (
+            <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} className="btn btn-success">
+              🔄 Renovar
+            </button>
+          )}
+          {estaVencido && (
+            <button onClick={notificarVencimentoHandler} className="btn btn-outline-whatsapp">
+              💬 Notificar vencimento
+            </button>
+          )}
+          {aluno.status_plano === 'ativo' && !estaVencido && (
+            <button onClick={pausarPlano} className="btn btn-outline-warning">
+              ⏸️ Pausar
+            </button>
+          )}
+          {aluno.status_plano !== 'cancelado' && (
+            <button onClick={cancelarPlano} className="btn btn-outline-danger">
+              ❌ Cancelar
+            </button>
+          )}
+        </div>
+
+        <div style={{ paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <SubLabel>Trocar tipo de plano</SubLabel>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {planos.filter(p => p.vezes_semana > 1).map(p => (
+              <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} style={{
+                background: aluno.plano_id === p.id ? '#3fb95022' : 'var(--bg)',
+                border: `1.5px solid ${aluno.plano_id === p.id ? '#3fb950' : 'var(--border)'}`,
+                color: aluno.plano_id === p.id ? '#3fb950' : 'var(--text)',
+                borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                {p.nome} — R$ {Number(p.valor).toFixed(2).replace('.', ',')}
+              </button>
+            ))}
+          </div>
+          <SubLabel>Dia de vencimento</SubLabel>
+          <select
+            value={aluno.dia_vencimento || ''}
+            onChange={e => alterarVencimento(Number(e.target.value))}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}
+          >
+            <option value="">-- selecionar --</option>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+              <option key={d} value={d}>Dia {d}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+          Histórico de mensalidades
+        </div>
+        {!periodos.length && (
+          <p style={{ color: 'var(--text3)', fontSize: 13 }}>Nenhum período registrado ainda.</p>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {periodos.map(periodo => {
+            const status = statusPeriodoHoje(periodo)
+            const info = STATUS_LABEL[status]
+            const pagamento = periodo.pagamento_id ? pagamentos[periodo.pagamento_id] : null
+            const editando = editandoPeriodoId === periodo.id
+            return (
+              <div key={periodo.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontSize: 13 }}>
+                    {new Date(periodo.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')} até {new Date(periodo.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    {pagamento && (
+                      <span style={{ color: 'var(--text3)' }}>
+                        {' · R$ '}{Number(pagamento.valor).toFixed(2).replace('.', ',')}
+                        {pagamento.desconto ? ` (desconto de R$ ${Number(pagamento.desconto).toFixed(2).replace('.', ',')})` : ''}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: info.cor, background: info.bg }}>
+                      {info.label}
+                    </span>
+                    {!editando && (
+                      <button onClick={() => abrirEdicaoData(periodo)} style={{
+                        background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)',
+                        borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                        ✏️ Corrigir data
+                      </button>
+                    )}
+                    <button
+                      onClick={() => excluirPeriodo(periodo)}
+                      disabled={excluindoPeriodoId === periodo.id}
+                      className="btn btn-outline-danger btn-sm"
+                      style={{ opacity: excluindoPeriodoId === periodo.id ? 0.6 : 1 }}
+                    >
+                      🗑️ Excluir
+                    </button>
+                  </div>
+                </div>
+                {editando && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>Nova data de início:</span>
+                    <input
+                      type="date"
+                      value={novaDataInicio}
+                      onChange={e => setNovaDataInicio(e.target.value)}
+                      style={{ ...inputStyle, width: 'auto' }}
+                    />
+                    <button onClick={() => salvarNovaData(periodo.id)} disabled={salvandoData} className="btn btn-success btn-sm">
+                      {salvandoData ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button onClick={() => setEditandoPeriodoId(null)} disabled={salvandoData} className="btn btn-neutral btn-sm">
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--card)', border: '1px solid #3fb950', borderRadius: 6,
+          padding: '10px 20px', fontSize: 13, color: '#3fb950',
+        }}>
+          {toast}
+        </div>
+      )}
+
+      {modalPlano && (
+        <div
+          onClick={() => !modalSaving && (setModalPlano(null), setModalTrocaInfo(null))}
+          style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8,
+            padding: '20px', width: '100%', maxWidth: 380,
+          }}>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>{modalTrocaInfo ? 'Troca de plano' : 'Ativar plano — registrar pagamento'}</h3>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: modalTrocaInfo ? 6 : 16 }}>
+              {modalPlano.nome} · valor de tabela R$ {Number(modalPlano.valor).toFixed(2).replace('.', ',')}
+            </p>
+            {modalTrocaInfo && (
+              <p style={{ fontSize: 12, color: '#5b9bd5', marginBottom: 16, background: '#5b9bd515', padding: '8px 10px', borderRadius: 6 }}>
+                Trocando de <strong>{modalTrocaInfo.planoAtualNome}</strong> (R$ {modalTrocaInfo.planoAtualValor.toFixed(2).replace('.', ',')}) pra <strong>{modalPlano.nome}</strong>.
+                Cobrando só a diferença: <strong>R$ {modalTrocaInfo.diferenca.toFixed(2).replace('.', ',')}</strong> (não o valor cheio do plano novo).
+              </p>
+            )}
+
+            <Campo label="Valor cobrado (R$)">
+              <input type="number" step="0.01" value={modalValor} onChange={e => setModalValor(e.target.value)} style={inputStyle} />
+            </Campo>
+            <Campo label="Desconto aplicado">
+              <div style={{ display: 'flex', gap: 8 }}>
+                {modalDescontoTipo === 'percentual' ? (
+                  <select
+                    value={modalDesconto}
+                    onChange={e => {
+                      const novoDesconto = e.target.value
+                      setModalDesconto(novoDesconto)
+                      const valorOriginal = Number(modalPlano.valor)
+                      const descontoReais = valorOriginal * (Number(novoDesconto || 0) / 100)
+                      setModalValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
+                    }}
+                    style={{ ...inputStyle, flex: 1 }}
+                  >
+                    <option value="0">Sem desconto</option>
+                    {[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100].map(p => <option key={p} value={p}>{p}%</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="number" step="0.01" value={modalDesconto}
+                    onChange={e => {
+                      const novoDesconto = e.target.value
+                      setModalDesconto(novoDesconto)
+                      const valorOriginal = Number(modalPlano.valor)
+                      setModalValor(String(Math.max(0, Math.round((valorOriginal - Number(novoDesconto || 0)) * 100) / 100)))
+                    }}
+                    style={{ ...inputStyle, flex: 1 }} placeholder="0"
+                  />
+                )}
+                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                  {(['valor', 'percentual'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => { setModalDescontoTipo(t); setModalDesconto('0'); setModalValor(String(modalPlano.valor)) }} style={{
+                      background: modalDescontoTipo === t ? '#3fb95022' : 'transparent',
+                      color: modalDescontoTipo === t ? '#3fb950' : 'var(--text2)',
+                      border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                      {t === 'valor' ? 'R$' : '%'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Campo>
+            <Campo label="Data do pagamento">
+              <input type="date" value={modalData} onChange={e => setModalData(e.target.value)} style={inputStyle} />
+            </Campo>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={confirmarAtivacao} disabled={modalSaving} className="btn btn-success" style={{ flex: 1 }}>
+                {modalSaving ? 'Registrando...' : '✅ Confirmar'}
+              </button>
+              <button onClick={() => { setModalPlano(null); setModalTrocaInfo(null) }} disabled={modalSaving} className="btn btn-neutral">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-export default function AdminHome() {
-  const [stats, setStats] = useState({ ativos: 0, leads: 0, aguardando: 0, vencidos: 0 })
-  const [aulasHoje, setAulasHoje] = useState<AulaHoje[]>([])
-  const [pagPendentes, setPagPendentes] = useState<PagPendente[]>([])
-  const [aniversariantes, setAniversariantes] = useState<Aniversariante[]>([])
-  const [vencendoEmBreve, setVencendoEmBreve] = useState<VencendoEmBreve[]>([])
-  const [faturamentoGrafico, setFaturamentoGrafico] = useState<{ mes: string; total: number }[]>([])
-  const [crescimentoGrafico, setCrescimentoGrafico] = useState<{ mes: string; alunos: number }[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function load() {
-      const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-      const hojeStr = hoje.toISOString().slice(0, 10)
-
-      const anoAtual = hoje.getFullYear()
-
-      const [
-        { data: alunosComPeriodos },
-        { count: leads },
-        { count: aguardando },
-        { data: periodos },
-        { data: agendamentos },
-        { data: pagamentos },
-        { data: alunosNascimento },
-        { data: pagosNoAno },
-        { data: alunosMatricula },
-      ] = await Promise.all([
-        supabase.from('alunos').select('id, nome, status_plano'),
-        supabase.from('alunos').select('*', { count: 'exact', head: true }).in('status_plano', ['lead', 'experimental', 'experimental_oferecida', 'experimental_agendada', 'experimental_realizada', 'em_negociacao']),
-        supabase.from('pagamentos').select('*', { count: 'exact', head: true }).eq('status', 'aguardando_confirmacao'),
-        supabase.from('planos_periodos').select('aluno_id, data_inicio, data_fim, status'),
-        supabase.from('agendamentos')
-          .select('status, tipo, horarios(horario), alunos(nome, telefone)')
-          .eq('data', hojeStr)
-          .eq('status', 'confirmado')
-          .order('horarios(horario)'),
-        supabase.from('pagamentos')
-          .select('id, valor, comprovante_url, comprovante_recebido_em, alunos(nome)')
-          .eq('status', 'aguardando_confirmacao')
-          .order('comprovante_recebido_em', { ascending: false })
-          .limit(5),
-        supabase.from('alunos').select('id, nome, data_nascimento, status_plano').not('data_nascimento', 'is', null),
-        supabase.from('pagamentos').select('valor, desconto, data_pagamento, status').eq('status', 'pago').gte('data_pagamento', `${anoAtual}-01-01`).lte('data_pagamento', `${anoAtual}-12-31`),
-        supabase.from('alunos').select('data_matricula').not('data_matricula', 'is', null),
-      ])
-
-      const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string; status: string }[]>()
-      for (const periodo of periodos || []) {
-        const lista = periodosPorAluno.get(periodo.aluno_id) || []
-        lista.push(periodo)
-        periodosPorAluno.set(periodo.aluno_id, lista)
-      }
-      const ativos = (alunosComPeriodos || []).filter(a => periodoAtualHoje(periodosPorAluno.get(a.id) || [])).length
-      const vencidos = (alunosComPeriodos || []).filter(a => {
-        // Só conta como "vencido" (pendente de cobrança/renovação) quem ainda
-        // está cobrável (ativo ou já marcado vencido -- status_plano vira
-        // 'vencido' assim que o período para de cobrir hoje, sem carência de
-        // acesso). Pausado/cancelado não entra nessa conta.
-        if (!['ativo', 'vencido'].includes(a.status_plano)) return false
-        const periodosAluno = periodosPorAluno.get(a.id) || []
-        return !periodoAtualHoje(periodosAluno) && periodosAluno.some(p => statusPeriodoHoje(p) === 'vencido')
-      }).length
-      setStats({ ativos, leads: leads || 0, aguardando: aguardando || 0, vencidos })
-
-      setAulasHoje((agendamentos || []).map((a: any) => ({
-        horario: a.horarios?.horario?.slice(0, 5) || '',
-        aluno_nome: a.alunos?.nome || '',
-        aluno_telefone: a.alunos?.telefone || '',
-        tipo: a.tipo,
-        status: a.status,
-      })))
-
-      setPagPendentes((pagamentos || []).map((p: any) => ({
-        id: p.id,
-        aluno_nome: p.alunos?.nome || '',
-        valor: p.valor,
-        comprovante_url: p.comprovante_url,
-        comprovante_recebido_em: p.comprovante_recebido_em,
-      })))
-
-      // Aniversariantes do mes -- so quem tem matricula ativa/em andamento (nao lead perdido/cancelado)
-      const mesAtual = hoje.getMonth()
-      const diaHoje = hoje.getDate()
-      const listaAniversariantes = (alunosNascimento || [])
-        .filter((a: any) => a.status_plano !== 'cancelado' && a.status_plano !== 'perdido')
-        .map((a: any) => {
-          const nasc = new Date(a.data_nascimento + 'T00:00:00')
-          return { id: a.id, nome: a.nome, mes: nasc.getMonth(), dia: nasc.getDate() }
-        })
-        .filter(a => a.mes === mesAtual)
-        .sort((a, b) => a.dia - b.dia)
-        .map(a => ({ id: a.id, nome: a.nome, dia: a.dia, ehHoje: a.dia === diaHoje }))
-      setAniversariantes(listaAniversariantes)
-
-      // Vencendo em breve (proximos 7 dias) -- matricula ativa, periodo vigente terminando logo
-      const proxima7 = new Date(hoje)
-      proxima7.setDate(proxima7.getDate() + 7)
-      const proxima7Str = proxima7.toISOString().slice(0, 10)
-      const nomesPorAluno = new Map<string, string>()
-      for (const a of alunosComPeriodos || []) nomesPorAluno.set(a.id, a.nome)
-      const listaVencendo: VencendoEmBreve[] = []
-      for (const a of alunosComPeriodos || []) {
-        if (a.status_plano !== 'ativo') continue
-        const periodoAtual = periodoAtualHoje(periodosPorAluno.get(a.id) || [])
-        if (!periodoAtual) continue
-        if (periodoAtual.data_fim >= hojeStr && periodoAtual.data_fim <= proxima7Str) {
-          const dias = Math.round((new Date(periodoAtual.data_fim + 'T00:00:00').getTime() - hoje.getTime()) / 86400000)
-          listaVencendo.push({ id: a.id, nome: nomesPorAluno.get(a.id) || '', dataFim: periodoAtual.data_fim, dias })
-        }
-      }
-      listaVencendo.sort((a, b) => a.dias - b.dias)
-      setVencendoEmBreve(listaVencendo)
-
-      // Faturamento por mes (ano atual) -- valor liquido (cobrado menos desconto)
-      const porMes = new Array(12).fill(0)
-      for (const p of pagosNoAno || []) {
-        if (!p.data_pagamento) continue
-        const idx = new Date(p.data_pagamento).getMonth()
-        porMes[idx] += Number(p.valor) - Number(p.desconto || 0)
-      }
-      setFaturamentoGrafico(MESES.map((m, i) => ({ mes: m, total: Math.round(porMes[i] * 100) / 100 })))
-
-      // Crescimento (aproximado): total acumulado de matriculas feitas ate cada mes do ano atual.
-      // Nao existe um historico de "quantos estavam ativos em cada mes" guardado -- isso e uma
-      // aproximacao razoavel pra mostrar tendencia, nao um numero exato de ativos por mes.
-      const matriculasPorMes = new Array(12).fill(0)
-      for (const a of alunosMatricula || []) {
-        const d = new Date(a.data_matricula)
-        if (d.getFullYear() > anoAtual) continue
-        if (d.getFullYear() === anoAtual) matriculasPorMes[d.getMonth()] += 1
-        else matriculasPorMes[0] += 1 // matriculado antes desse ano -- conta como "base" em janeiro
-      }
-      let acumulado = 0
-      const crescimento = MESES.map((m, i) => {
-        acumulado += matriculasPorMes[i]
-        return { mes: m, alunos: acumulado }
-      })
-      setCrescimentoGrafico(crescimento)
-
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  const diaSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-  const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-
+function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <h1 style={{ fontSize: 28, marginBottom: 4 }}>Início</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>
-        {diaSemana[hoje.getDay()]}, {hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-      </p>
-
-      {/* Visão geral -- os 4 números que resumem a saúde do estúdio agora */}
-      <div style={{ ...gridAuto(150), marginTop: 20 }}>
-        {[
-          { label: 'Alunos ativos', value: stats.ativos, href: '/admin/alunos?status=ativo', color: '#3fb950' },
-          { label: 'Leads / em negociação', value: stats.leads, href: '/admin/alunos?status=leads', color: 'var(--accent)' },
-          { label: 'Aguard. confirmação', value: stats.aguardando, href: '/admin/pagamentos?status=aguardando_confirmacao', color: '#f0a500' },
-          { label: 'Planos vencidos', value: stats.vencidos, href: '/admin/alunos?status=vencido', color: 'var(--danger)' },
-        ].map(c => (
-          <Link key={c.label} href={c.href} className="card card-hover" style={{
-            ...cardBase, textDecoration: 'none', color: 'var(--text)', display: 'block',
-            borderColor: c.value > 0 && c.label !== 'Alunos ativos' ? `${c.color}55` : 'var(--border)',
-          }}>
-            <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 38, color: c.color, lineHeight: 1 }}>
-              {loading ? '—' : c.value}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, fontWeight: 600 }}>{c.label}</div>
-          </Link>
-        ))}
-      </div>
-
-      {/* HOJE -- o que precisa acontecer nas próximas horas */}
-      <SectionTitle>Hoje</SectionTitle>
-      <div style={gridAuto(320)}>
-        <div className="card card-hover" style={cardBase}>
-          <CardHeader title="Aulas hoje" action="Ver agenda" href="/admin/agenda" />
-          {loading ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
-          ) : aulasHoje.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Nenhuma aula hoje.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 2 }}>
-              {aulasHoje.map((a, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < aulasHoje.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div>
-                    <span style={{ fontWeight: 800, fontSize: 14 }}>{a.horario}</span>
-                    <span style={{ fontSize: 13, color: 'var(--text2)', marginLeft: 8 }}>{a.aluno_nome}</span>
-                  </div>
-                  {a.tipo === 'experimental' && (
-                    <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#000', borderRadius: 4, padding: '2px 7px' }}>exp.</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card card-hover" style={{ ...cardBase, borderColor: stats.aguardando > 0 ? '#f0a50077' : 'var(--border)' }}>
-          <CardHeader
-            title={stats.aguardando > 0 ? `⚠️ ${stats.aguardando} pagamento(s) aguardando` : 'Pagamentos'}
-            color={stats.aguardando > 0 ? '#f0a500' : 'var(--text)'}
-            action="Ver todos"
-            href="/admin/pagamentos?status=aguardando_confirmacao"
-          />
-          {loading ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
-          ) : pagPendentes.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Nenhum pagamento pendente.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {pagPendentes.map(p => (
-                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{p.aluno_nome}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-                      R$ {Number(p.valor).toFixed(2).replace('.', ',')}
-                      {p.comprovante_recebido_em && ` · ${new Date(p.comprovante_recebido_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
-                    </div>
-                  </div>
-                  <Link href="/admin/pagamentos?status=aguardando_confirmacao" style={{
-                    background: '#f0a500', color: '#000', borderRadius: 6, padding: '6px 12px',
-                    fontSize: 11, fontWeight: 800, textDecoration: 'none',
-                  }}>Confirmar</Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* PRECISA DE ATENÇÃO -- coisas que, se ignoradas, viram problema */}
-      <SectionTitle>Precisa de atenção</SectionTitle>
-      <div style={gridAuto(320)}>
-        <div className="card card-hover" style={cardBase}>
-          <CardHeader title="🎂 Aniversariantes do mês" />
-          {loading ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
-          ) : aniversariantes.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Ninguém faz aniversário esse mês.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {aniversariantes.map(a => (
-                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13 }}>{a.nome}</span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: a.ehHoje ? 'var(--accent2)' : 'var(--text2)' }}>
-                    {a.ehHoje ? 'Hoje! 🎉' : `dia ${a.dia}`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card card-hover" style={{ ...cardBase, borderColor: vencendoEmBreve.length > 0 ? 'var(--danger)77' : 'var(--border)' }}>
-          <CardHeader
-            title="⏳ Vencendo em breve"
-            color={vencendoEmBreve.length > 0 ? 'var(--danger)' : 'var(--text)'}
-            action="Ver mensalidades"
-            href="/admin/mensalidades"
-          />
-          {loading ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando...</p>
-          ) : vencendoEmBreve.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text2)' }}>Ninguém vence nos próximos 7 dias.</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {vencendoEmBreve.map(v => (
-                <Link key={v.id} href={`/admin/mensalidades/${v.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none', color: 'var(--text)' }}>
-                  <span style={{ fontSize: 13 }}>{v.nome}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>{v.dias === 0 ? 'vence hoje' : `${v.dias} dia(s)`}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* DESEMPENHO -- números do estúdio ao longo do tempo */}
-      <SectionTitle>Desempenho</SectionTitle>
-      <div style={gridAuto(320)}>
-        <div className="card card-hover" style={cardBase}>
-          <CardHeader title="💰 Faturamento por mês" action="Ver financeiro" href="/admin/financeiro" />
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={faturamentoGrafico}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="mes" stroke="var(--text3)" fontSize={11} />
-              <YAxis stroke="var(--text3)" fontSize={11} width={40} />
-              <Tooltip
-                formatter={(v: number) => [`R$ ${Number(v).toFixed(2).replace('.', ',')}`, 'Faturamento']}
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-              />
-              <Bar dataKey="total" fill="var(--accent2)" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="card card-hover" style={cardBase}>
-          <CardHeader title="📈 Crescimento (matrículas acumuladas)" />
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={crescimentoGrafico}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="mes" stroke="var(--text3)" fontSize={11} />
-              <YAxis stroke="var(--text3)" fontSize={11} width={30} />
-              <Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }} />
-              <Line type="monotone" dataKey="alunos" stroke="#3fb950" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Acesso rápido */}
-      <SectionTitle>Acesso rápido</SectionTitle>
-      <div style={gridAuto(130)}>
-        {[
-          { label: '👥 Alunos', href: '/admin/alunos' },
-          { label: '📅 Agenda', href: '/admin/agenda' },
-          { label: '🚴 Aeróbico', href: '/admin/aerobico' },
-          { label: '💰 Pagamentos', href: '/admin/pagamentos' },
-          { label: '📊 Financeiro', href: '/admin/financeiro' },
-          { label: '📝 Posts', href: '/admin/posts' },
-        ].map(l => (
-          <Link key={l.href} href={l.href} className="card card-hover" style={{
-            ...cardBase, padding: '12px 14px', fontSize: 13, fontWeight: 700, textDecoration: 'none', color: 'var(--text)',
-            textAlign: 'center',
-          }}>{l.label}</Link>
-        ))}
-      </div>
+    <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>
+      {children}
     </div>
   )
+}
+
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
+  padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+  fontFamily: 'inherit',
 }
