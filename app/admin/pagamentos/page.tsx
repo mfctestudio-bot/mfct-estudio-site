@@ -55,6 +55,7 @@ function PagamentosContent() {
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState(params.get('status') || 'todos')
   const [confirmando, setConfirmando] = useState<string | null>(null)
+  const [reparando, setReparando] = useState<string | null>(null)
   const [dataConfirm, setDataConfirm] = useState<Record<string, string>>({})
   const [metodoConfirm, setMetodoConfirm] = useState<Record<string, string>>({})
   const [imgModal, setImgModal] = useState<string | null>(null)
@@ -234,6 +235,27 @@ function PagamentosContent() {
     load()
   }
 
+  async function repararPeriodo(pagamentoId: string) {
+    setReparando(pagamentoId)
+    const resposta = await fetch('/api/admin-reparar-periodo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagamentoId }),
+    })
+    const resultado = await resposta.json().catch(() => null)
+    setReparando(null)
+    if (!resposta.ok) {
+      alert(resultado?.error || 'Não foi possível verificar/reparar esse pagamento.')
+      return
+    }
+    if (resultado.jaExistia) {
+      alert(`Esse pagamento já tinha um período certinho (até ${new Date(resultado.dataFim + 'T00:00:00').toLocaleDateString('pt-BR')}). Nada foi alterado.`)
+    } else {
+      alert(`Período recriado com sucesso: até ${new Date(resultado.dataFim + 'T00:00:00').toLocaleDateString('pt-BR')}. O aluno já recebeu um aviso no WhatsApp.`)
+    }
+    load()
+  }
+
   const pendentes = rows.filter(r => r.status === 'aguardando_confirmacao').length
   const rowsOrdenadas = [...rows].sort((a, b) => {
     if (ordenacao === 'recentes') return (b.created_at || '').localeCompare(a.created_at || '')
@@ -334,6 +356,26 @@ function PagamentosContent() {
                   </button>
                 </div>
               </div>
+
+              {/* Reparo manual: pagamento já "pago" mas sem período de 30 dias criado
+                  (falha pontual entre o registro do pagamento e a criação do período --
+                  ver repararPeriodoPagamento em lib/planos.ts). Uso raro, só quando o
+                  aluno reclama que pagou mas o plano continua mostrando vencido. */}
+              {p.status === 'pago' && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    onClick={() => repararPeriodo(p.id)}
+                    disabled={reparando === p.id}
+                    style={{
+                      background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)',
+                      borderRadius: 6, padding: '7px 12px', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                    title="Use só se o aluno pagou mas o plano continua mostrando vencido -- confere e recria o período de 30 dias desse pagamento, se estiver faltando."
+                  >
+                    {reparando === p.id ? 'Verificando...' : '🔧 Verificar/recriar período desse pagamento'}
+                  </button>
+                </div>
+              )}
 
               {/* Comprovante + Confirmação */}
               {p.status === 'aguardando_confirmacao' && (
