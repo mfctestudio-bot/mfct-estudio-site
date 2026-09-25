@@ -94,8 +94,7 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
   dataVencimento.setMonth(dataVencimento.getMonth() + 1)
 
   let pagamentoId = input.pagamentoId
-  let pagamentoCriado = false
-  let pagamentoAnterior: Record<string, unknown> | null = null
+  let statusEsperado: string | null = null
 
   if (pagamentoId) {
     const { data: pagamento, error } = await supabase
@@ -112,27 +111,7 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
     if (pagamento.status === 'pago') {
       throw new Error('Esse pagamento já foi confirmado antes -- não dá pra ativar o plano de novo pra ele (evita duplicar o período). Atualize a tela.')
     }
-    pagamentoAnterior = pagamento
-
-    // O UPDATE só "ganha" se o status ainda for o que acabamos de ler (.eq('status', pagamento.status)).
-    // Se duas confirmações chegarem quase juntas, a que perder essa corrida recebe 0 linhas
-    // afetadas e é barrada abaixo, antes de criar um segundo período duplicado.
-    const { data: pagamentoAtualizado, error: updateError } = await supabase.from('pagamentos').update({
-      plano_id: input.planoId,
-      valor: input.valor,
-      valor_original: input.valorOriginal,
-      desconto: input.desconto,
-      status: 'pago',
-      confirmado_em: new Date().toISOString(),
-      confirmado_por: 'admin',
-      data_pagamento: dataPagamento.toISOString(),
-      data_vencimento: dataVencimento.toISOString().slice(0, 10),
-      metodo_pagamento: input.metodoPagamento || 'manual',
-    }).eq('id', pagamentoId).eq('aluno_id', input.alunoId).eq('status', pagamento.status).select('id')
-    if (updateError) throw new Error(updateError.message)
-    if (!pagamentoAtualizado || pagamentoAtualizado.length === 0) {
-      throw new Error('Esse pagamento já foi confirmado por outra ação ao mesmo tempo -- nada foi duplicado, só atualize a tela.')
-    }
+    statusEsperado = pagamento.status
   } else {
     // Correcao (23/09/2026): mesma corrida do caso acima, mas pra ativação SEM um pagamento
     // existente (ex.: primeira mensalidade de um aluno novo). Aqui não há linha de pagamento
@@ -148,58 +127,46 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
     if (possivelDuplicado) {
       throw new Error('Já existe um período começando nessa mesma data pra esse aluno -- parece um clique duplicado. Atualize a tela antes de tentar de novo.')
     }
-
-    const { data: pagamento, error } = await supabase.from('pagamentos').insert({
-      aluno_id: input.alunoId,
-      plano_id: input.planoId,
-      valor: input.valor,
-      valor_original: input.valorOriginal,
-      desconto: input.desconto,
-      status: 'pago',
-      confirmado_em: new Date().toISOString(),
-      confirmado_por: 'admin',
-      data_pagamento: dataPagamento.toISOString(),
-      data_vencimento: dataVencimento.toISOString().slice(0, 10),
-      metodo_pagamento: input.metodoPagamento || 'manual',
-      observacao: input.observacao,
-    }).select('id').single()
-    if (error || !pagamento) throw new Error(error?.message || 'não foi possível criar o pagamento')
-    pagamentoId = pagamento.id
-    pagamentoCriado = true
   }
 
-  const { data: periodo, error: novoPeriodoError } = await supabase.from('planos_periodos').insert({
-    aluno_id: input.alunoId,
-    pagamento_id: pagamentoId,
-    data_inicio: dataInicio,
-    data_fim: dataFim,
-    status: statusPeriodo,
-  }).select('id').single()
+  // Correcao (25/09/2026): antes, pagamento -> periodo -> aluno eram 3 escritas separadas
+  // (3 idas e voltas ao banco). Se o servidor fosse interrompido entre a 1a e a 2a (timeout,
+  // etc.), o pagamento ficava "pago" mas o periodo nunca nascia -- e foi exatamente o que
+  // aconteceu com a Larissa e a Ivanilda em 24/09/2026 (o rollback manual que existia aqui
+  // nunca chegava a rodar, porque a funcao inteira ja tinha sido cortada). Agora as 3
+  // escritas acontecem dentro de UMA UNICA transacao no banco (funcao ativar_plano_tx):
+  // ou as 3 acontecem juntas, ou nenhuma acontece. Elimina esse jeito de quebrar de vez.
+  const { data: resultado, error: rpcError } = await supabase
+    .rpc('ativar_plano_tx', {
+      p_aluno_id: input.alunoId,
+      p_plano_id: input.planoId,
+      p_pagamento_id: pagamentoId || null,
+      p_status_esperado: statusEsperado,
+      p_valor: input.valor,
+      p_valor_original: input.valorOriginal,
+      p_desconto: input.desconto,
+      p_data_pagamento: dataPagamento.toISOString(),
+      p_data_vencimento: dataVencimento.toISOString().slice(0, 10),
+      p_metodo_pagamento: input.metodoPagamento || 'manual',
+      p_observacao: input.observacao || null,
+      p_data_inicio: dataInicio,
+      p_data_fim: dataFim,
+      p_status_periodo: statusPeriodo,
+      p_dia_vencimento: Number(input.dataPagamento.slice(8, 10)),
+    })
+    .single()
 
-  if (novoPeriodoError || !periodo) {
-    if (pagamentoCriado) {
-      await supabase.from('pagamentos').delete().eq('id', pagamentoId).eq('aluno_id', input.alunoId)
-    } else if (pagamentoAnterior) {
-      await supabase.from('pagamentos').update(pagamentoAnterior).eq('id', pagamentoId).eq('aluno_id', input.alunoId)
+  if (rpcError) {
+    if (rpcError.message?.includes('pagamento_ja_confirmado')) {
+      throw new Error('Esse pagamento já foi confirmado por outra ação ao mesmo tempo -- nada foi duplicado, só atualize a tela.')
     }
-    throw new Error(novoPeriodoError?.message || 'não foi possível criar o período')
+    throw new Error(rpcError.message)
   }
+  if (!resultado) throw new Error('não foi possível ativar o plano')
 
-  const { error: alunoUpdateError } = await supabase.from('alunos').update({
-    status_plano: 'ativo',
-    plano_id: input.planoId,
-    dia_vencimento: Number(input.dataPagamento.slice(8, 10)),
-  }).eq('id', input.alunoId)
-
-  if (alunoUpdateError) {
-    await supabase.from('planos_periodos').delete().eq('id', periodo.id).eq('aluno_id', input.alunoId)
-    if (pagamentoCriado) {
-      await supabase.from('pagamentos').delete().eq('id', pagamentoId).eq('aluno_id', input.alunoId)
-    } else if (pagamentoAnterior) {
-      await supabase.from('pagamentos').update(pagamentoAnterior).eq('id', pagamentoId).eq('aluno_id', input.alunoId)
-    }
-    throw new Error(alunoUpdateError.message)
-  }
+  const rpcResultado = resultado as { pagamento_id: string; periodo_id: string }
+  pagamentoId = rpcResultado.pagamento_id
+  const periodoId = rpcResultado.periodo_id
 
   if (!pagamentoId) throw new Error('pagamentoId ausente após criação/atualização do pagamento')
 
@@ -216,7 +183,7 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
     )
   }
 
-  return { pagamentoId, periodoId: periodo.id, dataInicio, dataFim }
+  return { pagamentoId, periodoId, dataInicio, dataFim }
 }
 
 export type LiberacaoAgendaResult = {
