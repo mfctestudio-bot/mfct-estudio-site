@@ -650,6 +650,94 @@ export async function editarInicioPeriodo(input: EditarInicioPeriodoInput): Prom
   return { periodoId: atualizado.id, dataInicio: atualizado.data_inicio, dataFim: atualizado.data_fim, status: atualizado.status }
 }
 
+export type RepararPeriodoResult = {
+  periodoId: string
+  dataInicio: string
+  dataFim: string
+  jaExistia: boolean
+}
+
+// Reparo manual (25/09/2026): achamos pagamentos com status='pago' e confirmado_em
+// preenchido, mas SEM nenhum planos_periodos correspondente -- ou seja, o dinheiro
+// foi registrado mas o plano nunca foi de fato renovado (a aula continuava marcando
+// vencimento antigo). Causa exata ainda nao confirmada (suspeita de timeout do
+// servidor entre o INSERT do pagamento e o INSERT do periodo, sem der tempo do
+// rollback automatico rodar). Esta funcao conserta so esse buraco especifico:
+// não mexe em nada que já esteja certo, e usa exatamente a mesma conta de datas
+// que ativarPlano() usaria (30 dias a partir de onde o ultimo periodo do aluno
+// parou de cobrir, ou a partir da data do pagamento se não havia período anterior).
+// Não é uma porta lateral nova: continua dentro de lib/planos.ts, e só cria o que
+// ativarPlano() já deveria ter criado para aquele pagamento específico.
+export async function repararPeriodoPagamento(pagamentoId: string): Promise<RepararPeriodoResult> {
+  const supabase = serviceClient()
+
+  const { data: pagamento, error: pagamentoError } = await supabase
+    .from('pagamentos')
+    .select('id, aluno_id, data_pagamento, status')
+    .eq('id', pagamentoId)
+    .single()
+  if (pagamentoError || !pagamento) throw new Error(pagamentoError?.message || 'pagamento não encontrado')
+  if (pagamento.status !== 'pago') throw new Error('esse pagamento não está com status "pago" -- nada a reparar')
+
+  const { data: periodoExistente, error: existenteError } = await supabase
+    .from('planos_periodos')
+    .select('id, data_inicio, data_fim')
+    .eq('pagamento_id', pagamentoId)
+    .maybeSingle()
+  if (existenteError) throw new Error(existenteError.message)
+  if (periodoExistente) {
+    return { periodoId: periodoExistente.id, dataInicio: periodoExistente.data_inicio, dataFim: periodoExistente.data_fim, jaExistia: true }
+  }
+
+  const dataPagamentoIso = isoDate(new Date(pagamento.data_pagamento))
+
+  // Mesmo período "mais recente" que ativarPlano() teria olhado antes de criar este.
+  const { data: outrosPeriodos, error: outrosError } = await supabase
+    .from('planos_periodos')
+    .select('id, data_fim')
+    .eq('aluno_id', pagamento.aluno_id)
+    .neq('pagamento_id', pagamentoId)
+    .order('data_fim', { ascending: false })
+    .limit(1)
+  if (outrosError) throw new Error(outrosError.message)
+  const ultimoPeriodo = (outrosPeriodos || [])[0] || null
+
+  let dataInicio = dataPagamentoIso
+  if (ultimoPeriodo) {
+    const fimUltimo = new Date(`${ultimoPeriodo.data_fim}T00:00:00`)
+    const dataPagDate = new Date(`${dataPagamentoIso}T00:00:00`)
+    if (fimUltimo >= dataPagDate) {
+      fimUltimo.setDate(fimUltimo.getDate() + 1)
+      dataInicio = isoDate(fimUltimo)
+    }
+  }
+
+  const dataFimDate = new Date(`${dataInicio}T00:00:00`)
+  dataFimDate.setDate(dataFimDate.getDate() + 30)
+  const dataFim = isoDate(dataFimDate)
+  const hoje = isoDate(new Date())
+  const status = dataInicio <= hoje ? 'ativo' : 'agendado'
+
+  const { data: periodo, error: periodoError } = await supabase
+    .from('planos_periodos')
+    .insert({ aluno_id: pagamento.aluno_id, pagamento_id: pagamentoId, data_inicio: dataInicio, data_fim: dataFim, status })
+    .select('id')
+    .single()
+  if (periodoError || !periodo) throw new Error(periodoError?.message || 'não foi possível criar o período')
+
+  const { data: aluno } = await supabase.from('alunos').select('nome, telefone').eq('id', pagamento.aluno_id).single()
+  if (aluno?.telefone) {
+    const dataFimFmt = new Date(`${dataFim}T00:00:00`).toLocaleDateString('pt-BR')
+    const primeiroNome = aluno.nome ? aluno.nome.split(' ')[0] : ''
+    await enviarWhatsAppAluno(
+      aluno.telefone,
+      `Oi${primeiroNome ? `, ${primeiroNome}` : ''}! Seu contrato no MFCT Estúdio foi renovado com sucesso, valendo até ${dataFimFmt}. Agradecemos demais por fazer parte da família MFCT! 💪🙏`
+    )
+  }
+
+  return { periodoId: periodo.id, dataInicio, dataFim, jaExistia: false }
+}
+
 type ExcluirPeriodoResult = {
   periodoId: string
   eraVigenteHoje: boolean
