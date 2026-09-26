@@ -96,8 +96,9 @@ export default function MensalidadesPage() {
     <div>
       <h1 style={{ fontSize: 28, marginBottom: 4 }}>Planos</h1>
       <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
-        Quem está em dia, quem venceu, e quem já renovou pro próximo período. Pra confirmar um
-        pagamento ou registrar um novo, use a tela de <Link href="/admin/pagamentos" style={{ color: 'var(--accent2)' }}>Pagamentos</Link> —
+        Quem está em dia, quem venceu, e quem já renovou pro próximo período. Pra renovar, trocar de
+        plano, pausar ou cancelar, clique no aluno. Pra confirmar um pagamento pendente ou estornar,
+        use a tela de <Link href="/admin/pagamentos" style={{ color: 'var(--accent2)' }}>Pagamentos</Link> —
         assim que um pagamento é confirmado por lá, a mensalidade do aluno é liberada aqui automaticamente.
       </p>
 
