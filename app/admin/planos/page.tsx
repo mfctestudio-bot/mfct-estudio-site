@@ -10,6 +10,10 @@ type Plano = {
   valor: number
   ativo: boolean
   created_at: string
+  chave_pix: string | null
+  link_cartao: string | null
+  valor_atualizado_em: string
+  pix_atualizado_em: string | null
 }
 
 type Desconto = {
@@ -24,6 +28,11 @@ type Desconto = {
 const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
   padding: '9px 12px', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
+}
+
+function pixDesatualizado(p: Plano) {
+  if (!p.pix_atualizado_em) return true
+  return new Date(p.valor_atualizado_em).getTime() > new Date(p.pix_atualizado_em).getTime()
 }
 
 function PlanosContent() {
@@ -45,6 +54,12 @@ function PlanosContent() {
   const [editNome, setEditNome] = useState('')
   const [editVezes, setEditVezes] = useState('')
   const [editValor, setEditValor] = useState('')
+  const [editChavePix, setEditChavePix] = useState('')
+  const [editLinkCartao, setEditLinkCartao] = useState('')
+
+  const [chaveDesconto, setChaveDesconto] = useState('')
+  const [chaveDescontoSalva, setChaveDescontoSalva] = useState('')
+  const [salvandoDesconto, setSalvandoDesconto] = useState(false)
 
   async function carregar() {
     setLoading(true)
@@ -52,6 +67,10 @@ function PlanosContent() {
     setPlanos((data as Plano[]) || [])
     const { data: descData } = await supabase.from('descontos_planos').select('*').order('valor', { ascending: false })
     setDescontos((descData as Desconto[]) || [])
+    const { data: config } = await supabase.from('configuracoes').select('valor').eq('chave', 'chave_pix_desconto').maybeSingle()
+    const valorConfig = (config as { valor: string | null } | null)?.valor || ''
+    setChaveDesconto(valorConfig)
+    setChaveDescontoSalva(valorConfig)
     setLoading(false)
   }
 
@@ -104,12 +123,21 @@ function PlanosContent() {
     setEditNome(p.nome)
     setEditVezes(String(p.vezes_semana))
     setEditValor(String(p.valor))
+    setEditChavePix(p.chave_pix || '')
+    setEditLinkCartao(p.link_cartao || '')
   }
 
   async function salvarEdicao(id: string) {
-    await supabase.from('planos').update({
+    const planoAtual = planos.find(p => p.id === id)
+    const corpo: Record<string, unknown> = {
       nome: editNome.trim(), vezes_semana: Number(editVezes) || 1, valor: Number(editValor),
-    }).eq('id', id)
+    }
+    // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
+    if (planoAtual && editChavePix.trim() !== (planoAtual.chave_pix || '')) {
+      corpo.chave_pix = editChavePix.trim() || null
+    }
+    corpo.link_cartao = editLinkCartao.trim() || null
+    await supabase.from('planos').update(corpo).eq('id', id)
     setEditandoId(null)
     carregar()
   }
@@ -119,20 +147,45 @@ function PlanosContent() {
     setPlanos(prev => prev.map(x => x.id === p.id ? { ...x, ativo: !x.ativo } : x))
   }
 
+  async function salvarChaveDesconto() {
+    setSalvandoDesconto(true)
+    await supabase.from('configuracoes').update({ valor: chaveDesconto.trim() || null, atualizado_em: new Date().toISOString() }).eq('chave', 'chave_pix_desconto')
+    setChaveDescontoSalva(chaveDesconto)
+    setSalvandoDesconto(false)
+  }
+
   return (
     <div>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Planos</h1>
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Crie, edite ou desative os tipos de plano oferecidos pelo estúdio. Isso não mexe em nenhum aluno já cadastrado — só afeta quais opções aparecem pra escolher daqui pra frente.
+        Crie, edite ou desative os tipos de plano oferecidos pelo estúdio. Cadastre aqui a chave Pix (já com o
+        valor certo) e o link de pagamento no cartão de cada plano — é isso que a Elen vai mandar pro aluno.
+        Isso não mexe em nenhum aluno já cadastrado — só afeta quais opções aparecem pra escolher daqui pra frente.
       </p>
+
+      <div className="card" style={{ padding: '14px 16px', marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Chave Pix de desconto</div>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>
+          Chave Pix sem valor travado, usada só quando o aluno tem desconto. A Elen manda essa chave e informa o
+          valor combinado (já com desconto) pro aluno digitar na hora de pagar.
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input value={chaveDesconto} onChange={e => setChaveDesconto(e.target.value)} style={{ ...inputStyle, flex: '1 1 240px' }} placeholder="Ex: (21) 98103-7108 ou uma chave copia-e-cola sem valor" />
+          <button onClick={salvarChaveDesconto} disabled={salvandoDesconto || chaveDesconto === chaveDescontoSalva} className="btn btn-primary btn-sm">
+            {salvandoDesconto ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
-          {planos.map(p => (
+          {planos.map(p => {
+            const desatualizado = !!p.chave_pix && pixDesatualizado(p)
+            return (
             <div key={p.id} className="card card-hover" style={{
-              borderColor: p.ativo ? 'var(--border)' : 'var(--danger)',
+              borderColor: !p.ativo ? 'var(--danger)' : (desatualizado ? '#e0a020' : 'var(--border)'),
               padding: '14px 16px', opacity: p.ativo ? 1 : 0.55,
             }}>
               {editandoId === p.id ? (
@@ -141,6 +194,18 @@ function PlanosContent() {
                     <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '2 1 160px' }} placeholder="Nome do plano" />
                     <input type="number" min={1} value={editVezes} onChange={e => setEditVezes(e.target.value)} style={{ ...inputStyle, flex: '1 1 80px' }} placeholder="Vezes/semana" />
                     <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
+                      Chave Pix (já com o valor certo desse plano)
+                    </label>
+                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola com o valor deste plano" />
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
+                      Link de pagamento no cartão
+                    </label>
+                    <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={inputStyle} placeholder="Cole aqui o link de pagamento no cartão deste plano" />
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => salvarEdicao(p.id)} className="btn btn-primary btn-sm">Salvar</button>
@@ -155,6 +220,11 @@ function PlanosContent() {
                       {p.vezes_semana}x/semana · R$ {Number(p.valor).toFixed(2)}
                     </span>
                     {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                      {p.chave_pix ? '✅ Pix cadastrado' : '⚠️ Sem chave Pix cadastrada'}
+                      {p.link_cartao ? ' · ✅ Cartão cadastrado' : ' · sem link de cartão'}
+                      {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} className="btn btn-ghost btn-sm">
@@ -206,7 +276,8 @@ function PlanosContent() {
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -235,6 +306,9 @@ function PlanosContent() {
                 <input type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} style={inputStyle} placeholder="Ex: 199.90" />
               </div>
             </div>
+            <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+              Depois de criar, edite o plano pra cadastrar a chave Pix e o link de cartão.
+            </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">
