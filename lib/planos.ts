@@ -290,15 +290,15 @@ const cancelados: VerificarVencimentosResult['cancelados'] = []
 
 const { data: periodos, error: periodosError } = await supabase
   .from('planos_periodos')
-  .select('aluno_id, data_inicio, data_fim')
+  .select('aluno_id, data_inicio, data_fim, status')
   .in('aluno_id', alunoIds)
   .order('data_fim', { ascending: false })
   if (periodosError) throw new Error(periodosError.message)
 
-const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string }[]>()
+const periodosPorAluno = new Map<string, { data_inicio: string; data_fim: string; status: string }[]>()
   for (const periodo of periodos || []) {
     const lista = periodosPorAluno.get(periodo.aluno_id) || []
-    lista.push({ data_inicio: periodo.data_inicio, data_fim: periodo.data_fim })
+    lista.push({ data_inicio: periodo.data_inicio, data_fim: periodo.data_fim, status: periodo.status })
     periodosPorAluno.set(periodo.aluno_id, lista)
   }
 
@@ -307,8 +307,10 @@ for (const aluno of alunosRelevantes || []) {
   const listaPeriodos = periodosPorAluno.get(alunoId) || []
 
   // Hoje esta coberto por algum periodo (passado, atual ou ja agendado)? entao esta em dia,
-  // mesmo que exista tambem um periodo futuro ja cadastrado.
-  const coberto = listaPeriodos.some(p => p.data_inicio <= hojeIso && p.data_fim >= hojeIso)
+  // mesmo que exista tambem um periodo futuro ja cadastrado. Um periodo 'pendente'
+  // (Cenario B -- renovacao criada mas pagamento ainda nao confirmado) NUNCA conta como
+  // cobertura, mesmo que a data dele ja cubra hoje (correcao 25/09/2026).
+  const coberto = listaPeriodos.some(p => p.status !== 'pendente' && p.data_inicio <= hojeIso && p.data_fim >= hojeIso)
   if (coberto) {
     if (aluno.status_plano === 'vencido') {
       // Reconciliacao de seguranca: nao deveria acontecer (renovar via ativarPlano ja bota
@@ -584,7 +586,7 @@ export async function editarInicioPeriodo(input: EditarInicioPeriodoInput): Prom
 
   const { data: periodo, error: periodoError } = await supabase
     .from('planos_periodos')
-    .select('id, aluno_id')
+    .select('id, aluno_id, status')
     .eq('id', input.periodoId)
     .single()
   if (periodoError || !periodo) throw new Error(periodoError?.message || 'período não encontrado')
@@ -604,7 +606,11 @@ export async function editarInicioPeriodo(input: EditarInicioPeriodoInput): Prom
   if (sobrepoe) throw new Error('Essa data faz esse período se sobrepor a outro período já registrado do aluno. Ajuste ou remova o outro período primeiro.')
 
   const hoje = isoDate(new Date())
-  const novoStatus = novaDataInicio <= hoje ? 'ativo' : 'agendado'
+  // Correcao (25/09/2026): um periodo 'pendente' (Cenario B, pagamento ainda nao
+  // confirmado) tem que continuar pendente mesmo depois de corrigir a data -- so
+  // confirmarPagamentoPendente() pode tirar ele do pendente. Sem isso, so corrigir
+  // a data de um periodo pendente ja liberava o acesso sem o pagamento ser confirmado.
+  const novoStatus = periodo.status === 'pendente' ? 'pendente' : (novaDataInicio <= hoje ? 'ativo' : 'agendado')
 
   const { data: atualizado, error: updateError } = await supabase
     .from('planos_periodos')
@@ -703,6 +709,191 @@ export async function repararPeriodoPagamento(pagamentoId: string): Promise<Repa
   }
 
   return { periodoId: periodo.id, dataInicio, dataFim, jaExistia: false }
+}
+
+export type CriarMensalidadePendenteInput = {
+  alunoId: string
+  planoId: string
+  valor: number
+  valorOriginal: number
+  desconto: number
+  observacao?: string
+}
+
+export type CriarMensalidadePendenteResult = {
+  pagamentoId: string
+  periodoId: string
+  dataInicio: string
+  dataFim: string
+}
+
+// Reorganizacao Mensalidades/Pagamentos (25/09/2026) -- CENARIO B do fluxo de renovacao:
+// cria a mensalidade (periodo) e o pagamento correspondente, os dois como PENDENTE, numa
+// unica transacao no banco (mesma logica de atomicidade do ativarPlano()). O aluno NAO e
+// liberado aqui -- status_plano so muda quando o pagamento for confirmado de fato, em
+// confirmarPagamentoPendente(). O pagamento pendente aparece na hora em Financeiro ->
+// Pagamentos, esperando confirmacao.
+export async function criarMensalidadePendente(input: CriarMensalidadePendenteInput): Promise<CriarMensalidadePendenteResult> {
+  const supabase = serviceClient()
+
+  const { data: ultimoPeriodo, error: periodoError } = await supabase
+    .from('planos_periodos')
+    .select('id, data_fim')
+    .eq('aluno_id', input.alunoId)
+    .order('data_fim', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (periodoError) throw new Error(periodoError.message)
+
+  const hoje = isoDate(new Date())
+  let dataInicio = hoje
+  if (ultimoPeriodo) {
+    const fimUltimo = new Date(`${ultimoPeriodo.data_fim}T00:00:00`)
+    const hojeDate = new Date(`${hoje}T00:00:00`)
+    if (fimUltimo >= hojeDate) {
+      fimUltimo.setDate(fimUltimo.getDate() + 1)
+      dataInicio = isoDate(fimUltimo)
+    }
+  }
+  const dataFimDate = new Date(`${dataInicio}T00:00:00`)
+  dataFimDate.setDate(dataFimDate.getDate() + 30)
+  const dataFim = isoDate(dataFimDate)
+
+  const dataVencimento = new Date(`${dataInicio}T12:00:00`)
+  dataVencimento.setMonth(dataVencimento.getMonth() + 1)
+
+  const { data: resultado, error } = await supabase
+    .rpc('criar_mensalidade_pendente_tx', {
+      p_aluno_id: input.alunoId,
+      p_plano_id: input.planoId,
+      p_valor: input.valor,
+      p_valor_original: input.valorOriginal,
+      p_desconto: input.desconto,
+      p_data_vencimento: dataVencimento.toISOString().slice(0, 10),
+      p_observacao: input.observacao || null,
+      p_data_inicio: dataInicio,
+      p_data_fim: dataFim,
+    })
+    .single()
+  if (error) throw new Error(error.message)
+  if (!resultado) throw new Error('não foi possível criar a mensalidade pendente')
+
+  const r = resultado as { pagamento_id: string; periodo_id: string }
+  return { pagamentoId: r.pagamento_id, periodoId: r.periodo_id, dataInicio, dataFim }
+}
+
+export type ConfirmarPagamentoPendenteInput = {
+  pagamentoId: string
+  dataPagamento: string
+  metodoPagamento?: string
+}
+
+export type ConfirmarPagamentoPendenteResult = {
+  pagamentoId: string
+  periodoId: string
+  dataInicio: string
+  dataFim: string
+}
+
+// CENARIO B (continuacao): confirma um pagamento que estava pendente. Muda o MESMO
+// periodo que ja existia (pendente -> ativo/agendado) -- nunca cria um segundo periodo
+// pro mesmo pagamento. Libera o aluno (status_plano='ativo') so agora, na confirmacao.
+export async function confirmarPagamentoPendente(input: ConfirmarPagamentoPendenteInput): Promise<ConfirmarPagamentoPendenteResult> {
+  const supabase = serviceClient()
+  const dataPagamento = new Date(`${input.dataPagamento}T12:00:00`)
+  if (Number.isNaN(dataPagamento.getTime())) throw new Error('data de pagamento inválida')
+
+  const { data: pagamento, error: pagamentoError } = await supabase
+    .from('pagamentos')
+    .select('id, aluno_id')
+    .eq('id', input.pagamentoId)
+    .single()
+  if (pagamentoError || !pagamento) throw new Error(pagamentoError?.message || 'pagamento não encontrado')
+
+  const { data: aluno, error: alunoError } = await supabase
+    .from('alunos')
+    .select('id, nome, telefone')
+    .eq('id', pagamento.aluno_id)
+    .single()
+  if (alunoError || !aluno) throw new Error(alunoError?.message || 'aluno não encontrado')
+
+  const { data: resultado, error } = await supabase
+    .rpc('confirmar_pagamento_pendente_tx', {
+      p_pagamento_id: input.pagamentoId,
+      p_metodo_pagamento: input.metodoPagamento || 'manual',
+      p_data_pagamento: dataPagamento.toISOString(),
+      p_dia_vencimento: Number(input.dataPagamento.slice(8, 10)),
+    })
+    .single()
+  if (error) {
+    if (error.message?.includes('pagamento_nao_esta_pendente')) {
+      throw new Error('Esse pagamento não está mais pendente (já foi confirmado ou removido) -- atualize a tela.')
+    }
+    throw new Error(error.message)
+  }
+  if (!resultado) throw new Error('não foi possível confirmar o pagamento')
+
+  const r = resultado as { pagamento_id: string; periodo_id: string; data_inicio: string; data_fim: string; status_periodo: string }
+
+  if (aluno.telefone) {
+    const dataFimFmt = new Date(`${r.data_fim}T00:00:00`).toLocaleDateString('pt-BR')
+    const primeiroNome = aluno.nome ? aluno.nome.split(' ')[0] : ''
+    await enviarWhatsAppAluno(
+      aluno.telefone,
+      `Oi${primeiroNome ? `, ${primeiroNome}` : ''}! Recebi seu pagamento e seu plano no MFCT Estúdio já está confirmado e ativo até ${dataFimFmt}. Bons treinos! 💪`
+    )
+  }
+
+  return { pagamentoId: r.pagamento_id, periodoId: r.periodo_id, dataInicio: r.data_inicio, dataFim: r.data_fim }
+}
+
+export type EstornarPagamentoResult = {
+  pagamentoId: string
+  periodoRemovidoId: string | null
+  alunoMarcadoVencido: boolean
+}
+
+// Estorna um pagamento PAGO: preserva o historico (status='estornado', o valor e a data
+// continuam registrados), mas remove o periodo de acesso que esse pagamento tinha
+// liberado -- o dinheiro voltou, entao o acesso concedido por ele nao vale mais. Se esse
+// periodo era o que cobria hoje, o aluno ja volta pra 'vencido' na hora.
+export async function estornarPagamento(pagamentoId: string): Promise<EstornarPagamentoResult> {
+  const supabase = serviceClient()
+  const { data: resultado, error } = await supabase
+    .rpc('estornar_pagamento_tx', { p_pagamento_id: pagamentoId })
+    .single()
+  if (error) {
+    if (error.message?.includes('pagamento_nao_esta_pago')) {
+      throw new Error('Só dá pra estornar um pagamento que está com status "Pago".')
+    }
+    throw new Error(error.message)
+  }
+  if (!resultado) throw new Error('não foi possível estornar o pagamento')
+  const r = resultado as { pagamento_id: string; periodo_removido_id: string | null; aluno_marcado_vencido: boolean }
+  return { pagamentoId: r.pagamento_id, periodoRemovidoId: r.periodo_removido_id, alunoMarcadoVencido: r.aluno_marcado_vencido }
+}
+
+export type EditarValorMensalidadeResult = {
+  pagamentoId: string
+  valor: number
+  desconto: number
+}
+
+// Edicao de valor da mensalidade (Financeiro -> Mensalidades -> Aluno). So corrige o
+// valor/desconto do pagamento JA existente relacionado aquele periodo -- nunca cria um
+// segundo pagamento (regra de consistencia do pedido de reorganizacao). Funciona tanto
+// pro pagamento ainda pendente quanto pro ja pago (correcao pontual, ex.: desconto dado
+// depois -- preserva o historico, so ajusta o valor).
+export async function editarValorMensalidade(pagamentoId: string, novoValor: number, novoDesconto: number): Promise<EditarValorMensalidadeResult> {
+  const supabase = serviceClient()
+  const { data: atualizado, error } = await supabase
+    .from('pagamentos')
+    .update({ valor: novoValor, desconto: novoDesconto })
+    .eq('id', pagamentoId)
+    .select('id, valor, desconto')
+    .single()
+  if (error || !atualizado) throw new Error(error?.message || 'não foi possível atualizar o valor da mensalidade')
+  return { pagamentoId: atualizado.id, valor: Number(atualizado.valor), desconto: Number(atualizado.desconto || 0) }
 }
 
 type ExcluirPeriodoResult = {
