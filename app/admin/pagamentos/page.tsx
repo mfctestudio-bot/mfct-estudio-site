@@ -23,23 +23,25 @@ type PagamentoRow = {
   planos: { nome: string } | null
 }
 
-type AlunoOpt = { id: string; nome: string; plano_id: string | null }
-type PlanoOpt = { id: string; nome: string; valor: number }
-
-// Pagamentos e so historico de dinheiro (o que entrou, o que esta em analise,
-// o que foi anulado). "Pendente" e "Vencido" nao entram aqui de proposito --
-// isso e status da MENSALIDADE (planos_periodos / status_plano do aluno),
-// nao do registro de pagamento em si. Ver app/admin/mensalidades para quem
-// esta devendo.
+// Reorganização Mensalidades/Pagamentos (25/09/2026): esta tela agora é só o histórico
+// financeiro. Criar mensalidade nova, corrigir data/valor ou trocar de plano são
+// operações de Financeiro → Mensalidades (perfil do aluno) -- nunca daqui. Aqui só se
+// confirma, estorna ou exclui um pagamento já existente. "pendente" é uma mensalidade
+// criada em Mensalidades como Cenário B (renovação sem pagamento ainda); "estornado" é
+// um pagamento que foi recebido e depois devolvido/cancelado (preserva o histórico).
 const STATUS_LABEL: Record<string, string> = {
+  pendente: 'Pendente',
   aguardando_confirmacao: 'Aguard. confirmação',
   pago: 'Pago',
+  estornado: 'Estornado',
   cancelado: 'Cancelado',
 }
 
 const STATUS_COLOR: Record<string, string> = {
+  pendente: '#f0a500',
   aguardando_confirmacao: '#f0a500',
   pago: '#3fb950',
+  estornado: 'var(--text3)',
   cancelado: 'var(--text3)',
 }
 
@@ -55,31 +57,12 @@ function PagamentosContent() {
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState(params.get('status') || 'todos')
   const [confirmando, setConfirmando] = useState<string | null>(null)
+  const [confirmandoPendente, setConfirmandoPendente] = useState<string | null>(null)
+  const [estornando, setEstornando] = useState<string | null>(null)
   const [reparando, setReparando] = useState<string | null>(null)
   const [dataConfirm, setDataConfirm] = useState<Record<string, string>>({})
   const [metodoConfirm, setMetodoConfirm] = useState<Record<string, string>>({})
   const [imgModal, setImgModal] = useState<string | null>(null)
-
-  const [editando, setEditando] = useState<PagamentoRow | null>(null)
-  const [editValor, setEditValor] = useState('')
-  const [editDesconto, setEditDesconto] = useState('')
-  const [editDescontoTipo, setEditDescontoTipo] = useState<'valor' | 'percentual'>('valor')
-  const [editStatus, setEditStatus] = useState('')
-  const [editData, setEditData] = useState('')
-  const [editVencimento, setEditVencimento] = useState('')
-  const [editAlunoId, setEditAlunoId] = useState('')
-  const [salvandoEdicao, setSalvandoEdicao] = useState(false)
-
-  const [novoModal, setNovoModal] = useState(false)
-  const [alunosOpt, setAlunosOpt] = useState<AlunoOpt[]>([])
-  const [planosOpt, setPlanosOpt] = useState<PlanoOpt[]>([])
-  const [novoAlunoId, setNovoAlunoId] = useState('')
-  const [novoPlanoId, setNovoPlanoId] = useState('')
-  const [novoValor, setNovoValor] = useState('')
-  const [novoDesconto, setNovoDesconto] = useState('0')
-  const [novoDescontoTipo, setNovoDescontoTipo] = useState<'valor' | 'percentual'>('valor')
-  const [novoData, setNovoData] = useState(() => new Date().toISOString().slice(0, 10))
-  const [salvandoNovo, setSalvandoNovo] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -96,99 +79,60 @@ function PagamentosContent() {
 
   useEffect(() => { load() }, [filtro])
 
-  useEffect(() => {
-    supabase.from('alunos').select('id, nome, plano_id').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
-    supabase.from('planos').select('id, nome, valor').order('valor').then(({ data }) => setPlanosOpt((data as PlanoOpt[]) || []))
-  }, [])
-
-  function abrirNovoModal() {
-    setNovoAlunoId(''); setNovoPlanoId(''); setNovoValor(''); setNovoDesconto('0')
-    setNovoData(new Date().toISOString().slice(0, 10))
-    if (alunosOpt.length === 0) {
-      supabase.from('alunos').select('id, nome, plano_id').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
-    }
-    if (planosOpt.length === 0) {
-      supabase.from('planos').select('id, nome, valor').order('valor').then(({ data }) => setPlanosOpt((data as PlanoOpt[]) || []))
-    }
-    setNovoModal(true)
-  }
-
-  async function salvarNovoPagamento() {
-    if (!novoAlunoId || !novoValor) return
-    setSalvandoNovo(true)
-    const plano = planosOpt.find(p => p.id === novoPlanoId)
-    const valorOriginalPlano = plano ? Number(plano.valor) : Number(novoValor)
-    const descontoReais = novoDescontoTipo === 'percentual'
-      ? Math.round(valorOriginalPlano * (Number(novoDesconto || 0) / 100) * 100) / 100
-      : Number(novoDesconto || 0)
-    const dataPagDate = new Date(novoData + 'T12:00:00')
-    const dataVencimento = new Date(dataPagDate)
-    dataVencimento.setMonth(dataVencimento.getMonth() + 1)
-    await supabase.from('pagamentos').insert({
-      aluno_id: novoAlunoId,
-      plano_id: novoPlanoId || null,
-      valor: Number(novoValor),
-      valor_original: valorOriginalPlano,
-      desconto: descontoReais,
-      status: 'pago',
-      metodo_pagamento: 'manual',
-      confirmado_em: new Date().toISOString(),
-      confirmado_por: 'admin',
-      data_pagamento: dataPagDate.toISOString(),
-      data_vencimento: dataVencimento.toISOString().slice(0, 10),
-    })
-    setSalvandoNovo(false)
-    setNovoModal(false)
-    load()
-  }
-
-  function abrirEdicao(p: PagamentoRow) {
-    setEditando(p)
-    setEditValor(String(p.valor))
-    setEditDesconto(String(p.desconto || 0))
-    setEditDescontoTipo('valor')
-    setEditStatus(p.status)
-    setEditData(p.data_pagamento ? p.data_pagamento.slice(0, 10) : new Date().toISOString().slice(0, 10))
-    setEditVencimento(p.data_vencimento ? p.data_vencimento.slice(0, 10) : '')
-    setEditAlunoId(p.aluno_id)
-    if (alunosOpt.length === 0) {
-      supabase.from('alunos').select('id, nome, plano_id').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
-    }
-  }
-
-  async function salvarEdicao() {
-    if (!editando) return
-    setSalvandoEdicao(true)
-    const valorRef = editando.valor_original ? Number(editando.valor_original) : Number(editValor)
-    const descontoReais = editDescontoTipo === 'percentual'
-      ? Math.round(valorRef * (Number(editDesconto || 0) / 100) * 100) / 100
-      : Number(editDesconto || 0)
-    await supabase.from('pagamentos').update({
-      valor: Number(editValor),
-      desconto: descontoReais,
-      status: editStatus,
-      data_pagamento: editStatus === 'pago' ? new Date(editData + 'T12:00:00').toISOString() : editando.data_pagamento,
-      data_vencimento: editVencimento ? new Date(editVencimento + 'T12:00:00').toISOString() : null,
-      aluno_id: editAlunoId,
-    }).eq('id', editando.id)
-    setSalvandoEdicao(false)
-    setEditando(null)
-    load()
-  }
-
   async function removerPagamento(id: string) {
-    if (!confirm('Remover este pagamento? Essa ação não pode ser desfeita.')) return
+    if (!confirm('Excluir este pagamento do histórico? Essa ação não pode ser desfeita.')) return
     const resposta = await fetch(`/api/admin-pagamentos?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
     if (!resposta.ok) {
       const erro = await resposta.json().catch(() => null)
-      alert(erro?.error || 'Não foi possível excluir o pagamento.')
+      alert(erro?.error || 'Não foi possível excluir o pagamento. Se ele já tem uma mensalidade vinculada, exclua a mensalidade em Financeiro → Mensalidades primeiro.')
       return
     }
-    setEditando(null)
     load()
   }
 
+  // CENÁRIO B: confirma um pagamento pendente criado em Financeiro → Mensalidades
+  // (renovação sem pagamento ainda). Libera a mensalidade que já existia -- não cria
+  // uma nova (ver confirmarPagamentoPendente em lib/planos.ts).
+  async function confirmarPendente(id: string) {
+    setConfirmandoPendente(id)
+    const dataPag = dataConfirm[id] || new Date().toISOString().slice(0, 10)
+    const metodo = metodoConfirm[id] || 'pix'
+    const resposta = await fetch('/api/admin-confirmar-pagamento-pendente', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagamentoId: id, dataPagamento: dataPag, metodoPagamento: metodo }),
+    })
+    setConfirmandoPendente(null)
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      alert(erro?.error || 'Não foi possível confirmar esse pagamento.')
+      return
+    }
+    load()
+  }
 
+  // Estorno: preserva o histórico (status vira 'estornado'), mas remove o período de
+  // acesso que esse pagamento tinha liberado. Diferente de excluir (ver seção 8 do
+  // pedido de reorganização).
+  async function estornarPagamentoHandler(p: PagamentoRow) {
+    if (!confirm(`Estornar o pagamento de R$ ${Number(p.valor).toFixed(2).replace('.', ',')} de ${p.alunos?.nome || 'aluno'}? O histórico fica registrado como estornado, e o período de acesso que ele tinha liberado é removido.`)) return
+    setEstornando(p.id)
+    const resposta = await fetch('/api/admin-estornar-pagamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagamentoId: p.id }),
+    })
+    const resultado = await resposta.json().catch(() => null)
+    setEstornando(null)
+    if (!resposta.ok) {
+      alert(resultado?.error || 'Não foi possível estornar esse pagamento.')
+      return
+    }
+    if (resultado.alunoMarcadoVencido) {
+      alert('Pagamento estornado. Esse era o período que cobria hoje, então o aluno já voltou pra "vencido".')
+    }
+    load()
+  }
 
   async function confirmarPagamento(id: string) {
     setConfirmando(id)
@@ -271,10 +215,10 @@ function PagamentosContent() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ fontSize: 28, marginBottom: 4 }}>Pagamentos</h1>
-        <button onClick={abrirNovoModal} className="btn btn-primary">
-          + Registrar pagamento
-        </button>
       </div>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: -8, marginBottom: 12 }}>
+        Histórico financeiro. Pra criar uma mensalidade nova (renovação, troca de plano), vá em Financeiro → Mensalidades → o aluno.
+      </p>
       {pendentes > 0 && (
         <div style={{ background: '#f0a50022', border: '1px solid #f0a500', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f0a500', fontWeight: 700 }}>
           ⚠️ {pendentes} comprovante{pendentes > 1 ? 's' : ''} aguardando sua confirmação
@@ -283,7 +227,7 @@ function PagamentosContent() {
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {['aguardando_confirmacao', 'pago', 'cancelado', 'todos'].map(s => (
+        {['pendente', 'aguardando_confirmacao', 'pago', 'estornado', 'cancelado', 'todos'].map(s => (
           <button key={s} onClick={() => setFiltro(s)} style={{
             background: filtro === s ? '#3fb95022' : 'var(--card)',
             border: `1.5px solid ${filtro === s ? '#3fb950' : 'var(--border)'}`, color: filtro === s ? '#3fb950' : 'var(--text2)',
@@ -351,30 +295,73 @@ function PagamentosContent() {
                   }}>
                     {STATUS_LABEL[p.status] || p.status}
                   </span>
-                  <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
-                    ✏️ Editar
-                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {p.status === 'pago' && (
+                      <button onClick={() => estornarPagamentoHandler(p)} disabled={estornando === p.id} className="btn btn-outline-warning btn-sm">
+                        {estornando === p.id ? 'Estornando...' : '↩️ Estornar'}
+                      </button>
+                    )}
+                    <button onClick={() => removerPagamento(p.id)} className="btn btn-ghost btn-sm">
+                      🗑️ Excluir
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Reparo manual: pagamento já "pago" mas sem período de 30 dias criado
-                  (falha pontual entre o registro do pagamento e a criação do período --
-                  ver repararPeriodoPagamento em lib/planos.ts). Uso raro, só quando o
-                  aluno reclama que pagou mas o plano continua mostrando vencido. */}
+              {/* Pagamento pendente (Cenário B, criado em Financeiro → Mensalidades):
+                  confirma exatamente esse pagamento, sem criar nada novo. */}
+              {p.status === 'pendente' && (
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 130 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Data do pagamento</div>
+                    <input
+                      type="date"
+                      value={dataConfirm[p.id] || new Date().toISOString().slice(0, 10)}
+                      onChange={e => setDataConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 110 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Como pagou</div>
+                    <select
+                      value={metodoConfirm[p.id] || 'pix'}
+                      onChange={e => setMetodoConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      style={inputStyle}
+                    >
+                      <option value="pix">Pix</option>
+                      <option value="dinheiro">Dinheiro</option>
+                      <option value="cartao">Cartão</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={() => confirmarPendente(p.id)}
+                    disabled={confirmandoPendente === p.id}
+                    className="btn btn-success"
+                    style={{ whiteSpace: 'nowrap', marginTop: 18 }}
+                  >
+                    {confirmandoPendente === p.id ? 'Confirmando...' : '✅ Confirmar pagamento'}
+                  </button>
+                </div>
+              )}
+
+              {/* Reparo manual (uso raro/avançado): pagamento já "pago" mas sem período de
+                  30 dias criado (ver repararPeriodoPagamento em lib/planos.ts). Fica
+                  escondido de propósito -- não é uma operação normal do dia a dia. */}
               {p.status === 'pago' && (
-                <div style={{ marginTop: 10 }}>
+                <details style={{ marginTop: 10 }}>
+                  <summary style={{ fontSize: 11, color: 'var(--text3)', cursor: 'pointer' }}>Opções avançadas</summary>
                   <button
                     onClick={() => repararPeriodo(p.id)}
                     disabled={reparando === p.id}
                     style={{
-                      background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)',
+                      marginTop: 8, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)',
                       borderRadius: 6, padding: '7px 12px', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit',
                     }}
                     title="Use só se o aluno pagou mas o plano continua mostrando vencido -- confere e recria o período de 30 dias desse pagamento, se estiver faltando."
                   >
                     {reparando === p.id ? 'Verificando...' : '🔧 Verificar/recriar período desse pagamento'}
                   </button>
-                </div>
+                </details>
               )}
 
               {/* Comprovante + Confirmação */}
@@ -423,177 +410,6 @@ function PagamentosContent() {
               )}
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Modal editar pagamento */}
-      {editando && (
-        <div onClick={() => !salvandoEdicao && setEditando(null)} style={{
-          position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16,
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380 }}>
-            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Editar pagamento</h3>
-            <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>{editando.planos?.nome || 'Plano'}</p>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
-              <select value={editAlunoId} onChange={e => setEditAlunoId(e.target.value)} style={inputStyle}>
-                {alunosOpt.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor (R$)</label>
-              <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {editDescontoTipo === 'percentual' ? (
-                  <select value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
-                    <option value="0">Sem desconto</option>
-                    {[5, 10, 15, 20, 25, 30, 40, 50].map(p => <option key={p} value={p}>{p}%</option>)}
-                  </select>
-                ) : (
-                  <input type="number" step="0.01" value={editDesconto} onChange={e => setEditDesconto(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
-                )}
-                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-                  {(['valor', 'percentual'] as const).map(t => (
-                    <button key={t} type="button" onClick={() => { setEditDescontoTipo(t); setEditDesconto('0') }} style={{
-                      background: editDescontoTipo === t ? '#3fb95022' : 'transparent',
-                      color: editDescontoTipo === t ? '#3fb950' : 'var(--text2)',
-                      border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                      {t === 'valor' ? 'R$' : '%'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Status</label>
-              <select value={editStatus} onChange={e => setEditStatus(e.target.value)} style={inputStyle}>
-                {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Cobre até (data)</label>
-              <input type="date" value={editVencimento} onChange={e => setEditVencimento(e.target.value)} style={inputStyle} />
-            </div>
-            {editStatus === 'pago' && (
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data do pagamento</label>
-                <input type="date" value={editData} onChange={e => setEditData(e.target.value)} style={inputStyle} />
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button onClick={salvarEdicao} disabled={salvandoEdicao} className="btn btn-success" style={{ flex: 1 }}>
-                {salvandoEdicao ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button onClick={() => removerPagamento(editando.id)} disabled={salvandoEdicao} className="btn btn-outline-danger">
-                🗑️ Remover
-              </button>
-              <button onClick={() => setEditando(null)} disabled={salvandoEdicao} className="btn btn-neutral">
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal novo pagamento manual */}
-      {novoModal && (
-        <div onClick={() => !salvandoNovo && setNovoModal(false)} style={{
-          position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16,
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380 }}>
-            <h3 style={{ fontSize: 16, marginBottom: 16 }}>Registrar pagamento manual</h3>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
-              <select value={novoAlunoId} onChange={e => setNovoAlunoId(e.target.value)} style={inputStyle}>
-                <option value="">-- selecionar --</option>
-                {alunosOpt.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Plano</label>
-              <select value={novoPlanoId} onChange={e => {
-                setNovoPlanoId(e.target.value)
-                const plano = planosOpt.find(p => p.id === e.target.value)
-                if (plano) setNovoValor(String(plano.valor))
-              }} style={inputStyle}>
-                <option value="">-- sem plano / avulsa --</option>
-                {planosOpt.map(p => <option key={p.id} value={p.id}>{p.nome} — R$ {Number(p.valor).toFixed(2)}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor cobrado (R$)</label>
-              <input type="number" step="0.01" value={novoValor} onChange={e => setNovoValor(e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Desconto</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {novoDescontoTipo === 'percentual' ? (
-                  <select
-                    value={novoDesconto}
-                    onChange={e => {
-                      const novo = e.target.value
-                      setNovoDesconto(novo)
-                      const plano = planosOpt.find(p => p.id === novoPlanoId)
-                      if (plano) {
-                        const valorOriginal = Number(plano.valor)
-                        const descontoReais = valorOriginal * (Number(novo || 0) / 100)
-                        setNovoValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
-                      }
-                    }}
-                    style={{ ...inputStyle, flex: 1 }}
-                  >
-                    <option value="0">Sem desconto</option>
-                    {[5, 10, 15, 20, 25, 30, 40, 50].map(p => <option key={p} value={p}>{p}%</option>)}
-                  </select>
-                ) : (
-                  <input
-                    type="number" step="0.01" value={novoDesconto}
-                    onChange={e => {
-                      const novo = e.target.value
-                      setNovoDesconto(novo)
-                      const plano = planosOpt.find(p => p.id === novoPlanoId)
-                      if (plano) {
-                        const valorOriginal = Number(plano.valor)
-                        setNovoValor(String(Math.max(0, Math.round((valorOriginal - Number(novo || 0)) * 100) / 100)))
-                      }
-                    }}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                )}
-                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-                  {(['valor', 'percentual'] as const).map(t => (
-                    <button key={t} type="button" onClick={() => { setNovoDescontoTipo(t); setNovoDesconto('0') }} style={{
-                      background: novoDescontoTipo === t ? '#3fb95022' : 'transparent',
-                      color: novoDescontoTipo === t ? '#3fb950' : 'var(--text2)',
-                      border: 'none', padding: '0 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                      {t === 'valor' ? 'R$' : '%'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data do pagamento</label>
-              <input type="date" value={novoData} onChange={e => setNovoData(e.target.value)} style={inputStyle} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button onClick={salvarNovoPagamento} disabled={salvandoNovo || !novoAlunoId || !novoValor} className="btn btn-success" style={{ flex: 1 }}>
-                {salvandoNovo ? 'Salvando...' : '✅ Registrar'}
-              </button>
-              <button onClick={() => setNovoModal(false)} disabled={salvandoNovo} className="btn btn-neutral">
-                Cancelar
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
