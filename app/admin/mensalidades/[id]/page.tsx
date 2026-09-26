@@ -10,6 +10,18 @@ const STATUS_LABEL: Record<string, { label: string; cor: string; bg: string }> =
   ativo: { label: 'Em dia', cor: '#3fb950', bg: '#3fb95015' },
   vencido: { label: 'Vencido', cor: 'var(--danger)', bg: 'var(--danger)15' },
   agendado: { label: 'Agendado', cor: '#5b9bd5', bg: '#5b9bd515' },
+  pendente: { label: 'Aguardando pagamento', cor: '#f0a500', bg: '#f0a50015' },
+}
+
+// Status do PAGAMENTO relacionado ao período (diferente do status do período em si --
+// ver seção 2 do pedido de reorganização: plano/mensalidade/pagamento são 3 coisas
+// separadas, mas o admin precisa ver os dois de relance na mesma linha).
+const STATUS_PAGAMENTO_LABEL: Record<string, { label: string; cor: string }> = {
+  pago: { label: 'Pago', cor: '#3fb950' },
+  pendente: { label: 'Pendente', cor: '#f0a500' },
+  aguardando_confirmacao: { label: 'Aguard. confirmação', cor: '#f0a500' },
+  estornado: { label: 'Estornado', cor: 'var(--text3)' },
+  cancelado: { label: 'Cancelado', cor: 'var(--text3)' },
 }
 
 type Periodo = {
@@ -48,6 +60,7 @@ export default function MensalidadeAlunoPage() {
   const [modalDesconto, setModalDesconto] = useState('')
   const [modalDescontoTipo, setModalDescontoTipo] = useState<'valor' | 'percentual'>('valor')
   const [modalData, setModalData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [modalPago, setModalPago] = useState(true)
   const [modalSaving, setModalSaving] = useState(false)
   const [modalTrocaInfo, setModalTrocaInfo] = useState<{ planoAtualNome: string; planoAtualValor: number; diferenca: number } | null>(null)
 
@@ -55,6 +68,11 @@ export default function MensalidadeAlunoPage() {
   const [novaDataInicio, setNovaDataInicio] = useState('')
   const [salvandoData, setSalvandoData] = useState(false)
   const [excluindoPeriodoId, setExcluindoPeriodoId] = useState<string | null>(null)
+
+  const [editandoValorPeriodoId, setEditandoValorPeriodoId] = useState<string | null>(null)
+  const [novoValorMensalidade, setNovoValorMensalidade] = useState('')
+  const [salvandoValor, setSalvandoValor] = useState(false)
+  const [confirmandoPendenteId, setConfirmandoPendenteId] = useState<string | null>(null)
 
   async function carregar() {
     const [{ data: alunoData }, { data: planosData }, { data: periodosData }] = await Promise.all([
@@ -118,6 +136,7 @@ export default function MensalidadeAlunoPage() {
     setModalValor(String(plano.valor))
     setModalDesconto('0')
     setModalData(new Date().toISOString().slice(0, 10))
+    setModalPago(true)
   }
 
   async function confirmarAtivacao() {
@@ -129,6 +148,35 @@ export default function MensalidadeAlunoPage() {
       : Number(modalDesconto || 0)
     const valorFinal = Number(modalValor || 0)
 
+    // CENÁRIO B (pagamento pendente): cria a mensalidade e o pagamento como pendente,
+    // sem liberar o aluno ainda. A confirmação acontece depois, em Financeiro → Pagamentos.
+    if (!modalPago) {
+      const resposta = await fetch('/api/admin-criar-mensalidade-pendente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alunoId: id,
+          planoId: modalPlano.id,
+          valor: valorFinal,
+          valorOriginal,
+          desconto,
+        }),
+      })
+      if (!resposta.ok) {
+        const erro = await resposta.json().catch(() => null)
+        setModalSaving(false)
+        avisar(erro?.error || 'Não foi possível criar a mensalidade pendente.', 3500)
+        return
+      }
+      setModalSaving(false)
+      setModalPlano(null)
+      setModalTrocaInfo(null)
+      avisar('Mensalidade criada como pendente. Confirme o pagamento em Financeiro → Pagamentos quando ele cair.')
+      carregar()
+      return
+    }
+
+    // CENÁRIO A (pagamento já realizado): mesmo fluxo de sempre.
     const resposta = await fetch('/api/admin-ativar-plano', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -160,6 +208,54 @@ export default function MensalidadeAlunoPage() {
     setModalPlano(null)
     setModalTrocaInfo(null)
     avisar('Plano ativado e pagamento registrado! Aluno notificado.')
+    carregar()
+  }
+
+  function abrirEdicaoValor(periodo: Periodo) {
+    const pagamento = periodo.pagamento_id ? pagamentos[periodo.pagamento_id] : null
+    setEditandoValorPeriodoId(periodo.id)
+    setNovoValorMensalidade(pagamento ? String(pagamento.valor) : '')
+  }
+
+  async function salvarNovoValor(periodo: Periodo) {
+    if (!periodo.pagamento_id || !novoValorMensalidade) return
+    const pagamento = pagamentos[periodo.pagamento_id]
+    setSalvandoValor(true)
+    const resposta = await fetch('/api/admin-editar-valor-mensalidade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pagamentoId: periodo.pagamento_id,
+        valor: Number(novoValorMensalidade),
+        desconto: pagamento?.desconto || 0,
+      }),
+    })
+    setSalvandoValor(false)
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      avisar(erro?.error || 'Não foi possível atualizar o valor.', 4000)
+      return
+    }
+    setEditandoValorPeriodoId(null)
+    avisar('Valor da mensalidade atualizado.')
+    carregar()
+  }
+
+  async function confirmarPendente(periodo: Periodo) {
+    if (!periodo.pagamento_id) return
+    setConfirmandoPendenteId(periodo.id)
+    const resposta = await fetch('/api/admin-confirmar-pagamento-pendente', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagamentoId: periodo.pagamento_id, dataPagamento: new Date().toISOString().slice(0, 10) }),
+    })
+    setConfirmandoPendenteId(null)
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null)
+      avisar(erro?.error || 'Não foi possível confirmar o pagamento.', 4000)
+      return
+    }
+    avisar('Pagamento confirmado! Mensalidade liberada e aluno notificado.')
     carregar()
   }
 
@@ -374,7 +470,9 @@ export default function MensalidadeAlunoPage() {
             const status = statusPeriodoHoje(periodo)
             const info = STATUS_LABEL[status]
             const pagamento = periodo.pagamento_id ? pagamentos[periodo.pagamento_id] : null
+            const infoPagamento = pagamento ? STATUS_PAGAMENTO_LABEL[pagamento.status] : null
             const editando = editandoPeriodoId === periodo.id
+            const editandoValor = editandoValorPeriodoId === periodo.id
             return (
               <div key={periodo.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
@@ -387,10 +485,32 @@ export default function MensalidadeAlunoPage() {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: info.cor, background: info.bg }}>
                       {info.label}
                     </span>
+                    {infoPagamento && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: infoPagamento.cor }}>
+                        · Pagamento: {infoPagamento.label}
+                      </span>
+                    )}
+                    {pagamento?.status === 'pendente' && (
+                      <button
+                        onClick={() => confirmarPendente(periodo)}
+                        disabled={confirmandoPendenteId === periodo.id}
+                        className="btn btn-success btn-sm"
+                      >
+                        {confirmandoPendenteId === periodo.id ? 'Confirmando...' : '💰 Confirmar pagamento'}
+                      </button>
+                    )}
+                    {!editandoValor && pagamento && (
+                      <button onClick={() => abrirEdicaoValor(periodo)} style={{
+                        background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)',
+                        borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                        💲 Editar valor
+                      </button>
+                    )}
                     {!editando && (
                       <button onClick={() => abrirEdicaoData(periodo)} style={{
                         background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)',
@@ -422,6 +542,23 @@ export default function MensalidadeAlunoPage() {
                       {salvandoData ? 'Salvando...' : 'Salvar'}
                     </button>
                     <button onClick={() => setEditandoPeriodoId(null)} disabled={salvandoData} className="btn btn-neutral btn-sm">
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+                {editandoValor && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text2)' }}>Novo valor (R$):</span>
+                    <input
+                      type="number" step="0.01"
+                      value={novoValorMensalidade}
+                      onChange={e => setNovoValorMensalidade(e.target.value)}
+                      style={{ ...inputStyle, width: 120 }}
+                    />
+                    <button onClick={() => salvarNovoValor(periodo)} disabled={salvandoValor} className="btn btn-success btn-sm">
+                      {salvandoValor ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button onClick={() => setEditandoValorPeriodoId(null)} disabled={salvandoValor} className="btn btn-neutral btn-sm">
                       Cancelar
                     </button>
                   </div>
@@ -507,13 +644,38 @@ export default function MensalidadeAlunoPage() {
                 </div>
               </div>
             </Campo>
-            <Campo label="Data do pagamento">
-              <input type="date" value={modalData} onChange={e => setModalData(e.target.value)} style={inputStyle} />
+            <Campo label="Pagamento">
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                <button type="button" onClick={() => setModalPago(true)} style={{
+                  flex: 1, background: modalPago ? '#3fb95022' : 'transparent',
+                  color: modalPago ? '#3fb950' : 'var(--text2)',
+                  border: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  ✅ Já foi pago
+                </button>
+                <button type="button" onClick={() => setModalPago(false)} style={{
+                  flex: 1, background: !modalPago ? '#f0a50022' : 'transparent',
+                  color: !modalPago ? '#f0a500' : 'var(--text2)',
+                  border: 'none', padding: '8px 0', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  ⏳ Pagamento pendente
+                </button>
+              </div>
             </Campo>
+            {modalPago ? (
+              <Campo label="Data do pagamento">
+                <input type="date" value={modalData} onChange={e => setModalData(e.target.value)} style={inputStyle} />
+              </Campo>
+            ) : (
+              <p style={{ fontSize: 12, color: '#f0a500', marginBottom: 12, background: '#f0a50015', padding: '8px 10px', borderRadius: 6 }}>
+                A mensalidade fica registrada como pendente e aparece em Financeiro → Pagamentos.
+                O plano só é liberado quando você confirmar o pagamento por lá.
+              </p>
+            )}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
               <button onClick={confirmarAtivacao} disabled={modalSaving} className="btn btn-success" style={{ flex: 1 }}>
-                {modalSaving ? 'Registrando...' : '✅ Confirmar'}
+                {modalSaving ? 'Registrando...' : modalPago ? '✅ Confirmar' : '⏳ Criar mensalidade pendente'}
               </button>
               <button onClick={() => { setModalPlano(null); setModalTrocaInfo(null) }} disabled={modalSaving} className="btn btn-neutral">
                 Cancelar
