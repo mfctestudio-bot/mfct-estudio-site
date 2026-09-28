@@ -11,6 +11,10 @@ type Servico = {
   tem_agenda: boolean
   ativo: boolean
   created_at: string
+  chave_pix: string | null
+  link_cartao: string | null
+  valor_atualizado_em: string
+  pix_atualizado_em: string | null
 }
 
 type ServicoHorario = {
@@ -27,6 +31,11 @@ const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sáb
 const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
   padding: '9px 12px', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
+}
+
+function pixDesatualizado(s: Servico) {
+  if (!s.pix_atualizado_em) return true
+  return new Date(s.valor_atualizado_em).getTime() > new Date(s.pix_atualizado_em).getTime()
 }
 
 function ServicosContent() {
@@ -48,6 +57,8 @@ function ServicosContent() {
   const [editValor, setEditValor] = useState('')
   const [editQuantidadeUsos, setEditQuantidadeUsos] = useState('')
   const [editTemAgenda, setEditTemAgenda] = useState(false)
+  const [editChavePix, setEditChavePix] = useState('')
+  const [editLinkCartao, setEditLinkCartao] = useState('')
 
   const [novoDia, setNovoDia] = useState('1')
   const [novoHorario, setNovoHorario] = useState('')
@@ -96,15 +107,24 @@ function ServicosContent() {
     setEditValor(String(s.valor))
     setEditQuantidadeUsos(String(s.quantidade_usos))
     setEditTemAgenda(s.tem_agenda)
+    setEditChavePix(s.chave_pix || '')
+    setEditLinkCartao(s.link_cartao || '')
   }
 
   async function salvarEdicao(id: string) {
-    await supabase.from('servicos').update({
+    const servicoAtual = servicos.find(s => s.id === id)
+    const corpo: Record<string, unknown> = {
       nome: editNome.trim(),
       valor: Number(editValor),
       quantidade_usos: Number(editQuantidadeUsos) || 1,
       tem_agenda: editTemAgenda,
-    }).eq('id', id)
+    }
+    // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
+    if (servicoAtual && editChavePix.trim() !== (servicoAtual.chave_pix || '')) {
+      corpo.chave_pix = editChavePix.trim() || null
+    }
+    corpo.link_cartao = editLinkCartao.trim() || null
+    await supabase.from('servicos').update(corpo).eq('id', id)
     setEditandoId(null)
     carregar()
   }
@@ -150,15 +170,18 @@ function ServicosContent() {
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
         Crie, edite, ative/desative ou apague os serviços oferecidos (aula avulsa, avaliação física, ou qualquer serviço novo).
         Cada serviço define seu próprio valor, quantidade de usos e se tem agenda própria — separada da agenda de aula.
+        Cadastre aqui também a chave Pix (já com o valor certo) e o link de cartão — é isso que a Elen vai mandar pro aluno.
       </p>
 
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
-          {servicos.map(s => (
+          {servicos.map(s => {
+            const desatualizado = !!s.chave_pix && pixDesatualizado(s)
+            return (
             <div key={s.id} className="card card-hover" style={{
-              borderColor: s.ativo ? 'var(--border)' : 'var(--danger)',
+              borderColor: !s.ativo ? 'var(--danger)' : (desatualizado ? '#e0a020' : 'var(--border)'),
               padding: '14px 16px', opacity: s.ativo ? 1 : 0.55,
             }}>
               {editandoId === s.id ? (
@@ -172,6 +195,18 @@ function ServicosContent() {
                     <input type="checkbox" checked={editTemAgenda} onChange={e => setEditTemAgenda(e.target.checked)} />
                     Tem agenda própria (precisa marcar dia/horário)
                   </label>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
+                      Chave Pix (já com o valor certo desse serviço)
+                    </label>
+                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola com o valor deste serviço" />
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
+                      Link de pagamento no cartão
+                    </label>
+                    <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={inputStyle} placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => salvarEdicao(s.id)} className="btn btn-primary btn-sm">Salvar</button>
                     <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
@@ -185,6 +220,11 @@ function ServicosContent() {
                       R$ {Number(s.valor).toFixed(2)} · {s.quantidade_usos}x uso{s.quantidade_usos > 1 ? 's' : ''} · {s.tem_agenda ? 'com agenda' : 'sem agenda'}
                     </span>
                     {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                      {s.chave_pix ? '✅ Pix cadastrado' : '⚠️ Sem chave Pix cadastrada'}
+                      {s.link_cartao ? ' · ✅ Cartão cadastrado' : ' · sem link de cartão'}
+                      {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {s.tem_agenda && (
@@ -238,7 +278,8 @@ function ServicosContent() {
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
           {!servicos.length && <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhum serviço cadastrado ainda.</p>}
         </div>
       )}
@@ -272,6 +313,9 @@ function ServicosContent() {
               <input type="checkbox" checked={temAgenda} onChange={e => setTemAgenda(e.target.checked)} />
               Tem agenda própria (precisa marcar dia/horário)
             </label>
+            <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+              Depois de criar, edite o serviço pra cadastrar a chave Pix e o link de cartão.
+            </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">
