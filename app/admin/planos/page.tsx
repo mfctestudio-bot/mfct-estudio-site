@@ -11,6 +11,7 @@ type Plano = {
   ativo: boolean
   created_at: string
   chave_pix: string | null
+  chave_pix_valor_fixo: boolean
   link_cartao: string | null
   valor_atualizado_em: string
   pix_atualizado_em: string | null
@@ -55,6 +56,7 @@ function PlanosContent() {
   const [editVezes, setEditVezes] = useState('')
   const [editValor, setEditValor] = useState('')
   const [editChavePix, setEditChavePix] = useState('')
+  const [editChaveValorFixo, setEditChaveValorFixo] = useState(true)
   const [editLinkCartao, setEditLinkCartao] = useState('')
 
   const [chaveDesconto, setChaveDesconto] = useState('')
@@ -124,6 +126,7 @@ function PlanosContent() {
     setEditVezes(String(p.vezes_semana))
     setEditValor(String(p.valor))
     setEditChavePix(p.chave_pix || '')
+    setEditChaveValorFixo(p.chave_pix_valor_fixo)
     setEditLinkCartao(p.link_cartao || '')
   }
 
@@ -131,6 +134,7 @@ function PlanosContent() {
     const planoAtual = planos.find(p => p.id === id)
     const corpo: Record<string, unknown> = {
       nome: editNome.trim(), vezes_semana: Number(editVezes) || 1, valor: Number(editValor),
+      chave_pix_valor_fixo: editChaveValorFixo,
     }
     // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
     if (planoAtual && editChavePix.trim() !== (planoAtual.chave_pix || '')) {
@@ -199,7 +203,17 @@ function PlanosContent() {
                     <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
                       Chave Pix (já com o valor certo desse plano)
                     </label>
-                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola com o valor deste plano" />
+                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples" />
+                  </div>
+                  <div style={{ marginBottom: 10, display: 'flex', gap: 14 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={editChaveValorFixo} onChange={() => setEditChaveValorFixo(true)} />
+                      Código com valor fixo (aluno só copia e cola)
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={!editChaveValorFixo} onChange={() => setEditChaveValorFixo(false)} />
+                      Chave aberta (aluno precisa digitar o valor)
+                    </label>
                   </div>
                   <div style={{ marginBottom: 10 }}>
                     <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
@@ -221,7 +235,7 @@ function PlanosContent() {
                     </span>
                     {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
-                      {p.chave_pix ? '✅ Pix cadastrado' : '⚠️ Sem chave Pix cadastrada'}
+                      {p.chave_pix ? `✅ Pix cadastrado (${p.chave_pix_valor_fixo ? 'valor fixo' : 'chave aberta, aluno digita o valor'})` : '⚠️ Sem chave Pix cadastrada'}
                       {p.link_cartao ? ' · ✅ Cartão cadastrado' : ' · sem link de cartão'}
                       {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
                     </div>
