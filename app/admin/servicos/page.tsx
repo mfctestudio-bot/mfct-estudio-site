@@ -14,6 +14,7 @@ type Servico = {
   chave_pix: string | null
   chave_pix_valor_fixo: boolean
   link_cartao: string | null
+  link_cartao_valor_fixo: boolean
   valor_atualizado_em: string
   pix_atualizado_em: string | null
 }
@@ -61,6 +62,7 @@ function ServicosContent() {
   const [editChavePix, setEditChavePix] = useState('')
   const [editChaveValorFixo, setEditChaveValorFixo] = useState(true)
   const [editLinkCartao, setEditLinkCartao] = useState('')
+  const [editLinkValorFixo, setEditLinkValorFixo] = useState(true)
 
   const [novoDia, setNovoDia] = useState('1')
   const [novoHorario, setNovoHorario] = useState('')
@@ -112,6 +114,7 @@ function ServicosContent() {
     setEditChavePix(s.chave_pix || '')
     setEditChaveValorFixo(s.chave_pix_valor_fixo)
     setEditLinkCartao(s.link_cartao || '')
+    setEditLinkValorFixo(s.link_cartao_valor_fixo)
   }
 
   async function salvarEdicao(id: string) {
@@ -122,6 +125,7 @@ function ServicosContent() {
       quantidade_usos: Number(editQuantidadeUsos) || 1,
       tem_agenda: editTemAgenda,
       chave_pix_valor_fixo: editChaveValorFixo,
+      link_cartao_valor_fixo: editLinkValorFixo,
     }
     // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
     if (servicoAtual && editChavePix.trim() !== (servicoAtual.chave_pix || '')) {
@@ -221,6 +225,16 @@ function ServicosContent() {
                     </label>
                     <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={inputStyle} placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
                   </div>
+                  <div style={{ marginBottom: 10, display: 'flex', gap: 14 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={editLinkValorFixo} onChange={() => setEditLinkValorFixo(true)} />
+                      Link com valor fixo (aluno só clica e paga)
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={!editLinkValorFixo} onChange={() => setEditLinkValorFixo(false)} />
+                      Link aberto (aluno precisa digitar o valor)
+                    </label>
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => salvarEdicao(s.id)} className="btn btn-primary btn-sm">Salvar</button>
                     <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
@@ -236,7 +250,7 @@ function ServicosContent() {
                     {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
                       {s.chave_pix ? `✅ Pix cadastrado (${s.chave_pix_valor_fixo ? 'valor fixo' : 'chave aberta, aluno digita o valor'})` : '⚠️ Sem chave Pix cadastrada'}
-                      {s.link_cartao ? ' · ✅ Cartão cadastrado' : ' · sem link de cartão'}
+                      {s.link_cartao ? ` · ✅ Cartão cadastrado (${s.link_cartao_valor_fixo ? 'valor fixo' : 'link aberto, aluno digita o valor'})` : ' · sem link de cartão'}
                       {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
                     </div>
                   </div>
