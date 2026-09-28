@@ -13,6 +13,7 @@ type Plano = {
   chave_pix: string | null
   chave_pix_valor_fixo: boolean
   link_cartao: string | null
+  link_cartao_valor_fixo: boolean
   valor_atualizado_em: string
   pix_atualizado_em: string | null
 }
@@ -58,6 +59,7 @@ function PlanosContent() {
   const [editChavePix, setEditChavePix] = useState('')
   const [editChaveValorFixo, setEditChaveValorFixo] = useState(true)
   const [editLinkCartao, setEditLinkCartao] = useState('')
+  const [editLinkValorFixo, setEditLinkValorFixo] = useState(true)
 
   const [chaveDesconto, setChaveDesconto] = useState('')
   const [chaveDescontoSalva, setChaveDescontoSalva] = useState('')
@@ -128,6 +130,7 @@ function PlanosContent() {
     setEditChavePix(p.chave_pix || '')
     setEditChaveValorFixo(p.chave_pix_valor_fixo)
     setEditLinkCartao(p.link_cartao || '')
+    setEditLinkValorFixo(p.link_cartao_valor_fixo)
   }
 
   async function salvarEdicao(id: string) {
@@ -135,6 +138,7 @@ function PlanosContent() {
     const corpo: Record<string, unknown> = {
       nome: editNome.trim(), vezes_semana: Number(editVezes) || 1, valor: Number(editValor),
       chave_pix_valor_fixo: editChaveValorFixo,
+      link_cartao_valor_fixo: editLinkValorFixo,
     }
     // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
     if (planoAtual && editChavePix.trim() !== (planoAtual.chave_pix || '')) {
@@ -221,6 +225,16 @@ function PlanosContent() {
                     </label>
                     <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={inputStyle} placeholder="Cole aqui o link de pagamento no cartão deste plano" />
                   </div>
+                  <div style={{ marginBottom: 10, display: 'flex', gap: 14 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={editLinkValorFixo} onChange={() => setEditLinkValorFixo(true)} />
+                      Link com valor fixo (aluno só clica e paga)
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={!editLinkValorFixo} onChange={() => setEditLinkValorFixo(false)} />
+                      Link aberto (aluno precisa digitar o valor)
+                    </label>
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => salvarEdicao(p.id)} className="btn btn-primary btn-sm">Salvar</button>
                     <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
@@ -236,7 +250,7 @@ function PlanosContent() {
                     {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
                       {p.chave_pix ? `✅ Pix cadastrado (${p.chave_pix_valor_fixo ? 'valor fixo' : 'chave aberta, aluno digita o valor'})` : '⚠️ Sem chave Pix cadastrada'}
-                      {p.link_cartao ? ' · ✅ Cartão cadastrado' : ' · sem link de cartão'}
+                      {p.link_cartao ? ` · ✅ Cartão cadastrado (${p.link_cartao_valor_fixo ? 'valor fixo' : 'link aberto, aluno digita o valor'})` : ' · sem link de cartão'}
                       {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
                     </div>
                   </div>
