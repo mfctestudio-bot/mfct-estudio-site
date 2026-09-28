@@ -12,6 +12,7 @@ type Servico = {
   ativo: boolean
   created_at: string
   chave_pix: string | null
+  chave_pix_valor_fixo: boolean
   link_cartao: string | null
   valor_atualizado_em: string
   pix_atualizado_em: string | null
@@ -58,6 +59,7 @@ function ServicosContent() {
   const [editQuantidadeUsos, setEditQuantidadeUsos] = useState('')
   const [editTemAgenda, setEditTemAgenda] = useState(false)
   const [editChavePix, setEditChavePix] = useState('')
+  const [editChaveValorFixo, setEditChaveValorFixo] = useState(true)
   const [editLinkCartao, setEditLinkCartao] = useState('')
 
   const [novoDia, setNovoDia] = useState('1')
@@ -108,6 +110,7 @@ function ServicosContent() {
     setEditQuantidadeUsos(String(s.quantidade_usos))
     setEditTemAgenda(s.tem_agenda)
     setEditChavePix(s.chave_pix || '')
+    setEditChaveValorFixo(s.chave_pix_valor_fixo)
     setEditLinkCartao(s.link_cartao || '')
   }
 
@@ -118,6 +121,7 @@ function ServicosContent() {
       valor: Number(editValor),
       quantidade_usos: Number(editQuantidadeUsos) || 1,
       tem_agenda: editTemAgenda,
+      chave_pix_valor_fixo: editChaveValorFixo,
     }
     // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
     if (servicoAtual && editChavePix.trim() !== (servicoAtual.chave_pix || '')) {
@@ -199,7 +203,17 @@ function ServicosContent() {
                     <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
                       Chave Pix (já com o valor certo desse serviço)
                     </label>
-                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola com o valor deste serviço" />
+                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples" />
+                  </div>
+                  <div style={{ marginBottom: 10, display: 'flex', gap: 14 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={editChaveValorFixo} onChange={() => setEditChaveValorFixo(true)} />
+                      Código com valor fixo (aluno só copia e cola)
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={!editChaveValorFixo} onChange={() => setEditChaveValorFixo(false)} />
+                      Chave aberta (aluno precisa digitar o valor)
+                    </label>
                   </div>
                   <div style={{ marginBottom: 10 }}>
                     <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
@@ -221,7 +235,7 @@ function ServicosContent() {
                     </span>
                     {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
-                      {s.chave_pix ? '✅ Pix cadastrado' : '⚠️ Sem chave Pix cadastrada'}
+                      {s.chave_pix ? `✅ Pix cadastrado (${s.chave_pix_valor_fixo ? 'valor fixo' : 'chave aberta, aluno digita o valor'})` : '⚠️ Sem chave Pix cadastrada'}
                       {s.link_cartao ? ' · ✅ Cartão cadastrado' : ' · sem link de cartão'}
                       {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
                     </div>
