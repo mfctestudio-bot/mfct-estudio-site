@@ -40,6 +40,49 @@ function pixDesatualizado(s: Servico) {
   return new Date(s.valor_atualizado_em).getTime() > new Date(s.pix_atualizado_em).getTime()
 }
 
+const sectionBox: React.CSSProperties = {
+  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10,
+}
+const sectionTitle: React.CSSProperties = {
+  fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6,
+}
+
+function badgeStyle(tone: 'ok' | 'warn' | 'bad' | 'neutral'): React.CSSProperties {
+  const colors = {
+    ok: { bg: 'rgba(34,197,94,0.15)', fg: '#22c55e' },
+    warn: { bg: 'rgba(224,160,32,0.18)', fg: '#e0a020' },
+    bad: { bg: 'rgba(239,68,68,0.15)', fg: '#ef4444' },
+    neutral: { bg: 'rgba(148,163,184,0.15)', fg: 'var(--text2)' },
+  }[tone]
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600,
+    padding: '3px 9px', borderRadius: 999, background: colors.bg, color: colors.fg,
+  }
+}
+
+function SegmentedToggle({ value, onChange, trueLabel, falseLabel }: {
+  value: boolean; onChange: (v: boolean) => void; trueLabel: string; falseLabel: string
+}) {
+  const btnBase: React.CSSProperties = {
+    flex: 1, padding: '8px 10px', fontSize: 12, textAlign: 'center', cursor: 'pointer',
+    border: '1px solid var(--border)', fontFamily: 'inherit', userSelect: 'none',
+  }
+  return (
+    <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden' }}>
+      <div onClick={() => onChange(true)} style={{
+        ...btnBase, borderRadius: '6px 0 0 6px',
+        background: value ? 'var(--accent)' : 'var(--bg)',
+        color: value ? '#fff' : 'var(--text2)', fontWeight: value ? 700 : 400,
+      }}>{trueLabel}</div>
+      <div onClick={() => onChange(false)} style={{
+        ...btnBase, borderRadius: '0 6px 6px 0', borderLeft: 'none',
+        background: !value ? 'var(--accent)' : 'var(--bg)',
+        color: !value ? '#fff' : 'var(--text2)', fontWeight: !value ? 700 : 400,
+      }}>{falseLabel}</div>
+    </div>
+  )
+}
+
 function ServicosContent() {
   const params = useSearchParams()
   const [servicos, setServicos] = useState<Servico[]>([])
@@ -190,51 +233,35 @@ function ServicosContent() {
             return (
             <div key={s.id} className="card card-hover" style={{
               borderColor: !s.ativo ? 'var(--danger)' : (desatualizado ? '#e0a020' : 'var(--border)'),
-              padding: '14px 16px', opacity: s.ativo ? 1 : 0.55,
+              padding: '16px 18px', opacity: s.ativo ? 1 : 0.55,
             }}>
               {editandoId === s.id ? (
                 <div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '2 1 160px' }} placeholder="Nome do serviço" />
-                    <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
-                    <input type="number" min={1} value={editQuantidadeUsos} onChange={e => setEditQuantidadeUsos(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Qtd. usos" />
-                  </div>
-                  <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                    <input type="checkbox" checked={editTemAgenda} onChange={e => setEditTemAgenda(e.target.checked)} />
-                    Tem agenda própria (precisa marcar dia/horário)
-                  </label>
-                  <div style={{ marginBottom: 10 }}>
-                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
-                      Chave Pix (já com o valor certo desse serviço)
-                    </label>
-                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples" />
-                  </div>
-                  <div style={{ marginBottom: 10, display: 'flex', gap: 14 }}>
-                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input type="radio" checked={editChaveValorFixo} onChange={() => setEditChaveValorFixo(true)} />
-                      Código com valor fixo (aluno só copia e cola)
-                    </label>
-                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input type="radio" checked={!editChaveValorFixo} onChange={() => setEditChaveValorFixo(false)} />
-                      Chave aberta (aluno precisa digitar o valor)
+                  <div style={sectionBox}>
+                    <div style={sectionTitle}>📋 Dados do serviço</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '2 1 160px' }} placeholder="Nome do serviço" />
+                      <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
+                      <input type="number" min={1} value={editQuantidadeUsos} onChange={e => setEditQuantidadeUsos(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Qtd. usos" />
+                    </div>
+                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input type="checkbox" checked={editTemAgenda} onChange={e => setEditTemAgenda(e.target.checked)} />
+                      Tem agenda própria (precisa marcar dia/horário)
                     </label>
                   </div>
-                  <div style={{ marginBottom: 10 }}>
-                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
-                      Link de pagamento no cartão
-                    </label>
-                    <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={inputStyle} placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
+
+                  <div style={sectionBox}>
+                    <div style={sectionTitle}>🔑 Pagamento via Pix</div>
+                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical', marginBottom: 10 }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse serviço)" />
+                    <SegmentedToggle value={editChaveValorFixo} onChange={setEditChaveValorFixo} trueLabel="Valor fixo (só copia e cola)" falseLabel="Chave aberta (aluno digita)" />
                   </div>
-                  <div style={{ marginBottom: 10, display: 'flex', gap: 14 }}>
-                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input type="radio" checked={editLinkValorFixo} onChange={() => setEditLinkValorFixo(true)} />
-                      Link com valor fixo (aluno só clica e paga)
-                    </label>
-                    <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input type="radio" checked={!editLinkValorFixo} onChange={() => setEditLinkValorFixo(false)} />
-                      Link aberto (aluno precisa digitar o valor)
-                    </label>
+
+                  <div style={sectionBox}>
+                    <div style={sectionTitle}>💳 Pagamento no cartão</div>
+                    <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={{ ...inputStyle, marginBottom: 10 }} placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
+                    <SegmentedToggle value={editLinkValorFixo} onChange={setEditLinkValorFixo} trueLabel="Valor fixo (só clica e paga)" falseLabel="Link aberto (aluno digita)" />
                   </div>
+
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => salvarEdicao(s.id)} className="btn btn-primary btn-sm">Salvar</button>
                     <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
@@ -248,10 +275,14 @@ function ServicosContent() {
                       R$ {Number(s.valor).toFixed(2)} · {s.quantidade_usos}x uso{s.quantidade_usos > 1 ? 's' : ''} · {s.tem_agenda ? 'com agenda' : 'sem agenda'}
                     </span>
                     {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
-                      {s.chave_pix ? `✅ Pix cadastrado (${s.chave_pix_valor_fixo ? 'valor fixo' : 'chave aberta, aluno digita o valor'})` : '⚠️ Sem chave Pix cadastrada'}
-                      {s.link_cartao ? ` · ✅ Cartão cadastrado (${s.link_cartao_valor_fixo ? 'valor fixo' : 'link aberto, aluno digita o valor'})` : ' · sem link de cartão'}
-                      {desatualizado && <span style={{ color: '#e0a020', fontWeight: 700 }}> · ⚠️ preço mudou depois da última chave Pix — confira se ainda bate</span>}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {s.chave_pix
+                        ? <span style={badgeStyle('ok')}>✅ Pix · {s.chave_pix_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
+                        : <span style={badgeStyle('warn')}>⚠️ Sem Pix</span>}
+                      {s.link_cartao
+                        ? <span style={badgeStyle('ok')}>✅ Cartão · {s.link_cartao_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
+                        : <span style={badgeStyle('neutral')}>Sem link de cartão</span>}
+                      {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
