@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 
 type Servico = {
@@ -84,8 +83,6 @@ function SegmentedToggle({ value, onChange, trueLabel, falseLabel }: {
 }
 
 function ServicosContent() {
-  const params = useSearchParams()
-  const router = useRouter()
   const [servicos, setServicos] = useState<Servico[]>([])
   const [horarios, setHorarios] = useState<ServicoHorario[]>([])
   const [loading, setLoading] = useState(true)
@@ -123,21 +120,6 @@ function ServicosContent() {
   }
 
   useEffect(() => { carregar() }, [])
-
-  // Atalho do menu: clicar num serviço específico na lista suspensa do menu
-  // já abre direto a edição dele aqui, via ?editar=<id> na URL.
-  useEffect(() => {
-    const editarId = params.get('editar')
-    if (editarId) {
-      const servico = servicos.find(s => s.id === editarId)
-      if (servico) {
-        abrirEdicao(servico)
-        // Tira o ?editar= da URL pra não ficar reabrindo a edição sozinho toda vez que a lista recarrega.
-        router.replace('/admin/servicos')
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicos, params])
 
   async function criar() {
     if (!nome.trim() || !valor) return
@@ -183,6 +165,7 @@ function ServicosContent() {
     corpo.link_cartao = editLinkCartao.trim() || null
     await supabase.from('servicos').update(corpo).eq('id', id)
     setEditandoId(null)
+    setNomeExpandidoId(null)
     carregar()
   }
 
