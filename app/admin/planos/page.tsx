@@ -87,6 +87,7 @@ function PlanosContent() {
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [planoExpandido, setPlanoExpandido] = useState<string | null>(null)
+  const [nomeExpandidoId, setNomeExpandidoId] = useState<string | null>(null)
   const [novoDescNome, setNovoDescNome] = useState('')
   const [novoDescValor, setNovoDescValor] = useState('')
 
@@ -268,37 +269,51 @@ function PlanosContent() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                  <div>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{p.nome}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text2)', marginLeft: 8 }}>
-                      {p.vezes_semana}x/semana · R$ {Number(p.valor).toFixed(2)}
+                <div>
+                  <div
+                    onClick={() => setNomeExpandidoId(nomeExpandidoId === p.id ? null : p.id)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>
+                      {p.nome}
+                      {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8, fontWeight: 400 }}>(desativado)</span>}
                     </span>
-                    {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                      {p.chave_pix
-                        ? <span style={badgeStyle('ok')}>✅ Pix · {p.chave_pix_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
-                        : <span style={badgeStyle('warn')}>⚠️ Sem Pix</span>}
-                      {p.link_cartao
-                        ? <span style={badgeStyle('ok')}>✅ Cartão · {p.link_cartao_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
-                        : <span style={badgeStyle('neutral')}>Sem link de cartão</span>}
-                      {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
+                    <span style={{
+                      fontSize: 12, color: 'var(--text3)', display: 'inline-block',
+                      transform: nomeExpandidoId === p.id ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease',
+                    }}>▸</span>
+                  </div>
+
+                  {nomeExpandidoId === p.id && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+                        {p.vezes_semana}x/semana · R$ {Number(p.valor).toFixed(2)}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                        {p.chave_pix
+                          ? <span style={badgeStyle('ok')}>✅ Pix · {p.chave_pix_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
+                          : <span style={badgeStyle('warn')}>⚠️ Sem Pix</span>}
+                        {p.link_cartao
+                          ? <span style={badgeStyle('ok')}>✅ Cartão · {p.link_cartao_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
+                          : <span style={badgeStyle('neutral')}>Sem link de cartão</span>}
+                        {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} className="btn btn-ghost btn-sm">
+                          🏷️ Descontos ({descontos.filter(d => d.plano_id === p.id && d.ativo).length})
+                        </button>
+                        <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
+                          ✏️ Editar
+                        </button>
+                        <button onClick={() => toggleAtivo(p)} style={{
+                          background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
+                          color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                          {p.ativo ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} className="btn btn-ghost btn-sm">
-                      🏷️ Descontos ({descontos.filter(d => d.plano_id === p.id && d.ativo).length})
-                    </button>
-                    <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
-                      ✏️ Editar
-                    </button>
-                    <button onClick={() => toggleAtivo(p)} style={{
-                      background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
-                      color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                      {p.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
-                  </div>
+                  )}
                 </div>
               )}
 
