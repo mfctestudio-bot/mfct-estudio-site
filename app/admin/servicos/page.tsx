@@ -90,6 +90,7 @@ function ServicosContent() {
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [servicoExpandido, setServicoExpandido] = useState<string | null>(null)
+  const [nomeExpandidoId, setNomeExpandidoId] = useState<string | null>(null)
 
   const [nome, setNome] = useState('')
   const [valor, setValor] = useState('')
@@ -268,38 +269,52 @@ function ServicosContent() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                  <div>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{s.nome}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text2)', marginLeft: 8 }}>
-                      R$ {Number(s.valor).toFixed(2)} · {s.quantidade_usos}x uso{s.quantidade_usos > 1 ? 's' : ''} · {s.tem_agenda ? 'com agenda' : 'sem agenda'}
+                <div>
+                  <div
+                    onClick={() => setNomeExpandidoId(nomeExpandidoId === s.id ? null : s.id)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>
+                      {s.nome}
+                      {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8, fontWeight: 400 }}>(desativado)</span>}
                     </span>
-                    {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8 }}>(desativado)</span>}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                      {s.chave_pix
-                        ? <span style={badgeStyle('ok')}>✅ Pix · {s.chave_pix_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
-                        : <span style={badgeStyle('warn')}>⚠️ Sem Pix</span>}
-                      {s.link_cartao
-                        ? <span style={badgeStyle('ok')}>✅ Cartão · {s.link_cartao_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
-                        : <span style={badgeStyle('neutral')}>Sem link de cartão</span>}
-                      {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
+                    <span style={{
+                      fontSize: 12, color: 'var(--text3)', display: 'inline-block',
+                      transform: nomeExpandidoId === s.id ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease',
+                    }}>▸</span>
+                  </div>
+
+                  {nomeExpandidoId === s.id && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+                        R$ {Number(s.valor).toFixed(2)} · {s.quantidade_usos}x uso{s.quantidade_usos > 1 ? 's' : ''} · {s.tem_agenda ? 'com agenda' : 'sem agenda'}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                        {s.chave_pix
+                          ? <span style={badgeStyle('ok')}>✅ Pix · {s.chave_pix_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
+                          : <span style={badgeStyle('warn')}>⚠️ Sem Pix</span>}
+                        {s.link_cartao
+                          ? <span style={badgeStyle('ok')}>✅ Cartão · {s.link_cartao_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
+                          : <span style={badgeStyle('neutral')}>Sem link de cartão</span>}
+                        {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {s.tem_agenda && (
+                          <button onClick={() => setServicoExpandido(servicoExpandido === s.id ? null : s.id)} className="btn btn-ghost btn-sm">
+                            📅 Agenda ({horarios.filter(h => h.servico_id === s.id && h.ativo).length})
+                          </button>
+                        )}
+                        <button onClick={() => abrirEdicao(s)} className="btn btn-ghost btn-sm">✏️ Editar</button>
+                        <button onClick={() => toggleAtivo(s)} style={{
+                          background: 'transparent', border: `1px solid ${s.ativo ? 'var(--border)' : 'var(--danger)'}`,
+                          color: s.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                          {s.ativo ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button onClick={() => excluirServico(s)} className="btn btn-outline-danger btn-sm">Apagar</button>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {s.tem_agenda && (
-                      <button onClick={() => setServicoExpandido(servicoExpandido === s.id ? null : s.id)} className="btn btn-ghost btn-sm">
-                        📅 Agenda ({horarios.filter(h => h.servico_id === s.id && h.ativo).length})
-                      </button>
-                    )}
-                    <button onClick={() => abrirEdicao(s)} className="btn btn-ghost btn-sm">✏️ Editar</button>
-                    <button onClick={() => toggleAtivo(s)} style={{
-                      background: 'transparent', border: `1px solid ${s.ativo ? 'var(--border)' : 'var(--danger)'}`,
-                      color: s.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                      {s.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
-                    <button onClick={() => excluirServico(s)} className="btn btn-outline-danger btn-sm">Apagar</button>
-                  </div>
+                  )}
                 </div>
               )}
 
