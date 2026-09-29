@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 
 type Servico = {
@@ -85,6 +85,7 @@ function SegmentedToggle({ value, onChange, trueLabel, falseLabel }: {
 
 function ServicosContent() {
   const params = useSearchParams()
+  const router = useRouter()
   const [servicos, setServicos] = useState<Servico[]>([])
   const [horarios, setHorarios] = useState<ServicoHorario[]>([])
   const [loading, setLoading] = useState(true)
@@ -129,7 +130,11 @@ function ServicosContent() {
     const editarId = params.get('editar')
     if (editarId) {
       const servico = servicos.find(s => s.id === editarId)
-      if (servico) abrirEdicao(servico)
+      if (servico) {
+        abrirEdicao(servico)
+        // Tira o ?editar= da URL pra não ficar reabrindo a edição sozinho toda vez que a lista recarrega.
+        router.replace('/admin/servicos')
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicos, params])
