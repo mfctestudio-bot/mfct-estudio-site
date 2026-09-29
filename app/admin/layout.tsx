@@ -209,7 +209,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                     const chaveAberto = item.accordion || item.href
                     const aberto = !!abertos[chaveAberto]
-                    const listaDinamica = item.accordion ? listaPorAccordion[item.accordion] : null
+                    // No menu lateral só aparecem os ativos — os desativados só aparecem na lista completa (dentro da página).
+                    const listaDinamica = item.accordion ? listaPorAccordion[item.accordion].filter(row => row.ativo) : null
 
                     return (
                       <div key={item.href}>
