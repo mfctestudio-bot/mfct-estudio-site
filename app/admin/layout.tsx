@@ -240,7 +240,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             {listaDinamica && listaDinamica.map(row => (
                               <Link
                                 key={row.id}
-                                href={`${item.href}?editar=${row.id}`}
+                                href={item.href}
                                 onClick={() => setMenuAberto(false)}
                                 style={{
                                   padding: '7px 10px', borderRadius: 6, textDecoration: 'none', fontSize: 12,
