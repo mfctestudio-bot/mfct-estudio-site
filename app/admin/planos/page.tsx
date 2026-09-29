@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 
 type Plano = {
@@ -81,8 +80,6 @@ function SegmentedToggle({ value, onChange, trueLabel, falseLabel }: {
 }
 
 function PlanosContent() {
-  const params = useSearchParams()
-  const router = useRouter()
   const [planos, setPlanos] = useState<Plano[]>([])
   const [descontos, setDescontos] = useState<Desconto[]>([])
   const [loading, setLoading] = useState(true)
@@ -124,21 +121,6 @@ function PlanosContent() {
   }
 
   useEffect(() => { carregar() }, [])
-
-  // Atalho do menu: clicar num plano específico na lista suspensa do menu
-  // já abre direto a edição dele aqui, via ?editar=<id> na URL.
-  useEffect(() => {
-    const editarId = params.get('editar')
-    if (editarId && planos.some(p => p.id === editarId)) {
-      const plano = planos.find(p => p.id === editarId)
-      if (plano) {
-        abrirEdicao(plano)
-        // Tira o ?editar= da URL pra não ficar reabrindo a edição sozinho toda vez que a lista recarrega.
-        router.replace('/admin/planos')
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planos, params])
 
   async function criarDesconto(planoId: string) {
     if (!novoDescNome.trim() || !novoDescValor) return
@@ -196,6 +178,7 @@ function PlanosContent() {
     corpo.link_cartao = editLinkCartao.trim() || null
     await supabase.from('planos').update(corpo).eq('id', id)
     setEditandoId(null)
+    setNomeExpandidoId(null)
     carregar()
   }
 
