@@ -71,12 +71,12 @@ function SegmentedToggle({ value, onChange, trueLabel, falseLabel }: {
     <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden' }}>
       <div onClick={() => onChange(true)} style={{
         ...btnBase, borderRadius: '6px 0 0 6px',
-        background: value ? 'var(--accent)' : 'var(--bg)',
+        background: value ? 'var(--accent2)' : 'var(--bg)',
         color: value ? '#fff' : 'var(--text2)', fontWeight: value ? 700 : 400,
       }}>{trueLabel}</div>
       <div onClick={() => onChange(false)} style={{
         ...btnBase, borderRadius: '0 6px 6px 0', borderLeft: 'none',
-        background: !value ? 'var(--accent)' : 'var(--bg)',
+        background: !value ? 'var(--accent2)' : 'var(--bg)',
         color: !value ? '#fff' : 'var(--text2)', fontWeight: !value ? 700 : 400,
       }}>{falseLabel}</div>
     </div>
