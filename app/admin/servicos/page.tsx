@@ -16,6 +16,13 @@ type Servico = {
   link_cartao_valor_fixo: boolean
   valor_atualizado_em: string
   pix_atualizado_em: string | null
+  categoria_id: string | null
+}
+
+type Categoria = {
+  id: string
+  nome: string
+  ativo: boolean
 }
 
 type ServicoHorario = {
@@ -95,6 +102,14 @@ function ServicosContent() {
   const [quantidadeUsos, setQuantidadeUsos] = useState('1')
   const [temAgenda, setTemAgenda] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [categoriaId, setCategoriaId] = useState('')
+
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [mostrarCategorias, setMostrarCategorias] = useState(false)
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
+  const [categoriaEditandoId, setCategoriaEditandoId] = useState<string | null>(null)
+  const [categoriaEditNome, setCategoriaEditNome] = useState('')
+  const [editCategoriaId, setEditCategoriaId] = useState('')
 
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [editNome, setEditNome] = useState('')
@@ -116,6 +131,8 @@ function ServicosContent() {
     setServicos((data as Servico[]) || [])
     const { data: horariosData } = await supabase.from('servicos_horarios').select('*').order('dia_semana').order('horario')
     setHorarios((horariosData as ServicoHorario[]) || [])
+    const { data: categoriasData } = await supabase.from('servicos_categorias').select('*').order('nome')
+    setCategorias((categoriasData as Categoria[]) || [])
     setLoading(false)
   }
 
@@ -124,15 +141,17 @@ function ServicosContent() {
   async function criar() {
     if (!nome.trim() || !valor) return
     setSalvando(true)
-    await supabase.from('servicos').insert({
+    const { error } = await supabase.from('servicos').insert({
       nome: nome.trim(),
       valor: Number(valor),
       quantidade_usos: Number(quantidadeUsos) || 1,
       tem_agenda: temAgenda,
       ativo: true,
+      categoria_id: categoriaId || null,
     })
     setSalvando(false)
-    setNome(''); setValor(''); setQuantidadeUsos('1'); setTemAgenda(false); setMostrarForm(false)
+    if (error) { alert('Não consegui criar o serviço: ' + error.message); return }
+    setNome(''); setValor(''); setQuantidadeUsos('1'); setTemAgenda(false); setCategoriaId(''); setMostrarForm(false)
     carregar()
   }
 
@@ -146,6 +165,7 @@ function ServicosContent() {
     setEditChaveValorFixo(s.chave_pix_valor_fixo)
     setEditLinkCartao(s.link_cartao || '')
     setEditLinkValorFixo(s.link_cartao_valor_fixo)
+    setEditCategoriaId(s.categoria_id || '')
   }
 
   async function salvarEdicao(id: string) {
@@ -157,13 +177,15 @@ function ServicosContent() {
       tem_agenda: editTemAgenda,
       chave_pix_valor_fixo: editChaveValorFixo,
       link_cartao_valor_fixo: editLinkValorFixo,
+      categoria_id: editCategoriaId || null,
     }
     // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
     if (servicoAtual && editChavePix.trim() !== (servicoAtual.chave_pix || '')) {
       corpo.chave_pix = editChavePix.trim() || null
     }
     corpo.link_cartao = editLinkCartao.trim() || null
-    await supabase.from('servicos').update(corpo).eq('id', id)
+    const { error } = await supabase.from('servicos').update(corpo).eq('id', id)
+    if (error) { alert('Não consegui salvar: ' + error.message); return }
     setEditandoId(null)
     setNomeExpandidoId(null)
     carregar()
@@ -178,6 +200,57 @@ function ServicosContent() {
     if (!confirm(`Apagar o serviço "${s.nome}" de vez? Isso remove também os horários de agenda dele. Se preferir só tirar da lista de oferecer, use "Desativar" em vez de apagar.`)) return
     await supabase.from('servicos').delete().eq('id', s.id)
     carregar()
+  }
+
+  async function criarCategoria() {
+    const n = novaCategoriaNome.trim()
+    if (!n) return
+    const { error } = await supabase.from('servicos_categorias').insert({ nome: n, ativo: true })
+    if (error) { alert(error.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não consegui criar a categoria: ' + error.message); return }
+    setNovaCategoriaNome('')
+    carregar()
+  }
+
+  async function salvarCategoria(id: string) {
+    const n = categoriaEditNome.trim()
+    if (!n) return
+    const { error } = await supabase.from('servicos_categorias').update({ nome: n }).eq('id', id)
+    if (error) { alert(error.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não consegui salvar: ' + error.message); return }
+    setCategoriaEditandoId(null)
+    carregar()
+  }
+
+  async function toggleCategoriaAtiva(c: Categoria) {
+    const { error } = await supabase.from('servicos_categorias').update({ ativo: !c.ativo }).eq('id', c.id)
+    if (error) { alert('Não consegui alterar: ' + error.message); return }
+    setCategorias(prev => prev.map(x => x.id === c.id ? { ...x, ativo: !x.ativo } : x))
+  }
+
+  async function excluirCategoria(c: Categoria) {
+    const emUso = servicos.filter(s => s.categoria_id === c.id).length
+    const aviso = emUso
+      ? `A categoria "${c.nome}" está em ${emUso} serviço(s). Se apagar, esses serviços ficam sem categoria. Apagar mesmo?`
+      : `Apagar a categoria "${c.nome}"?`
+    if (!confirm(aviso)) return
+    const { error } = await supabase.from('servicos_categorias').delete().eq('id', c.id)
+    if (error) { alert('Não consegui apagar: ' + error.message); return }
+    carregar()
+  }
+
+  function nomeCategoria(id: string | null) {
+    if (!id) return null
+    return categorias.find(c => c.id === id)?.nome || null
+  }
+
+  function selectCategoria(value: string, onChange: (v: string) => void, atualId?: string | null) {
+    return (
+      <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+        <option value="">Sem categoria</option>
+        {categorias.filter(c => c.ativo || c.id === atualId).map(c => (
+          <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? ' (desativada)' : ''}</option>
+        ))}
+      </select>
+    )
   }
 
   async function criarHorario(servicoId: string) {
@@ -213,6 +286,64 @@ function ServicosContent() {
         Cadastre aqui também a chave Pix (já com o valor certo) e o link de cartão — é isso que a Elen vai mandar pro aluno.
       </p>
 
+      <div className="card" style={{ padding: '14px 18px', marginBottom: 16 }}>
+        <div
+          onClick={() => setMostrarCategorias(!mostrarCategorias)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontWeight: 700, fontSize: 14 }}>🏷️ Categorias ({categorias.filter(c => c.ativo).length})</span>
+          <span style={{
+            fontSize: 12, color: 'var(--text3)', display: 'inline-block',
+            transform: mostrarCategorias ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease',
+          }}>▸</span>
+        </div>
+        {mostrarCategorias && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+              Ajudam a organizar os serviços e a Elen a entender o que cada um é. Categoria desativada some da lista de escolha, mas os serviços que já usam ela continuam com ela.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+              {categorias.map(c => {
+                const emUso = servicos.filter(s => s.categoria_id === c.id).length
+                return (
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: c.ativo ? 1 : 0.5, flexWrap: 'wrap' }}>
+                    {categoriaEditandoId === c.id ? (
+                      <input value={categoriaEditNome} onChange={e => setCategoriaEditNome(e.target.value)} style={{ ...inputStyle, flex: '1 1 160px' }} />
+                    ) : (
+                      <span style={{ fontSize: 13 }}>
+                        {c.nome}
+                        <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>
+                          {emUso ? `${emUso} serviço${emUso > 1 ? 's' : ''}` : 'sem serviço'}{!c.ativo && ' · desativada'}
+                        </span>
+                      </span>
+                    )}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {categoriaEditandoId === c.id ? (
+                        <>
+                          <button onClick={() => salvarCategoria(c.id)} className="btn btn-primary btn-sm">Salvar</button>
+                          <button onClick={() => setCategoriaEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => { setCategoriaEditandoId(c.id); setCategoriaEditNome(c.nome) }} className="btn btn-ghost btn-sm">✏️</button>
+                          <button onClick={() => toggleCategoriaAtiva(c)} className="btn btn-ghost btn-sm">{c.ativo ? 'Desativar' : 'Ativar'}</button>
+                          <button onClick={() => excluirCategoria(c)} className="btn btn-outline-danger btn-sm">Apagar</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {!categorias.length && <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhuma categoria ainda.</p>}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={novaCategoriaNome} onChange={e => setNovaCategoriaNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criarCategoria() }} style={{ ...inputStyle, flex: 1 }} placeholder="Nova categoria (ex: Pilates)" />
+              <button onClick={criarCategoria} disabled={!novaCategoriaNome.trim()} className="btn btn-primary btn-sm">+ Add</button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>
       ) : (
@@ -232,6 +363,10 @@ function ServicosContent() {
                       <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '2 1 160px' }} placeholder="Nome do serviço" />
                       <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
                       <input type="number" min={1} value={editQuantidadeUsos} onChange={e => setEditQuantidadeUsos(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Qtd. usos" />
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Categoria</label>
+                      {selectCategoria(editCategoriaId, setEditCategoriaId, s.categoria_id)}
                     </div>
                     <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input type="checkbox" checked={editTemAgenda} onChange={e => setEditTemAgenda(e.target.checked)} />
@@ -264,6 +399,9 @@ function ServicosContent() {
                   >
                     <span style={{ fontWeight: 700, fontSize: 14 }}>
                       {s.nome}
+                      {nomeCategoria(s.categoria_id)
+                        ? <span style={{ ...badgeStyle('neutral'), marginLeft: 8 }}>🏷️ {nomeCategoria(s.categoria_id)}</span>
+                        : <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 8, fontWeight: 400 }}>(sem categoria)</span>}
                       {!s.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8, fontWeight: 400 }}>(desativado)</span>}
                     </span>
                     <span style={{
@@ -360,6 +498,10 @@ function ServicosContent() {
             <div>
               <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nome</label>
               <input value={nome} onChange={e => setNome(e.target.value)} style={inputStyle} placeholder="Ex: Massagem, Pacote 5 Avaliações..." />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Categoria</label>
+              {selectCategoria(categoriaId, setCategoriaId)}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
