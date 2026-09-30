@@ -57,7 +57,6 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         href: '/admin/agenda', label: 'Agenda', icon: 'calendar',
         subitens: [
           { href: '/admin/professores', label: 'Professores', icon: 'users' },
-          { href: '/admin/aerobico', label: 'Aeróbico', icon: 'activity' },
           { href: '/admin/servicos', label: 'Serviços', icon: 'sliders' },
         ],
       },
