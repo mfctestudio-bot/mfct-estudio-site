@@ -32,6 +32,18 @@ export async function POST(req: NextRequest) {
 
   const phone = aluno.telefone
 
+  // Correcao (01/10/2026, pedido do Matheus): a ficha de anamnese so vai no PRIMEIRO pagamento
+  // do aluno (quando ele entra no estudio). Antes ia em toda confirmacao, inclusive renovacoes.
+  // Esta rota roda depois da ativarPlano(), entao o pagamento atual ja conta como 'pago':
+  // mais de 1 pagamento pago = aluno ja era do estudio -> nao manda de novo.
+  const { count: pagosAteAgora, error: countError } = await supabase
+    .from('pagamentos')
+    .select('id', { count: 'exact', head: true })
+    .eq('aluno_id', alunoId)
+    .eq('status', 'pago')
+  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 })
+  if ((pagosAteAgora || 0) > 1) return NextResponse.json({ ok: true, anamnese: 'nao_enviada_renovacao' })
+
   // Correcao (23/09/2026): removida a mensagem de "pagamento confirmado" daqui -- ela agora
   // e mandada direto por ativarPlano() (lib/planos.ts), que roda ANTES desta rota em toda tela
   // que chama as duas (pagamentos e mensalidades/[id]), e ja manda com a data de vencimento
