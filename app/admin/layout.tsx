@@ -53,6 +53,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
     titulo: 'Alunos & Agenda',
     itens: [
       { href: '/admin/alunos', label: 'Alunos', icon: 'users' },
+      { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
       {
         href: '/admin/agenda', label: 'Agenda', icon: 'calendar',
         subitens: [
@@ -76,6 +77,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         subitens: [
           { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
           { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
+          { href: '/admin/avulsas', label: 'Aulas avulsas', icon: 'tag' },
         ],
       },
       { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },
