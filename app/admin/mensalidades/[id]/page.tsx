@@ -408,7 +408,10 @@ export default function MensalidadeAlunoPage() {
               ▶️ Continuar
             </button>
           )}
-          {estaVencido && (
+          {/* Correção (01/10/2026): antes o Renovar só aparecia depois de vencer. Agora também
+              aparece com o plano em dia, desde que ainda não exista renovação futura -- a
+              ativarPlano() já começa o novo período no dia seguinte ao fim do atual. */}
+          {(estaVencido || (aluno.status_plano === 'ativo' && !!periodoAtual && !periodoFuturo)) && (
             <button onClick={() => abrirModalAtivacao(aluno.plano_id || undefined)} className="btn btn-success">
               🔄 Renovar
             </button>

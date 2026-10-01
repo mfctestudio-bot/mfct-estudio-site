@@ -79,7 +79,10 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
   let dataInicio = input.dataPagamento
   if (ultimoPeriodo) {
     const fimUltimo = new Date(`${ultimoPeriodo.data_fim}T00:00:00`)
-    if (fimUltimo >= dataPagamento) {
+    // Correção (01/10/2026): compara só a DATA (texto AAAA-MM-DD). Antes comparava
+    // meia-noite do fim com meio-dia do pagamento, e uma renovação feita no ÚLTIMO dia
+    // do plano começava no mesmo dia (sobrepondo 1 dia) em vez de começar no dia seguinte.
+    if (ultimoPeriodo.data_fim >= input.dataPagamento) {
       fimUltimo.setDate(fimUltimo.getDate() + 1)
       dataInicio = isoDate(fimUltimo)
     }
