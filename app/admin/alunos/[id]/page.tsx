@@ -193,6 +193,10 @@ export default function AlunoPage() {
         </Secao>
       )}
 
+      <div style={{ marginBottom: 16 }}>
+        <button onClick={() => router.push(`/admin/contratos/${id}`)} className="btn btn-ghost btn-sm">📄 Gerar contrato + termo</button>
+      </div>
+
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Plano atual</div>
         <div

@@ -54,6 +54,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
     itens: [
       { href: '/admin/alunos', label: 'Alunos', icon: 'users' },
       { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
+      { href: '/admin/contratos', label: 'Contratos', icon: 'file' },
       {
         href: '/admin/agenda', label: 'Agenda', icon: 'calendar',
         subitens: [
