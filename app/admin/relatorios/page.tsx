@@ -4,19 +4,23 @@ import { supabase } from '@/lib/supabaseAdmin'
 
 // Relatórios financeiros (01/10/2026).
 // Entradas = pagamentos com status 'pago' (valor - desconto, pela data_pagamento)
-//          + créditos de aula avulsa confirmados (confirmado_em preenchido e não cancelados).
+//          + créditos de aula avulsa confirmados (confirmado_em preenchido e não cancelados)
+//          + vendas de serviços registradas (vendas_servicos, pela data_venda).
 // Saídas   = despesas lançadas no mês (tabela despesas_mensais).
 // "Fechar mês" grava uma foto em fechamentos_mensais; mês fechado mostra a foto, não recalcula.
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-type Entrada = { data: string; nome: string; tipo: 'Mensalidade' | 'Aula avulsa'; metodo: string; valor: number }
+type Entrada = { data: string; nome: string; tipo: 'Mensalidade' | 'Aula avulsa' | 'Serviço'; detalhe?: string; metodo: string; valor: number; vendaId?: string }
+type ServicoOpt = { id: string; nome: string; valor: number }
+type AlunoOpt = { id: string; nome: string }
 type Despesa = { id: string; mes: string; categoria: string; valor: number; observacao: string | null }
 type Fechamento = {
   mes: string
   receita_mensalidades: number
   receita_avulsas: number
+  receita_servicos: number
   receita_total: number
   despesas_total: number
   resultado: number
@@ -50,13 +54,16 @@ const nomeMetodo = (m: string | null) => {
 }
 
 async function buscarEntradas(iniISO: string, proxISO: string): Promise<Entrada[]> {
-  const [{ data: pags }, { data: avs }] = await Promise.all([
+  const [{ data: pags }, { data: avs }, { data: vendas }] = await Promise.all([
     supabase.from('pagamentos')
       .select('valor, desconto, data_pagamento, metodo_pagamento, alunos(nome)')
       .eq('status', 'pago').gte('data_pagamento', iniISO).lt('data_pagamento', proxISO),
     supabase.from('creditos_avulsos')
       .select('valor, confirmado_em, metodo_pagamento, status, alunos(nome)')
       .not('confirmado_em', 'is', null).neq('status', 'cancelado').gte('confirmado_em', iniISO).lt('confirmado_em', proxISO),
+    supabase.from('vendas_servicos')
+      .select('id, servico_nome, cliente_nome, valor, data_venda, metodo_pagamento, alunos(nome)')
+      .gte('data_venda', iniISO).lt('data_venda', proxISO),
   ])
   const nomeDe = (a: unknown) => {
     const o = Array.isArray(a) ? a[0] : a
@@ -68,6 +75,10 @@ async function buscarEntradas(iniISO: string, proxISO: string): Promise<Entrada[
   }
   for (const c of (avs as { valor: number; confirmado_em: string; metodo_pagamento: string | null; alunos: unknown }[]) || []) {
     lista.push({ data: c.confirmado_em, nome: nomeDe(c.alunos), tipo: 'Aula avulsa', metodo: nomeMetodo(c.metodo_pagamento), valor: Number(c.valor) || 0 })
+  }
+  for (const v of (vendas as { id: string; servico_nome: string; cliente_nome: string | null; valor: number; data_venda: string; metodo_pagamento: string | null; alunos: unknown }[]) || []) {
+    const nomeAluno = v.alunos ? nomeDe(v.alunos) : (v.cliente_nome || 'Cliente')
+    lista.push({ data: v.data_venda, nome: nomeAluno, tipo: 'Serviço', detalhe: v.servico_nome, metodo: nomeMetodo(v.metodo_pagamento), valor: Number(v.valor) || 0, vendaId: v.id })
   }
   return lista.sort((a, b) => a.data.localeCompare(b.data))
 }
@@ -125,6 +136,16 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
   const [novoValor, setNovoValor] = useState('')
   const [novaObs, setNovaObs] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [servicosOpt, setServicosOpt] = useState<ServicoOpt[]>([])
+  const [alunosOpt, setAlunosOpt] = useState<AlunoOpt[]>([])
+  const [vServico, setVServico] = useState('')
+  const [vAluno, setVAluno] = useState('')
+  const [vCliente, setVCliente] = useState('')
+  const [vValor, setVValor] = useState('')
+  const [vData, setVData] = useState('')
+  const [vMetodo, setVMetodo] = useState('pix')
+  const [vObs, setVObs] = useState('')
+  const [mostrarVenda, setMostrarVenda] = useState(false)
 
   async function carregar() {
     setLoading(true)
@@ -140,22 +161,27 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
     setLoading(false)
   }
   useEffect(() => { carregar() }, [ano, mes])
+  useEffect(() => {
+    supabase.from('servicos').select('id, nome, valor').eq('ativo', true).order('nome').then(({ data }) => setServicosOpt(((data as ServicoOpt[]) || []).map(x => ({ ...x, valor: Number(x.valor) }))))
+    supabase.from('alunos').select('id, nome').not('nome', 'is', null).order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
+  }, [])
 
   // Números ao vivo
   const vivo = useMemo(() => {
     const mens = entradas.filter(e => e.tipo === 'Mensalidade').reduce((s, e) => s + e.valor, 0)
     const avul = entradas.filter(e => e.tipo === 'Aula avulsa').reduce((s, e) => s + e.valor, 0)
+    const serv = entradas.filter(e => e.tipo === 'Serviço').reduce((s, e) => s + e.valor, 0)
     const porMetodo: Record<string, number> = {}
     for (const e of entradas) porMetodo[e.metodo] = (porMetodo[e.metodo] || 0) + e.valor
     const desp = despesas.reduce((s, d) => s + d.valor, 0)
-    return { mens, avul, total: mens + avul, desp, resultado: mens + avul - desp, porMetodo }
+    return { mens, avul, serv, total: mens + avul + serv, desp, resultado: mens + avul + serv - desp, porMetodo }
   }, [entradas, despesas])
 
   // Se o mês está fechado, mostra a foto guardada
   const fechado = !!fechamento
   const n = fechado
     ? {
-        mens: Number(fechamento!.receita_mensalidades), avul: Number(fechamento!.receita_avulsas), total: Number(fechamento!.receita_total),
+        mens: Number(fechamento!.receita_mensalidades), avul: Number(fechamento!.receita_avulsas), serv: Number(fechamento!.receita_servicos || 0), total: Number(fechamento!.receita_total),
         desp: Number(fechamento!.despesas_total), resultado: Number(fechamento!.resultado), porMetodo: fechamento!.detalhes?.porMetodo || {},
       }
     : vivo
@@ -219,7 +245,7 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
     if (!confirm(aviso)) return
     const { error } = await supabase.from('fechamentos_mensais').upsert({
       mes: chave,
-      receita_mensalidades: vivo.mens, receita_avulsas: vivo.avul, receita_total: vivo.total,
+      receita_mensalidades: vivo.mens, receita_avulsas: vivo.avul, receita_servicos: vivo.serv, receita_total: vivo.total,
       despesas_total: vivo.desp, resultado: vivo.resultado,
       detalhes: { entradas, despesas: despesas.map(d => ({ categoria: d.categoria, valor: d.valor, observacao: d.observacao })), porMetodo: vivo.porMetodo },
       fechado_em: new Date().toISOString(),
@@ -235,18 +261,47 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
     carregar()
   }
 
+  function abrirVenda() {
+    const padraoData = mesAtual ? new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10) : `${ano}-${pad(mes)}-01`
+    setVData(padraoData); setVServico(''); setVAluno(''); setVCliente(''); setVValor(''); setVMetodo('pix'); setVObs('')
+    setMostrarVenda(true)
+  }
+
+  async function salvarVenda() {
+    const srv = servicosOpt.find(x => x.id === vServico)
+    const valor = Number(String(vValor).replace(',', '.'))
+    if (!srv || !(valor >= 0) || !vData) return
+    if (!vAluno && !vCliente.trim()) { alert('Escolha o aluno ou escreva o nome do cliente.'); return }
+    setSalvando(true)
+    const { error } = await supabase.from('vendas_servicos').insert({
+      servico_id: srv.id, servico_nome: srv.nome, aluno_id: vAluno || null, cliente_nome: vAluno ? null : vCliente.trim(),
+      valor, data_venda: `${vData}T12:00:00-03:00`, metodo_pagamento: vMetodo, observacao: vObs.trim() || null,
+    })
+    setSalvando(false)
+    if (error) { alert('Não consegui registrar a venda: ' + error.message); return }
+    setMostrarVenda(false)
+    carregar()
+  }
+
+  async function apagarVenda(id: string, nome: string) {
+    if (!confirm(`Apagar a venda de serviço de ${nome}?`)) return
+    const { error } = await supabase.from('vendas_servicos').delete().eq('id', id)
+    if (error) { alert('Não consegui apagar: ' + error.message); return }
+    carregar()
+  }
+
   function exportar() {
     const linhas: (string | number)[][] = [
       [`Relatório ${MESES[mes - 1]}/${ano}`, fechado ? `Fechado em ${new Date(fechamento!.fechado_em).toLocaleString('pt-BR')}` : 'Mês aberto'],
       [],
       ['Resumo', 'Valor'],
-      ['Mensalidades', n.mens], ['Aulas avulsas', n.avul], ['Total de entradas', n.total], ['Despesas', n.desp], ['Resultado', n.resultado],
+      ['Mensalidades', n.mens], ['Aulas avulsas', n.avul], ['Serviços', n.serv], ['Total de entradas', n.total], ['Despesas', n.desp], ['Resultado', n.resultado],
       [],
       ['Entradas por forma de pagamento', 'Valor'],
       ...Object.entries(n.porMetodo).map(([k, v]) => [k, v as number]),
       [],
-      ['Data', 'Aluno', 'Tipo', 'Forma', 'Valor'],
-      ...listaEntradas.map(e => [dataBR(e.data), e.nome, e.tipo, e.metodo, e.valor]),
+      ['Data', 'Aluno/Cliente', 'Tipo', 'Forma', 'Valor'],
+      ...listaEntradas.map(e => [dataBR(e.data), e.nome, e.detalhe ? `${e.tipo}: ${e.detalhe}` : e.tipo, e.metodo, e.valor]),
       [],
       ['Despesa', 'Observação', 'Valor'],
       ...listaDespesas.map(d => [d.categoria, d.observacao || '', d.valor]),
@@ -287,6 +342,7 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
       <div className="rel-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 16 }}>
         <Card label="Mensalidades" value={brl(n.mens)} />
         <Card label="Aulas avulsas" value={brl(n.avul)} />
+        <Card label="Serviços" value={brl(n.serv)} />
         <Card label="Total de entradas" value={brl(n.total)} cor="#3fb950" sub={`${listaEntradas.length} pagamento(s)`} />
         <Card label="Despesas" value={brl(n.desp)} cor="var(--danger)" />
         <Card label="Resultado" value={brl(n.resultado)} cor={n.resultado >= 0 ? '#3fb950' : 'var(--danger)'} sub={n.total > 0 ? `${((n.resultado / n.total) * 100).toFixed(0)}% das entradas` : undefined} />
@@ -350,6 +406,48 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
         )}
       </Secao>
 
+      <Secao
+        titulo={`Vendas de serviços (${listaEntradas.filter(e => e.tipo === 'Serviço').length})`}
+        acao={!fechado && !mostrarVenda ? <button onClick={abrirVenda} className="btn btn-primary btn-sm no-print">+ Registrar venda</button> : undefined}
+      >
+        {mostrarVenda && !fechado && (
+          <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 12, padding: 12, background: 'var(--bg)', borderRadius: 8 }}>
+            <select value={vServico} onChange={e => { setVServico(e.target.value); const sv = servicosOpt.find(x => x.id === e.target.value); if (sv) setVValor(String(sv.valor).replace('.', ',')) }} style={inputStyle}>
+              <option value="">Serviço...</option>
+              {servicosOpt.map(x => <option key={x.id} value={x.id}>{x.nome} — {brl(x.valor)}</option>)}
+            </select>
+            <select value={vAluno} onChange={e => setVAluno(e.target.value)} style={inputStyle}>
+              <option value="">Cliente de fora (não é aluno)</option>
+              {alunosOpt.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
+            </select>
+            {!vAluno && <input value={vCliente} onChange={e => setVCliente(e.target.value)} placeholder="Nome do cliente" style={inputStyle} />}
+            <input value={vValor} onChange={e => setVValor(e.target.value)} placeholder="Valor" inputMode="decimal" style={inputStyle} />
+            <input type="date" value={vData} onChange={e => setVData(e.target.value)} style={inputStyle} />
+            <select value={vMetodo} onChange={e => setVMetodo(e.target.value)} style={inputStyle}>
+              <option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option>
+            </select>
+            <input value={vObs} onChange={e => setVObs(e.target.value)} placeholder="Observação (opcional)" style={inputStyle} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={salvarVenda} disabled={salvando || !vServico || !vValor || !vData} className="btn btn-primary btn-sm">{salvando ? 'Salvando...' : 'Salvar venda'}</button>
+              <button onClick={() => setMostrarVenda(false)} className="btn btn-neutral btn-sm">Cancelar</button>
+            </div>
+          </div>
+        )}
+        {listaEntradas.filter(e => e.tipo === 'Serviço').length === 0 ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhuma venda de serviço neste mês.</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr><th style={th}>Data</th><th style={th}>Cliente</th><th style={th}>Serviço</th><th style={th}>Forma</th><th style={{ ...th, textAlign: 'right' }}>Valor</th>{!fechado && <th style={th} className="no-print"></th>}</tr></thead>
+            <tbody>
+              {listaEntradas.filter(e => e.tipo === 'Serviço').map((e, i) => (
+                <tr key={i}>
+                  <td style={td}>{dataBR(e.data)}</td><td style={td}>{e.nome}</td><td style={td}>{e.detalhe}</td><td style={td}>{e.metodo}</td><td style={tdNum}>{brl(e.valor)}</td>
+                  {!fechado && <td style={{ ...td, width: 40 }} className="no-print">{e.vendaId && <button onClick={() => apagarVenda(e.vendaId!, e.nome)} className="btn btn-outline-danger btn-sm" title="Apagar">✕</button>}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Secao>
+
       <Secao titulo={`Pagamentos recebidos (${listaEntradas.length})`}>
         {listaEntradas.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum pagamento confirmado neste mês.</p> : (
           <div style={{ overflowX: 'auto' }}>
@@ -358,7 +456,7 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
               <tbody>
                 {listaEntradas.map((e, i) => (
                   <tr key={i}>
-                    <td style={td}>{dataBR(e.data)}</td><td style={td}>{e.nome}</td><td style={td}>{e.tipo}</td><td style={td}>{e.metodo}</td><td style={tdNum}>{brl(e.valor)}</td>
+                    <td style={td}>{dataBR(e.data)}</td><td style={td}>{e.nome}</td><td style={td}>{e.detalhe ? `${e.tipo}: ${e.detalhe}` : e.tipo}</td><td style={td}>{e.metodo}</td><td style={tdNum}>{brl(e.valor)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -367,14 +465,14 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
         )}
       </Secao>
       <p className="no-print" style={{ fontSize: 11, color: 'var(--text3)' }}>
-        Entradas = mensalidades confirmadas (pela data do pagamento, já com desconto) + aulas avulsas confirmadas. Pagamento de outros serviços (ex: Personal) ainda não é registrado no sistema.
+        Entradas = mensalidades confirmadas (pela data do pagamento, já com desconto) + aulas avulsas confirmadas + vendas de serviços registradas aqui.
       </p>
     </div>
   )
 }
 
 // ======================= ANO =======================
-type LinhaAno = { mes: number; mens: number; avul: number; total: number; desp: number; resultado: number; fechado: boolean }
+type LinhaAno = { mes: number; mens: number; avul: number; serv: number; total: number; desp: number; resultado: number; fechado: boolean }
 
 function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) => void }) {
   const [loading, setLoading] = useState(true)
@@ -391,16 +489,16 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
       supabase.from('fechamentos_mensais').select('*').gte('mes', `${ano}-01-01`).lt('mes', `${ano + 1}-01-01`),
       buscarEntradas(`${ano - 1}-01-01T00:00:00-03:00`, ini),
     ])
-    const base: LinhaAno[] = Array.from({ length: 12 }, (_, i) => ({ mes: i + 1, mens: 0, avul: 0, total: 0, desp: 0, resultado: 0, fechado: false }))
+    const base: LinhaAno[] = Array.from({ length: 12 }, (_, i) => ({ mes: i + 1, mens: 0, avul: 0, serv: 0, total: 0, desp: 0, resultado: 0, fechado: false }))
     for (const e of entradas) {
       const m = Number(chaveMesDeData(e.data).slice(5, 7)) - 1
-      if (e.tipo === 'Mensalidade') base[m].mens += e.valor; else base[m].avul += e.valor
+      if (e.tipo === 'Mensalidade') base[m].mens += e.valor; else if (e.tipo === 'Serviço') base[m].serv += e.valor; else base[m].avul += e.valor
     }
     for (const d of (desp as { mes: string; valor: number }[]) || []) base[Number(d.mes.slice(5, 7)) - 1].desp += Number(d.valor)
-    for (const l of base) { l.total = l.mens + l.avul; l.resultado = l.total - l.desp }
+    for (const l of base) { l.total = l.mens + l.avul + l.serv; l.resultado = l.total - l.desp }
     for (const f of (fechs as Fechamento[]) || []) {
       const l = base[Number(f.mes.slice(5, 7)) - 1]
-      Object.assign(l, { mens: Number(f.receita_mensalidades), avul: Number(f.receita_avulsas), total: Number(f.receita_total), desp: Number(f.despesas_total), resultado: Number(f.resultado), fechado: true })
+      Object.assign(l, { mens: Number(f.receita_mensalidades), avul: Number(f.receita_avulsas), serv: Number(f.receita_servicos || 0), total: Number(f.receita_total), desp: Number(f.despesas_total), resultado: Number(f.resultado), fechado: true })
     }
     setLinhas(base)
     setTotalAnoAnterior(anteriores.length ? anteriores.reduce((s, e) => s + e.valor, 0) : null)
@@ -413,7 +511,7 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
   const hoje = new Date(Date.now() - 3 * 3600 * 1000)
   const ultimoMes = hoje.getUTCFullYear() === ano ? hoje.getUTCMonth() + 1 : hoje.getUTCFullYear() > ano ? 12 : 0
   const comMovimento = linhas.filter(l => l.mes <= ultimoMes && (l.total > 0 || l.desp > 0))
-  const tot = linhas.reduce((s, l) => ({ mens: s.mens + l.mens, avul: s.avul + l.avul, total: s.total + l.total, desp: s.desp + l.desp, resultado: s.resultado + l.resultado }), { mens: 0, avul: 0, total: 0, desp: 0, resultado: 0 })
+  const tot = linhas.reduce((s, l) => ({ mens: s.mens + l.mens, avul: s.avul + l.avul, serv: s.serv + l.serv, total: s.total + l.total, desp: s.desp + l.desp, resultado: s.resultado + l.resultado }), { mens: 0, avul: 0, serv: 0, total: 0, desp: 0, resultado: 0 })
   const media = comMovimento.length ? tot.total / comMovimento.length : 0
   const comEntrada = comMovimento.filter(l => l.total > 0)
   const melhor = comEntrada.length ? comEntrada.reduce((a, b) => (b.total > a.total ? b : a)) : null
@@ -424,9 +522,9 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
     baixarCSV(`relatorio-anual-${ano}.csv`, [
       [`Relatório anual ${ano}`],
       [],
-      ['Mês', 'Mensalidades', 'Aulas avulsas', 'Total entradas', 'Despesas', 'Resultado', 'Situação'],
-      ...linhas.map(l => [MESES[l.mes - 1], l.mens, l.avul, l.total, l.desp, l.resultado, l.fechado ? 'Fechado' : 'Aberto']),
-      ['TOTAL', tot.mens, tot.avul, tot.total, tot.desp, tot.resultado, ''],
+      ['Mês', 'Mensalidades', 'Aulas avulsas', 'Serviços', 'Total entradas', 'Despesas', 'Resultado', 'Situação'],
+      ...linhas.map(l => [MESES[l.mes - 1], l.mens, l.avul, l.serv, l.total, l.desp, l.resultado, l.fechado ? 'Fechado' : 'Aberto']),
+      ['TOTAL', tot.mens, tot.avul, tot.serv, tot.total, tot.desp, tot.resultado, ''],
     ])
   }
 
@@ -453,10 +551,10 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
 
       <Secao titulo="Mês a mês">
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <thead>
               <tr>
-                <th style={th}>Mês</th><th style={{ ...th, textAlign: 'right' }}>Mensalidades</th><th style={{ ...th, textAlign: 'right' }}>Avulsas</th>
+                <th style={th}>Mês</th><th style={{ ...th, textAlign: 'right' }}>Mensalidades</th><th style={{ ...th, textAlign: 'right' }}>Avulsas</th><th style={{ ...th, textAlign: 'right' }}>Serviços</th>
                 <th style={{ ...th, textAlign: 'right' }}>Entradas</th><th style={{ ...th, textAlign: 'right' }}>Despesas</th><th style={{ ...th, textAlign: 'right' }}>Resultado</th><th style={th}></th>
               </tr>
             </thead>
@@ -467,14 +565,14 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
                     <div>{MESES[l.mes - 1]}</div>
                     <div className="no-print" style={{ height: 4, background: '#3fb95040', borderRadius: 2, marginTop: 4, width: `${(l.total / maxTotal) * 100}%` }} />
                   </td>
-                  <td style={tdNum}>{brl(l.mens)}</td><td style={tdNum}>{brl(l.avul)}</td>
+                  <td style={tdNum}>{brl(l.mens)}</td><td style={tdNum}>{brl(l.avul)}</td><td style={tdNum}>{brl(l.serv)}</td>
                   <td style={{ ...tdNum, fontWeight: 700 }}>{brl(l.total)}</td><td style={tdNum}>{brl(l.desp)}</td>
                   <td style={{ ...tdNum, color: l.resultado >= 0 ? '#3fb950' : 'var(--danger)' }}>{brl(l.resultado)}</td>
                   <td style={{ ...td, fontSize: 11, color: 'var(--text3)' }}>{l.fechado ? '🔒' : ''}</td>
                 </tr>
               ))}
               <tr>
-                <td style={{ ...td, fontWeight: 700 }}>TOTAL</td><td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.mens)}</td><td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.avul)}</td>
+                <td style={{ ...td, fontWeight: 700 }}>TOTAL</td><td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.mens)}</td><td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.avul)}</td><td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.serv)}</td>
                 <td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.total)}</td><td style={{ ...tdNum, fontWeight: 700 }}>{brl(tot.desp)}</td>
                 <td style={{ ...tdNum, fontWeight: 700, color: tot.resultado >= 0 ? '#3fb950' : 'var(--danger)' }}>{brl(tot.resultado)}</td><td style={td}></td>
               </tr>
@@ -517,7 +615,7 @@ function RelatoriosContent() {
           .card * { color: #000 !important; }
           table { font-size: 11px; }
           td, th { border-color: #ddd !important; }
-          .rel-grid { grid-template-columns: repeat(5, 1fr) !important; }
+          .rel-grid { grid-template-columns: repeat(6, 1fr) !important; }
         }
       `}</style>
 
