@@ -81,6 +81,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         ],
       },
       { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },
+      { href: '/admin/relatorios', label: 'Relatórios', icon: 'chart' },
     ],
   },
   {
@@ -134,7 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Inter', sans-serif" }}>
       {/* Barra fixa no topo — sempre, em qualquer tamanho de tela */}
-      <div style={{
+      <div className="admin-topbar no-print" style={{
         position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg2)',
         borderBottom: '1px solid var(--border)', padding: '0.75rem 1.25rem',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
