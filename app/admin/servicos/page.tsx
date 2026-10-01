@@ -17,7 +17,10 @@ type Servico = {
   valor_atualizado_em: string
   pix_atualizado_em: string | null
   categoria_id: string | null
+  agenda_tipo_id: string | null
 }
+
+type TipoAgenda = { id: string; nome: string }
 
 type Categoria = {
   id: string
@@ -110,6 +113,10 @@ function ServicosContent() {
   const [categoriaEditandoId, setCategoriaEditandoId] = useState<string | null>(null)
   const [categoriaEditNome, setCategoriaEditNome] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
+  const [editAgendaTipoId, setEditAgendaTipoId] = useState('')
+  const [agendaTipoId, setAgendaTipoId] = useState('')
+  const [tiposAgenda, setTiposAgenda] = useState<TipoAgenda[]>([])
+  const [horariosPorTipo, setHorariosPorTipo] = useState<Record<string, number>>({})
 
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [editNome, setEditNome] = useState('')
@@ -133,6 +140,12 @@ function ServicosContent() {
     setHorarios((horariosData as ServicoHorario[]) || [])
     const { data: categoriasData } = await supabase.from('servicos_categorias').select('*').order('nome')
     setCategorias((categoriasData as Categoria[]) || [])
+    const { data: tiposData } = await supabase.from('tipos_agenda').select('id, nome').eq('ativo', true).order('created_at')
+    setTiposAgenda((tiposData as TipoAgenda[]) || [])
+    const { data: horEstudio } = await supabase.from('horarios').select('tipo_agenda_id').eq('ativo', true)
+    const contagem: Record<string, number> = {}
+    for (const h of (horEstudio as { tipo_agenda_id: string | null }[]) || []) if (h.tipo_agenda_id) contagem[h.tipo_agenda_id] = (contagem[h.tipo_agenda_id] || 0) + 1
+    setHorariosPorTipo(contagem)
     setLoading(false)
   }
 
@@ -148,10 +161,11 @@ function ServicosContent() {
       tem_agenda: temAgenda,
       ativo: true,
       categoria_id: categoriaId || null,
+      agenda_tipo_id: temAgenda && agendaTipoId ? agendaTipoId : null,
     })
     setSalvando(false)
     if (error) { alert('Não consegui criar o serviço: ' + error.message); return }
-    setNome(''); setValor(''); setQuantidadeUsos('1'); setTemAgenda(false); setCategoriaId(''); setMostrarForm(false)
+    setNome(''); setValor(''); setQuantidadeUsos('1'); setTemAgenda(false); setCategoriaId(''); setAgendaTipoId(''); setMostrarForm(false)
     carregar()
   }
 
@@ -166,6 +180,7 @@ function ServicosContent() {
     setEditLinkCartao(s.link_cartao || '')
     setEditLinkValorFixo(s.link_cartao_valor_fixo)
     setEditCategoriaId(s.categoria_id || '')
+    setEditAgendaTipoId(s.agenda_tipo_id || '')
   }
 
   async function salvarEdicao(id: string) {
@@ -178,6 +193,7 @@ function ServicosContent() {
       chave_pix_valor_fixo: editChaveValorFixo,
       link_cartao_valor_fixo: editLinkValorFixo,
       categoria_id: editCategoriaId || null,
+      agenda_tipo_id: editTemAgenda && editAgendaTipoId ? editAgendaTipoId : null,
     }
     // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
     if (servicoAtual && editChavePix.trim() !== (servicoAtual.chave_pix || '')) {
@@ -235,6 +251,28 @@ function ServicosContent() {
     const { error } = await supabase.from('servicos_categorias').delete().eq('id', c.id)
     if (error) { alert('Não consegui apagar: ' + error.message); return }
     carregar()
+  }
+
+  function nomeTipoAgenda(id: string | null) {
+    if (!id) return null
+    return tiposAgenda.find(t => t.id === id)?.nome || null
+  }
+
+  function selectSincronia(value: string, onChange: (v: string) => void) {
+    return (
+      <div style={{ marginTop: 8 }}>
+        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Horários do serviço</label>
+        <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+          <option value="">Horários próprios (cadastro aqui no serviço)</option>
+          {tiposAgenda.map(t => (
+            <option key={t.id} value={t.id}>Sincronizar com a agenda: {t.nome} ({horariosPorTipo[t.id] || 0} horários)</option>
+          ))}
+        </select>
+        <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+          Sincronizado: o serviço fica disponível nos mesmos dias e horários desse tipo de agenda do estúdio (tela Professores). Se abrir ou fechar horário lá, muda aqui sozinho.
+        </p>
+      </div>
+    )
   }
 
   function nomeCategoria(id: string | null) {
@@ -370,8 +408,9 @@ function ServicosContent() {
                     </div>
                     <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input type="checkbox" checked={editTemAgenda} onChange={e => setEditTemAgenda(e.target.checked)} />
-                      Tem agenda própria (precisa marcar dia/horário)
+                      Tem agenda (precisa marcar dia/horário)
                     </label>
+                    {editTemAgenda && selectSincronia(editAgendaTipoId, setEditAgendaTipoId)}
                   </div>
 
                   <div style={sectionBox}>
@@ -413,7 +452,7 @@ function ServicosContent() {
                   {nomeExpandidoId === s.id && (
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
                       <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
-                        R$ {Number(s.valor).toFixed(2)} · {s.quantidade_usos}x uso{s.quantidade_usos > 1 ? 's' : ''} · {s.tem_agenda ? 'com agenda' : 'sem agenda'}
+                        R$ {Number(s.valor).toFixed(2)} · {s.quantidade_usos}x uso{s.quantidade_usos > 1 ? 's' : ''} · {s.tem_agenda ? (s.agenda_tipo_id ? `agenda sincronizada com ${nomeTipoAgenda(s.agenda_tipo_id) || 'tipo removido'} (${horariosPorTipo[s.agenda_tipo_id] || 0} horários)` : 'com agenda própria') : 'sem agenda'}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                         {s.chave_pix
@@ -425,7 +464,7 @@ function ServicosContent() {
                         {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {s.tem_agenda && (
+                        {s.tem_agenda && !s.agenda_tipo_id && (
                           <button onClick={() => setServicoExpandido(servicoExpandido === s.id ? null : s.id)} className="btn btn-ghost btn-sm">
                             📅 Agenda ({horarios.filter(h => h.servico_id === s.id && h.ativo).length})
                           </button>
@@ -444,7 +483,7 @@ function ServicosContent() {
                 </div>
               )}
 
-              {servicoExpandido === s.id && s.tem_agenda && (
+              {servicoExpandido === s.id && s.tem_agenda && !s.agenda_tipo_id && (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                   <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
                     Horários liberados só pra esse serviço — não usam nem afetam a agenda de aula.
@@ -515,8 +554,9 @@ function ServicosContent() {
             </div>
             <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <input type="checkbox" checked={temAgenda} onChange={e => setTemAgenda(e.target.checked)} />
-              Tem agenda própria (precisa marcar dia/horário)
+              Tem agenda (precisa marcar dia/horário)
             </label>
+            {temAgenda && selectSincronia(agendaTipoId, setAgendaTipoId)}
             <p style={{ fontSize: 11, color: 'var(--text3)' }}>
               Depois de criar, edite o serviço pra cadastrar a chave Pix e o link de cartão.
             </p>
