@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type Plano = {
   id: string
@@ -183,12 +184,14 @@ function PlanosContent() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Planos</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Crie, edite ou desative os tipos de plano oferecidos pelo estúdio. Cadastre aqui a chave Pix (já com o
-        valor certo) e o link de pagamento no cartão de cada plano — é isso que a Elen vai mandar pro aluno.
-        Isso não mexe em nenhum aluno já cadastrado — só afeta quais opções aparecem pra escolher daqui pra frente.
-      </p>
+      <Cabecalho
+        titulo="Planos"
+        subtitulo={<>
+          Crie, edite ou desative os tipos de plano oferecidos pelo estúdio. Cadastre aqui a chave Pix (já com o
+          valor certo) e o link de pagamento no cartão de cada plano — é isso que a Elen vai mandar pro aluno.
+          Isso não mexe em nenhum aluno já cadastrado — só afeta quais opções aparecem pra escolher daqui pra frente.
+        </>}
+      />
 
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
         A chave Pix padrão e a chave Pix de desconto agora ficam em <Link href="/admin/configuracoes#pagamentos" style={{ color: '#4a90d9' }}>Configurações</Link>.
