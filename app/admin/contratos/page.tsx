@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type AlunoOpt = { id: string; nome: string; status_plano: string }
 
@@ -21,11 +22,13 @@ function ContratosContent() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Contratos</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Escolha o aluno pra gerar o contrato + termo de responsabilidade já preenchidos, prontos pra imprimir ou salvar em PDF.
-        O texto do modelo se edita em <Link href="/admin/configuracoes#contrato" style={{ color: '#4a90d9' }}>Configurações → Contrato</Link>.
-      </p>
+      <Cabecalho
+        titulo="Contratos"
+        subtitulo={<>
+          Escolha o aluno pra gerar o contrato + termo de responsabilidade já preenchidos, prontos pra imprimir ou salvar em PDF.
+          O texto do modelo se edita em <Link href="/admin/configuracoes#contrato" style={{ color: '#4a90d9' }}>Configurações → Contrato</Link>.
+        </>}
+      />
 
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>📄 Gerar contrato de um aluno</div>
