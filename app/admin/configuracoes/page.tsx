@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { CAMPOS_CONTRATO, MODELO_CONTRATO_PADRAO } from '@/lib/contrato'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
@@ -355,8 +356,12 @@ function ConfiguracoesContent() {
           .cfg-tab small { display: none; }
         }
       `}</style>
-      <h1 style={{ fontSize: 26, marginBottom: 4 }}>Configurações</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 18 }}>Ajustes gerais do sistema e da Elen.</p>
+      <Cabecalho
+        titulo="Configurações"
+        subtitulo={<>
+          Ajustes gerais do sistema e da Elen.
+        </>}
+      />
       <div className="cfg-wrap">
         <nav className="cfg-nav">
           {SECOES.map(s => (
