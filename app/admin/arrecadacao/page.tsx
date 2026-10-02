@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 // Arrecadação por categoria e por serviço.
 // Usa as MESMAS regras de entrada dos Relatórios (pra os totais baterem):
@@ -123,21 +124,19 @@ function ArrecadacaoContent() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <div>
-          <h1 style={{ fontSize: 26, marginBottom: 4 }}>Arrecadação por serviço</h1>
-          <p style={{ fontSize: 13, color: 'var(--text2)' }}>Quanto entrou em cada categoria e em cada serviço. Mesmas regras dos <Link href="/admin/relatorios" style={{ color: '#4a90d9' }}>Relatórios</Link>.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select value={mes ?? 0} onChange={e => setMes(Number(e.target.value) || null)} style={sel}>
-            <option value={0}>Ano inteiro</option>
-            {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
-          <select value={ano} onChange={e => setAno(Number(e.target.value))} style={sel}>
-            {[hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1].map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </div>
-      </div>
+      <Cabecalho
+        titulo="Arrecadação por serviço"
+        subtitulo={<>Quanto entrou em cada categoria e em cada serviço. Mesmas regras dos <Link href="/admin/relatorios">Relatórios</Link>.</>}
+        acoes={<>
+              <select value={mes ?? 0} onChange={e => setMes(Number(e.target.value) || null)} style={sel}>
+                <option value={0}>Ano inteiro</option>
+                {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+              <select value={ano} onChange={e => setAno(Number(e.target.value))} style={sel}>
+                {[hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1].map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+        </>}
+      />
 
       {grupos == null ? <p style={{ color: 'var(--text2)' }}>Carregando...</p> : (
         <>
