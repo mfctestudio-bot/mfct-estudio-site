@@ -108,12 +108,14 @@ function AlunosContent() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h1 style={{ fontSize: 28 }}>Alunos</h1>
-        <button onClick={() => setNovoOpen(true)} className="btn btn-primary">
-          + Novo aluno
-        </button>
-      </div>
+      <Cabecalho
+        titulo="Alunos"
+        acoes={
+          <button onClick={() => setNovoOpen(true)} className="btn btn-primary">
+            + Novo aluno
+          </button>
+        }
+      />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <input
@@ -194,6 +196,7 @@ function AlunosContent() {
 }
 
 import { normalizarTelefone } from '@/lib/phone'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose: () => void; onSaved: () => void }) {
   const [nome, setNome] = useState('')
