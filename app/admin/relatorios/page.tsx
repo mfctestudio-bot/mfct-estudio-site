@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 // Relatórios financeiros (01/10/2026).
 // Entradas = pagamentos com status 'pago' (valor - desconto, pela data_pagamento)
@@ -619,10 +620,12 @@ function RelatoriosContent() {
         }
       `}</style>
 
-      <h1 className="no-print" style={{ fontSize: 24, marginBottom: 4 }}>Relatórios</h1>
-      <p className="no-print" style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>
-        Fechamento de cada mês, resumo do ano e despesas do estúdio. Dá pra imprimir, salvar em PDF ou baixar em planilha.
-      </p>
+      <Cabecalho className="no-print"
+        titulo="Relatórios"
+        subtitulo={<>
+          Fechamento de cada mês, resumo do ano e despesas do estúdio. Dá pra imprimir, salvar em PDF ou baixar em planilha.
+        </>}
+      />
 
       <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 18 }}>
         <button onClick={() => setAba('mes')} style={tab(aba === 'mes')}>📅 Mês</button>
