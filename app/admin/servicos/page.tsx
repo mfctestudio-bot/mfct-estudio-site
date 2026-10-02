@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type Servico = {
   id: string
@@ -279,12 +280,14 @@ function ServicosContent() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Serviços</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Crie, edite, ative/desative ou apague os serviços oferecidos (aula avulsa, avaliação física, ou qualquer serviço novo).
-        Cada serviço define seu próprio valor, quantidade de usos e se tem agenda própria — separada da agenda de aula.
-        Cadastre aqui também a chave Pix (já com o valor certo) e o link de cartão — é isso que a Elen vai mandar pro aluno.
-      </p>
+      <Cabecalho
+        titulo="Serviços"
+        subtitulo={<>
+          Crie, edite, ative/desative ou apague os serviços oferecidos (aula avulsa, avaliação física, ou qualquer serviço novo).
+          Cada serviço define seu próprio valor, quantidade de usos e se tem agenda própria — separada da agenda de aula.
+          Cadastre aqui também a chave Pix (já com o valor certo) e o link de cartão — é isso que a Elen vai mandar pro aluno.
+        </>}
+      />
 
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
         🏷️ As categorias dos serviços (criar, renomear, desativar) ficam em <Link href="/admin/configuracoes#categorias" style={{ color: '#4a90d9' }}>Configurações → Categorias de serviços</Link>.
