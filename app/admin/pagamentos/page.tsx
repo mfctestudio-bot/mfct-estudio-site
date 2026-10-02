@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type PagamentoRow = {
   id: string
@@ -213,12 +214,10 @@ function PagamentosContent() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 28, marginBottom: 4 }}>Pagamentos</h1>
-      </div>
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: -8, marginBottom: 12 }}>
-        Histórico financeiro. Pra criar uma mensalidade nova (renovação, troca de plano), vá em Financeiro → Mensalidades → o aluno.
-      </p>
+      <Cabecalho
+        titulo="Pagamentos"
+        subtitulo="Histórico financeiro. Pra criar uma mensalidade nova (renovação, troca de plano), vá em Financeiro → Mensalidades → o aluno."
+      />
       {pendentes > 0 && (
         <div style={{ background: '#f0a50022', border: '1px solid #f0a500', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f0a500', fontWeight: 700 }}>
           ⚠️ {pendentes} comprovante{pendentes > 1 ? 's' : ''} aguardando sua confirmação
