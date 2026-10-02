@@ -2,8 +2,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje } from '@/lib/periodos'
+import { DOBRAS, dobrasDoProtocolo, calcularDobras, idadeEm, type Sexo, type Protocolo } from '@/lib/dobras'
 
-type Aluno = { id: string; nome: string; status_plano: string; meta_peso: number | null; meta_gordura_pct: number | null; token_avaliacao: string }
+type Aluno = { id: string; nome: string; status_plano: string; meta_peso: number | null; meta_gordura_pct: number | null; token_avaliacao: string; data_nascimento: string | null }
+
+type Medidas = {
+  omron?: Record<string, number>
+  dobras?: { protocolo: Protocolo; sexo: Sexo; idade: number | null; valores: Record<string, number>; soma?: number; densidade?: number; gordura_pct?: number }
+}
+
+type ServicoAvaliacao = { id: string; nome: string; valor: number }
 
 type Avaliacao = {
   id: string
@@ -22,6 +30,7 @@ type Avaliacao = {
   observacoes: string | null
   valor: number
   pago: boolean
+  medidas: Medidas | null
   created_at: string
 }
 
@@ -75,9 +84,24 @@ const CAMPOS_OMRON: { chave: keyof Avaliacao; label: string; unidade: string; st
   { chave: 'imc', label: 'IMC', unidade: '', step: '0.1' },
   { chave: 'gordura_corporal_pct', label: 'Gordura corporal', unidade: '%', step: '0.1' },
   { chave: 'gordura_visceral', label: 'Gordura visceral', unidade: '', step: '1' },
-  { chave: 'massa_muscular_pct', label: 'Massa muscular', unidade: '%', step: '0.1' },
-  { chave: 'idade_metabolica', label: 'Idade metabólica', unidade: 'anos', step: '1' },
+  { chave: 'massa_muscular_pct', label: 'Músculo esquelético', unidade: '%', step: '0.1' },
+  { chave: 'idade_metabolica', label: 'Idade corporal', unidade: 'anos', step: '1' },
 ]
+
+// Dados extras que a Omron HBF-514C mostra (ficam em avaliacoes.medidas.omron)
+const CAMPOS_OMRON_EXTRA: { chave: string; label: string; unidade: string; step: string; grupo: string }[] = [
+  { chave: 'metabolismo_repouso', label: 'Metabolismo de repouso', unidade: 'kcal', step: '1', grupo: 'Geral' },
+  { chave: 'gordura_sub_corpo', label: 'Corpo inteiro', unidade: '%', step: '0.1', grupo: 'Gordura subcutânea' },
+  { chave: 'gordura_sub_tronco', label: 'Tronco', unidade: '%', step: '0.1', grupo: 'Gordura subcutânea' },
+  { chave: 'gordura_sub_bracos', label: 'Braços', unidade: '%', step: '0.1', grupo: 'Gordura subcutânea' },
+  { chave: 'gordura_sub_pernas', label: 'Pernas', unidade: '%', step: '0.1', grupo: 'Gordura subcutânea' },
+  { chave: 'musculo_tronco', label: 'Tronco', unidade: '%', step: '0.1', grupo: 'Músculo esquelético' },
+  { chave: 'musculo_bracos', label: 'Braços', unidade: '%', step: '0.1', grupo: 'Músculo esquelético' },
+  { chave: 'musculo_pernas', label: 'Pernas', unidade: '%', step: '0.1', grupo: 'Músculo esquelético' },
+]
+
+// Marca usada na observação da venda pra ligar a venda à avaliação (sem coluna nova)
+const tagVenda = (avaliacaoId: string) => `[avaliacao:${avaliacaoId}]`
 
 export default function AvaliacoesPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([])
@@ -100,12 +124,19 @@ export default function AvaliacoesPage() {
   const [novoValorCobrado, setNovoValorCobrado] = useState('30')
   const [novoNivelAtividade, setNovoNivelAtividade] = useState('moderado')
   const [novoObjetivo, setNovoObjetivo] = useState('manutencao')
+  const [servicoAval, setServicoAval] = useState<ServicoAvaliacao | null>(null)
+  const [omronExtra, setOmronExtra] = useState<Record<string, string>>({})
+  const [usarDobras, setUsarDobras] = useState(false)
+  const [protocolo, setProtocolo] = useState<Protocolo>('jp7')
+  const [sexo, setSexo] = useState<Sexo>('F')
+  const [dobras, setDobras] = useState<Record<string, string>>({})
+  const [idadeManual, setIdadeManual] = useState('')
 
   async function carregarAlunos() {
     setLoading(true)
     const { data } = await supabase
       .from('alunos')
-      .select('id, nome, status_plano, meta_peso, meta_gordura_pct, token_avaliacao')
+      .select('id, nome, status_plano, meta_peso, meta_gordura_pct, token_avaliacao, data_nascimento')
       .order('nome')
     const ids = (data || []).map(a => a.id)
     const { data: periodos } = ids.length > 0
@@ -121,7 +152,22 @@ export default function AvaliacoesPage() {
     setLoading(false)
   }
 
-  useEffect(() => { carregarAlunos() }, [])
+  useEffect(() => {
+    carregarAlunos()
+    // Serviço "Avaliação Física" (categoria Avaliação) — dá o valor padrão e liga a venda ao serviço
+    supabase.from('servicos').select('id, nome, valor, servicos_categorias(nome)').then(({ data }) => {
+      const lista = (data as unknown as (ServicoAvaliacao & { servicos_categorias: { nome: string } | { nome: string }[] | null })[]) || []
+      const cat = (s: typeof lista[number]) => {
+        const c = Array.isArray(s.servicos_categorias) ? s.servicos_categorias[0] : s.servicos_categorias
+        return (c?.nome || '').toLowerCase()
+      }
+      const s = lista.find(x => cat(x).startsWith('avalia')) || lista.find(x => x.nome.toLowerCase().includes('avalia'))
+      if (s) {
+        setServicoAval({ id: s.id, nome: s.nome, valor: Number(s.valor) })
+        setNovoValorCobrado(v => (v === '30' ? String(Number(s.valor)) : v))
+      }
+    })
+  }, [])
 
   async function carregarHistorico(id: string) {
     if (!id) { setAvaliacoes([]); setFotos([]); return }
@@ -175,22 +221,83 @@ export default function AvaliacoesPage() {
       corpo[campo.chave as string] = v ? Number(v) : null
     }
 
-    if (editandoId) {
-      await supabase.from('avaliacoes').update(corpo).eq('id', editandoId)
-    } else {
-      await supabase.from('avaliacoes').insert(corpo)
+    // Medidas extras (Omron segmentar + dobras) vão no campo medidas (jsonb)
+    const medidas: Medidas = {}
+    const extra: Record<string, number> = {}
+    for (const c of CAMPOS_OMRON_EXTRA) if (omronExtra[c.chave]) extra[c.chave] = Number(omronExtra[c.chave])
+    if (Object.keys(extra).length) medidas.omron = extra
+    const resDobras = resultadoDobras()
+    if (usarDobras) {
+      const valores: Record<string, number> = {}
+      for (const k of dobrasDoProtocolo(protocolo, sexo)) if (dobras[k]) valores[k] = Number(dobras[k])
+      if (Object.keys(valores).length) {
+        medidas.dobras = { protocolo, sexo, idade: idadeAvaliacao(), valores }
+        if (resDobras) Object.assign(medidas.dobras, { soma: resDobras.soma, densidade: Number(resDobras.densidade.toFixed(5)), gordura_pct: Number(resDobras.gorduraPct.toFixed(1)) })
+      }
     }
+    corpo.medidas = Object.keys(medidas).length ? medidas : null
+
+    let avaliacaoId = editandoId
+    if (editandoId) {
+      const { error } = await supabase.from('avaliacoes').update(corpo).eq('id', editandoId)
+      if (error) { alert('Não consegui salvar: ' + error.message); setSalvando(false); return }
+    } else {
+      const { data, error } = await supabase.from('avaliacoes').insert(corpo).select('id').single()
+      if (error || !data) { alert('Não consegui salvar: ' + (error?.message || '')); setSalvando(false); return }
+      avaliacaoId = (data as { id: string }).id
+    }
+    if (avaliacaoId) await sincronizarVenda(avaliacaoId, corpo.valor as number, novoPago, novaData)
 
     fecharForm()
     setSalvando(false)
     carregarHistorico(alunoId)
   }
 
+  // Liga a avaliação ao serviço "Avaliação Física": paga = 1 venda do serviço (entra nos Relatórios); não paga = sem venda.
+  async function sincronizarVenda(avaliacaoId: string, valor: number, pago: boolean, data: string) {
+    const tag = tagVenda(avaliacaoId)
+    const { data: existentes } = await supabase.from('vendas_servicos').select('id').like('observacao', `%${tag}%`)
+    const ids = ((existentes as { id: string }[]) || []).map(v => v.id)
+    if (!pago) {
+      if (ids.length) await supabase.from('vendas_servicos').delete().in('id', ids)
+      return
+    }
+    const venda = {
+      servico_id: servicoAval?.id || null,
+      servico_nome: servicoAval?.nome || 'Avaliação Física',
+      aluno_id: alunoId,
+      cliente_nome: alunoAtual?.nome || null,
+      valor,
+      data_venda: `${data}T12:00:00-03:00`,
+      observacao: `Avaliação física ${tag}`,
+    }
+    const { error } = ids.length
+      ? await supabase.from('vendas_servicos').update(venda).eq('id', ids[0])
+      : await supabase.from('vendas_servicos').insert(venda)
+    if (error) alert('A avaliação foi salva, mas não consegui lançar a venda nos relatórios: ' + error.message)
+    if (ids.length > 1) await supabase.from('vendas_servicos').delete().in('id', ids.slice(1))
+  }
+
+  function idadeAvaliacao() {
+    return idadeManual ? Number(idadeManual) : idadeEm(alunoAtual?.data_nascimento, novaData)
+  }
+
+  function resultadoDobras() {
+    if (!usarDobras) return null
+    const valores: Record<string, number | null> = {}
+    for (const k of Object.keys(dobras)) valores[k] = dobras[k] ? Number(dobras[k]) : null
+    return calcularDobras(protocolo, sexo, idadeAvaliacao(), valores)
+  }
+
   function fecharForm() {
     setNovosValores({})
     setNovaObs('')
     setNovoPago(true)
-    setNovoValorCobrado('30')
+    setNovoValorCobrado(servicoAval ? String(servicoAval.valor) : '30')
+    setOmronExtra({})
+    setUsarDobras(false)
+    setDobras({})
+    setIdadeManual('')
     setNovoNivelAtividade('moderado')
     setNovoObjetivo('manutencao')
     setNovaData(new Date().toISOString().slice(0, 10))
@@ -212,12 +319,25 @@ export default function AvaliacoesPage() {
     setNovoValorCobrado(String(a.valor))
     setNovoNivelAtividade(a.nivel_atividade)
     setNovoObjetivo(a.objetivo)
+    const ext: Record<string, string> = {}
+    for (const [k, v] of Object.entries(a.medidas?.omron || {})) ext[k] = String(v)
+    setOmronExtra(ext)
+    const d = a.medidas?.dobras
+    setUsarDobras(!!d)
+    if (d) {
+      setProtocolo(d.protocolo); setSexo(d.sexo)
+      const dv: Record<string, string> = {}
+      for (const [k, v] of Object.entries(d.valores || {})) dv[k] = String(v)
+      setDobras(dv)
+      setIdadeManual(d.idade != null && d.idade !== idadeEm(alunoAtual?.data_nascimento, a.data) ? String(d.idade) : '')
+    } else { setDobras({}); setIdadeManual('') }
     setMostrarForm(true)
   }
 
   async function apagarAvaliacao(id: string) {
     if (!confirm('Apagar essa avaliação? As fotos vinculadas a ela também vão junto. Isso não pode ser desfeito.')) return
     await supabase.from('avaliacoes').delete().eq('id', id)
+    await supabase.from('vendas_servicos').delete().like('observacao', `%${tagVenda(id)}%`)
     carregarHistorico(alunoId)
   }
 
@@ -239,7 +359,7 @@ export default function AvaliacoesPage() {
     <div>
       <h1 style={{ fontSize: 28, marginBottom: 8 }}>Avaliações Físicas</h1>
       <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Registre os dados da balança Omron pra cada avaliação. Valor padrão R$ 30 por avaliação. As fotos que o aluno manda pelo WhatsApp mencionando &quot;avaliação&quot; entram aqui automaticamente.
+        Registre os dados da balança Omron HBF-514C e, se quiser, as dobras cutâneas. O valor vem do serviço {servicoAval ? `“${servicoAval.nome}” (R$ ${servicoAval.valor.toFixed(2).replace('.', ',')})` : '“Avaliação Física”'} — avaliação marcada como paga entra automaticamente nos Relatórios como venda desse serviço. As fotos que o aluno manda pelo WhatsApp mencionando &quot;avaliação&quot; entram aqui automaticamente.
       </p>
 
       <div style={{ marginBottom: 20 }}>
@@ -341,6 +461,82 @@ export default function AvaliacoesPage() {
                     />
                   </div>
                 ))}
+              </div>
+
+              <details open={Object.keys(omronExtra).length > 0} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 14px', marginBottom: 14 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>⚖️ Mais dados da Omron HBF-514C (opcional)</summary>
+                {['Geral', 'Gordura subcutânea', 'Músculo esquelético'].map(grupo => (
+                  <div key={grupo} style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{grupo}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                      {CAMPOS_OMRON_EXTRA.filter(c => c.grupo === grupo).map(c => (
+                        <div key={c.chave}>
+                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>{c.label} ({c.unidade})</label>
+                          <input type="number" step={c.step} placeholder="—" value={omronExtra[c.chave] || ''}
+                            onChange={e => setOmronExtra(prev => ({ ...prev, [c.chave]: e.target.value }))}
+                            style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </details>
+
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 14px', marginBottom: 14 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={usarDobras} onChange={e => setUsarDobras(e.target.checked)} />
+                  📏 Dobras cutâneas (adipômetro) — opcional
+                </label>
+                {usarDobras && (() => {
+                  const res = resultadoDobras()
+                  const idade = idadeAvaliacao()
+                  const usadas = dobrasDoProtocolo(protocolo, sexo)
+                  const sel: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }
+                  const gordBalanca = Number(novosValores.gordura_corporal_pct)
+                  return (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Protocolo</label>
+                          <select value={protocolo} onChange={e => setProtocolo(e.target.value as Protocolo)} style={sel}>
+                            <option value="jp7">Jackson & Pollock — 7 dobras</option>
+                            <option value="jp3">Jackson & Pollock — 3 dobras</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Sexo</label>
+                          <select value={sexo} onChange={e => setSexo(e.target.value as Sexo)} style={sel}>
+                            <option value="F">Feminino</option>
+                            <option value="M">Masculino</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Idade</label>
+                          <input type="number" value={idadeManual} placeholder={idadeEm(alunoAtual?.data_nascimento, novaData)?.toString() || 'anos'}
+                            onChange={e => setIdadeManual(e.target.value)} style={{ ...sel, width: 80 }} />
+                        </div>
+                      </div>
+                      {!idade && <p style={{ fontSize: 11, color: '#e0a020', marginBottom: 8 }}>Aluno sem data de nascimento no cadastro — digite a idade pra calcular.</p>}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                        {DOBRAS.filter(d => usadas.includes(d.chave)).map(d => (
+                          <div key={d.chave}>
+                            <label title={d.dica} style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>{d.label} (mm)</label>
+                            <input type="number" step="0.5" placeholder="—" value={dobras[d.chave] || ''}
+                              onChange={e => setDobras(prev => ({ ...prev, [d.chave]: e.target.value }))}
+                              style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
+                            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{d.dica}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text2)' }}>
+                        {res ? (
+                          <>Soma: <b style={{ color: 'var(--text)' }}>{res.soma.toFixed(1)} mm</b> · Gordura pelas dobras: <b style={{ color: '#e05656', fontSize: 14 }}>{res.gorduraPct.toFixed(1)}%</b>
+                            {gordBalanca > 0 && <span style={{ color: 'var(--text3)' }}> (balança: {gordBalanca}%)</span>}</>
+                        ) : <span style={{ color: 'var(--text3)' }}>Preencha todas as dobras acima pra calcular o % de gordura.</span>}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
 
               <div style={{ marginBottom: 14 }}>
@@ -483,8 +679,32 @@ export default function AvaliacoesPage() {
                         {a.gordura_corporal_pct != null && <span>Gordura: <b style={{ color: 'var(--text)' }}>{a.gordura_corporal_pct}%</b></span>}
                         {a.gordura_visceral != null && <span>G. visceral: <b style={{ color: 'var(--text)' }}>{a.gordura_visceral}</b></span>}
                         {a.massa_muscular_pct != null && <span>Massa muscular: <b style={{ color: 'var(--text)' }}>{a.massa_muscular_pct}%</b></span>}
-                        {a.idade_metabolica != null && <span>Idade metabólica: <b style={{ color: 'var(--text)' }}>{a.idade_metabolica}</b></span>}
+                        {a.idade_metabolica != null && <span>Idade corporal: <b style={{ color: 'var(--text)' }}>{a.idade_metabolica}</b></span>}
+                        {a.medidas?.omron?.metabolismo_repouso != null && <span>Metab. repouso: <b style={{ color: 'var(--text)' }}>{a.medidas.omron.metabolismo_repouso} kcal</b></span>}
                       </div>
+                      {a.medidas?.omron && (() => {
+                        const o = a.medidas.omron
+                        const seg = (pref: string) => ['tronco', 'bracos', 'pernas'].map(p => o[`${pref}_${p}`] != null ? `${p === 'bracos' ? 'braços' : p} ${o[`${pref}_${p}`]}%` : null).filter(Boolean).join(' · ')
+                        const g = seg('gordura_sub'), m = seg('musculo')
+                        if (!g && !m && o.gordura_sub_corpo == null) return null
+                        return (
+                          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>
+                            {(o.gordura_sub_corpo != null || g) && <div>Gordura subcutânea: <b style={{ color: 'var(--text)' }}>{o.gordura_sub_corpo != null ? `${o.gordura_sub_corpo}%` : ''}</b>{g && <span style={{ color: 'var(--text3)' }}> ({g})</span>}</div>}
+                            {m && <div>Músculo esquelético: <span style={{ color: 'var(--text)' }}>{m}</span></div>}
+                          </div>
+                        )
+                      })()}
+                      {a.medidas?.dobras && (() => {
+                        const d = a.medidas.dobras
+                        const lista = DOBRAS.filter(x => d.valores?.[x.chave] != null).map(x => `${x.label} ${d.valores[x.chave]}`).join(' · ')
+                        return (
+                          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>
+                            Dobras ({d.protocolo === 'jp7' ? 'J&P 7' : 'J&P 3'}): {d.gordura_pct != null && <b style={{ color: '#e05656' }}>{d.gordura_pct}% gordura</b>}
+                            {d.soma != null && <span> · soma {d.soma} mm</span>}
+                            <div style={{ fontSize: 11, color: 'var(--text3)' }}>{lista} (mm)</div>
+                          </div>
+                        )
+                      })()}
                       {(() => {
                         const plano = calcularPlanoNutricional(a.peso, a.gordura_corporal_pct, a.nivel_atividade, a.objetivo)
                         if (!plano) return null

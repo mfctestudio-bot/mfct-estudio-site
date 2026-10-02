@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 
@@ -103,12 +104,6 @@ function PlanosContent() {
   const [editLinkCartao, setEditLinkCartao] = useState('')
   const [editLinkValorFixo, setEditLinkValorFixo] = useState(true)
 
-  const [chaveDesconto, setChaveDesconto] = useState('')
-  const [chaveDescontoSalva, setChaveDescontoSalva] = useState('')
-  const [salvandoDesconto, setSalvandoDesconto] = useState(false)
-  const [chavePadrao, setChavePadrao] = useState('')
-  const [chavePadraoSalva, setChavePadraoSalva] = useState('')
-  const [salvandoPadrao, setSalvandoPadrao] = useState(false)
 
   async function carregar() {
     setLoading(true)
@@ -116,14 +111,6 @@ function PlanosContent() {
     setPlanos((data as Plano[]) || [])
     const { data: descData } = await supabase.from('descontos_planos').select('*').order('valor', { ascending: false })
     setDescontos((descData as Desconto[]) || [])
-    const { data: config } = await supabase.from('configuracoes').select('valor').eq('chave', 'chave_pix_desconto').maybeSingle()
-    const valorConfig = (config as { valor: string | null } | null)?.valor || ''
-    setChaveDesconto(valorConfig)
-    setChaveDescontoSalva(valorConfig)
-    const { data: configPadrao } = await supabase.from('configuracoes').select('valor').eq('chave', 'chave_pix_padrao').maybeSingle()
-    const valorPadrao = (configPadrao as { valor: string | null } | null)?.valor || ''
-    setChavePadrao(valorPadrao)
-    setChavePadraoSalva(valorPadrao)
     setLoading(false)
   }
 
@@ -194,21 +181,6 @@ function PlanosContent() {
     setPlanos(prev => prev.map(x => x.id === p.id ? { ...x, ativo: !x.ativo } : x))
   }
 
-  async function salvarChaveDesconto() {
-    setSalvandoDesconto(true)
-    await supabase.from('configuracoes').update({ valor: chaveDesconto.trim() || null, atualizado_em: new Date().toISOString() }).eq('chave', 'chave_pix_desconto')
-    setChaveDescontoSalva(chaveDesconto)
-    setSalvandoDesconto(false)
-  }
-
-  async function salvarChavePadrao() {
-    setSalvandoPadrao(true)
-    const { error } = await supabase.from('configuracoes').update({ valor: chavePadrao.trim() || null, atualizado_em: new Date().toISOString() }).eq('chave', 'chave_pix_padrao')
-    setSalvandoPadrao(false)
-    if (error) { alert('Não consegui salvar: ' + error.message); return }
-    setChavePadraoSalva(chavePadrao)
-  }
-
   return (
     <div>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Planos</h1>
@@ -218,33 +190,9 @@ function PlanosContent() {
         Isso não mexe em nenhum aluno já cadastrado — só afeta quais opções aparecem pra escolher daqui pra frente.
       </p>
 
-      <div className="card" style={{ padding: '14px 16px', marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Chave Pix padrão</div>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>
-          Usada quando um plano ou serviço não tem chave Pix própria. A Elen manda essa chave e informa o valor
-          pro aluno digitar na hora de pagar.
-        </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input value={chavePadrao} onChange={e => setChavePadrao(e.target.value)} style={{ ...inputStyle, flex: '1 1 240px' }} placeholder="Ex: (21) 98103-7108" />
-          <button onClick={salvarChavePadrao} disabled={salvandoPadrao || chavePadrao === chavePadraoSalva} className="btn btn-primary btn-sm">
-            {salvandoPadrao ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: '14px 16px', marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Chave Pix de desconto</div>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>
-          Chave Pix sem valor travado, usada só quando o aluno tem desconto. A Elen manda essa chave e informa o
-          valor combinado (já com desconto) pro aluno digitar na hora de pagar.
-        </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input value={chaveDesconto} onChange={e => setChaveDesconto(e.target.value)} style={{ ...inputStyle, flex: '1 1 240px' }} placeholder="Ex: (21) 98103-7108 ou uma chave copia-e-cola sem valor" />
-          <button onClick={salvarChaveDesconto} disabled={salvandoDesconto || chaveDesconto === chaveDescontoSalva} className="btn btn-primary btn-sm">
-            {salvandoDesconto ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-      </div>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+        A chave Pix padrão e a chave Pix de desconto agora ficam em <Link href="/admin/configuracoes#pagamentos" style={{ color: '#4a90d9' }}>Configurações</Link>.
+      </p>
 
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>

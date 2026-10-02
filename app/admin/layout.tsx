@@ -91,7 +91,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
   },
   {
     titulo: 'Sistema',
-    itens: [{ href: '/admin/manutencao', label: 'Manutenção', icon: 'sliders' }],
+    itens: [{ href: '/admin/configuracoes', label: 'Configurações', icon: 'sliders' }],
   },
 ]
 
