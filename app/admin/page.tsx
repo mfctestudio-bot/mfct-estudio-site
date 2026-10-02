@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje } from '@/lib/periodos'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -228,13 +229,15 @@ export default function AdminHome() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 4 }}>Início</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>
-        {diaSemana[hoje.getDay()]}, {hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-      </p>
+      <Cabecalho
+        titulo="Início"
+        subtitulo={<>
+          {diaSemana[hoje.getDay()]}, {hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+        </>}
+      />
 
       {/* Visão geral -- os 4 números que resumem a saúde do estúdio agora */}
-      <div style={{ ...gridAuto(150), marginTop: 20 }}>
+      <div style={{ ...gridAuto(150) }}>
         {[
           { label: 'Alunos ativos', value: stats.ativos, href: '/admin/alunos?status=ativo', color: '#3fb950' },
           { label: 'Leads / em negociação', value: stats.leads, href: '/admin/alunos?status=leads', color: 'var(--accent)' },
