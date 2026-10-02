@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Horario } from '@/lib/supabase'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type AgendamentoRow = {
   id: string
@@ -22,7 +23,7 @@ export default function AgendaPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Agenda</h1>
+      <Cabecalho titulo="Agenda" />
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <TabButton active={tab === 'semana'} onClick={() => setTab('semana')}>Semana</TabButton>
         <TabButton active={tab === 'aulas'} onClick={() => setTab('aulas')}>Próximas aulas</TabButton>
