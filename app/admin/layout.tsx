@@ -82,6 +82,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         ],
       },
       { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },
+      { href: '/admin/arrecadacao', label: 'Arrecadação', icon: 'chart' },
       { href: '/admin/relatorios', label: 'Relatórios', icon: 'chart' },
     ],
   },
