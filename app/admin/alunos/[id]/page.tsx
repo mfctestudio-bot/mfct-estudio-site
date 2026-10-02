@@ -147,7 +147,7 @@ export default function AlunoPage() {
           </label>
         </div>
         <div>
-          <h1 style={{ fontSize: 24, margin: 0 }}>{aluno.nome}</h1>
+          <h1 className="page-title">{aluno.nome}</h1>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>{aluno.telefone}</div>
         </div>
       </div>
