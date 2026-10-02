@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Aluno, Plano } from '@/lib/supabase'
 import { statusPeriodoHoje } from '@/lib/periodos'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const STATUS_LABEL: Record<string, { label: string; cor: string; bg: string }> = {
   ativo: { label: 'Em dia', cor: '#3fb950', bg: '#3fb95015' },
@@ -369,11 +369,11 @@ export default function MensalidadeAlunoPage() {
 
   return (
     <div>
-      <Link href={`/admin/alunos/${id}`} style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← {aluno.nome}</Link>
-      <h1 style={{ fontSize: 24, margin: '8px 0 4px' }}>Mensalidade de {aluno.nome}</h1>
-      <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>
-        Plano, pagamentos e histórico de períodos desse aluno.
-      </p>
+      <Cabecalho
+        voltar={{ href: `/admin/alunos/${id}`, label: aluno.nome }}
+        titulo={`Mensalidade de ${aluno.nome}`}
+        subtitulo="Plano, pagamentos e histórico de períodos desse aluno."
+      />
 
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
