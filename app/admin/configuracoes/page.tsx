@@ -13,12 +13,11 @@ const titulo: React.CSSProperties = { fontWeight: 700, fontSize: 14, marginBotto
 const ajuda: React.CSSProperties = { fontSize: 12, color: 'var(--text3)', marginBottom: 10 }
 
 const SECOES = [
-  { id: 'pagamentos', label: '💳 Pagamentos' },
-  { id: 'contrato', label: '📄 Contrato' },
-  { id: 'categorias', label: '🏷️ Categorias de serviços' },
-  { id: 'elen', label: '🤖 Elen' },
-  { id: 'atalhos', label: '🔗 Outros ajustes' },
-  { id: 'limpeza', label: '🧹 Limpeza' },
+  { id: 'pagamentos', label: '💳 Pagamentos', desc: 'Chaves Pix gerais' },
+  { id: 'contrato', label: '📄 Contrato', desc: 'Texto do contrato + termo' },
+  { id: 'categorias', label: '🏷️ Categorias', desc: 'Tipos de serviço' },
+  { id: 'elen', label: '🤖 Elen', desc: 'Números bloqueados' },
+  { id: 'limpeza', label: '🧹 Limpeza', desc: 'Dados antigos' },
 ]
 
 // Lê/grava uma linha da tabela configuracoes (chave → valor)
@@ -66,6 +65,7 @@ function ModeloContrato() {
   const [salvo, setSalvo] = useState('')
   const [existe, setExiste] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [aberto, setAberto] = useState(false)
   useEffect(() => { lerConfig('modelo_contrato').then(r => { setExiste(r.existe); setModelo(r.valor || MODELO_CONTRATO_PADRAO); setSalvo(r.valor) }) }, [])
   async function salvar() {
     setSalvando(true)
@@ -74,24 +74,49 @@ function ModeloContrato() {
     if (error) { alert('Não consegui salvar o modelo: ' + error.message); return }
     setExiste(true); setSalvo(modelo)
   }
+  const pendentes = (modelo.match(/\[AJUSTAR[^\]]*\]/g) || []).length
+  const alterado = modelo !== (salvo || MODELO_CONTRATO_PADRAO)
+  function inserirCampo(chave: string) {
+    const el = document.getElementById('editor-contrato') as HTMLTextAreaElement | null
+    const tag = `{{${chave}}}`
+    if (!el) { setModelo(m => m + tag); return }
+    const ini = el.selectionStart, fim = el.selectionEnd
+    setModelo(m => m.slice(0, ini) + tag + m.slice(fim))
+    setTimeout(() => { el.focus(); el.selectionStart = el.selectionEnd = ini + tag.length }, 0)
+  }
   return (
     <div className="card" style={card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-        <div style={titulo}>Modelo do contrato + termo de responsabilidade</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => { if (confirm('Voltar o texto para o modelo padrão? O que você editou e não salvou se perde.')) setModelo(MODELO_CONTRATO_PADRAO) }} className="btn btn-ghost btn-sm">Restaurar padrão</button>
-          <button onClick={salvar} disabled={salvando || modelo === salvo} className="btn btn-primary btn-sm">{salvando ? 'Salvando...' : 'Salvar modelo'}</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div>
+          <div style={titulo}>Modelo do contrato + termo de responsabilidade</div>
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+            {existe ? '✅ Modelo próprio salvo' : '⚠️ Usando o modelo padrão (ainda não salvo)'}
+            {pendentes > 0 && <span style={{ color: '#e0a020' }}> · {pendentes} trecho{pendentes > 1 ? 's' : ''} [AJUSTAR] pra revisar</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <Link href="/admin/contratos" className="btn btn-ghost btn-sm">📄 Gerar pra um aluno</Link>
+          <button onClick={() => setAberto(!aberto)} className="btn btn-primary btn-sm">{aberto ? 'Fechar editor' : '✏️ Editar texto'}</button>
         </div>
       </div>
-      <p style={ajuda}>
-        Pra gerar o contrato de um aluno, vá em <Link href="/admin/contratos" style={{ color: '#4a90d9' }}>Contratos</Link> (ou no cadastro do aluno).
-      </p>
-      {!existe && <p style={{ fontSize: 12, color: '#e0a020', marginBottom: 8 }}>Esse é o modelo padrão sugerido — revise os trechos marcados com [AJUSTAR] e clique em Salvar modelo.</p>}
-      <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>
-        Campos automáticos: {CAMPOS_CONTRATO.map(c => <code key={c.chave} title={c.descricao} style={{ marginRight: 6 }}>{`{{${c.chave}}}`}</code>)}
-        · Pra começar uma folha nova na impressão, deixe uma linha com <code>==== QUEBRA DE PÁGINA ====</code>.
-      </p>
-      <textarea value={modelo} onChange={e => setModelo(e.target.value)} style={{ ...inputStyle, minHeight: 420, fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.5 }} />
+      {aberto && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Clique num campo pra inserir onde está o cursor (é trocado pelo dado do aluno na hora de gerar):</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {CAMPOS_CONTRATO.map(c => (
+              <button key={c.chave} onClick={() => inserirCampo(c.chave)} title={`{{${c.chave}}}`} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>+ {c.descricao}</button>
+            ))}
+          </div>
+          <textarea id="editor-contrato" value={modelo} onChange={e => setModelo(e.target.value)} style={{ ...inputStyle, minHeight: 360, fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.5 }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>Folha nova na impressão: uma linha com <code>==== QUEBRA DE PÁGINA ====</code></span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => { if (confirm('Voltar o texto para o modelo padrão? O que você editou e não salvou se perde.')) setModelo(MODELO_CONTRATO_PADRAO) }} className="btn btn-ghost btn-sm">Restaurar padrão</button>
+              <button onClick={salvar} disabled={salvando || (!alterado && existe)} className="btn btn-success btn-sm">{salvando ? 'Salvando...' : '💾 Salvar modelo'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -145,38 +170,46 @@ function CategoriasServicos() {
     carregar()
   }
 
+  const ordenadas = [...categorias].sort((a, b) => (Number(b.ativo) - Number(a.ativo)) || ((uso[b.id] || 0) > 0 ? 1 : 0) - ((uso[a.id] || 0) > 0 ? 1 : 0) || a.nome.localeCompare(b.nome))
+  const iconBtn: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px', color: 'var(--text2)' }
   return (
     <div className="card" style={card}>
       <div style={titulo}>Categorias de serviços</div>
-      <p style={ajuda}>Organizam os serviços e ajudam a Elen a entender o que cada um é. Desativada some da lista de escolha, mas quem já usa continua com ela. A categoria de cada serviço se escolhe em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-        {categorias.map(c => (
-          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: c.ativo ? 1 : 0.5, flexWrap: 'wrap' }}>
-            {editandoId === c.id
-              ? <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '1 1 160px', width: 'auto' }} />
-              : <span style={{ fontSize: 13 }}>{c.nome}<span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>{uso[c.id] ? `${uso[c.id]} serviço${uso[c.id] > 1 ? 's' : ''}` : 'sem serviço'}{!c.ativo && ' · desativada'}</span></span>}
-            <div style={{ display: 'flex', gap: 6 }}>
+      <p style={ajuda}>Organizam os serviços e ajudam a Elen a entender o que cada um é. A categoria de cada serviço se escolhe em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input value={nova} onChange={e => setNova(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} style={{ ...inputStyle, flex: 1, width: 'auto' }} placeholder="Nova categoria (ex: Pilates)" />
+        <button onClick={criar} disabled={!nova.trim()} className="btn btn-primary btn-sm">+ Adicionar</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 8 }}>
+        {ordenadas.map(c => {
+          const n = uso[c.id] || 0
+          return (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${n ? 'var(--border2, var(--border))' : 'var(--border)'}`, opacity: c.ativo ? 1 : 0.45 }}>
               {editandoId === c.id ? (
                 <>
-                  <button onClick={() => salvar(c.id)} className="btn btn-primary btn-sm">Salvar</button>
-                  <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
+                  <input autoFocus value={editNome} onChange={e => setEditNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvar(c.id); if (e.key === 'Escape') setEditandoId(null) }} style={{ ...inputStyle, padding: '5px 8px', flex: 1, width: 'auto' }} />
+                  <button onClick={() => salvar(c.id)} style={iconBtn} title="Salvar">✅</button>
+                  <button onClick={() => setEditandoId(null)} style={iconBtn} title="Cancelar">✕</button>
                 </>
               ) : (
                 <>
-                  <button onClick={() => { setEditandoId(c.id); setEditNome(c.nome) }} className="btn btn-ghost btn-sm">✏️</button>
-                  <button onClick={() => alternar(c)} className="btn btn-ghost btn-sm">{c.ativo ? 'Desativar' : 'Ativar'}</button>
-                  <button onClick={() => apagar(c)} className="btn btn-outline-danger btn-sm">Apagar</button>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</div>
+                    <div style={{ fontSize: 10, color: n ? '#3fb950' : 'var(--text3)' }}>{!c.ativo ? 'desativada' : n ? `${n} serviço${n > 1 ? 's' : ''}` : 'sem serviço'}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexShrink: 0 }}>
+                    <button onClick={() => { setEditandoId(c.id); setEditNome(c.nome) }} style={iconBtn} title="Renomear">✏️</button>
+                    <button onClick={() => alternar(c)} style={iconBtn} title={c.ativo ? 'Desativar' : 'Ativar'}>{c.ativo ? '⏸️' : '▶️'}</button>
+                    <button onClick={() => apagar(c)} style={iconBtn} title="Apagar">🗑️</button>
+                  </div>
                 </>
               )}
             </div>
-          </div>
-        ))}
-        {!categorias.length && <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhuma categoria ainda.</p>}
+          )
+        })}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input value={nova} onChange={e => setNova(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} style={{ ...inputStyle, flex: 1, width: 'auto' }} placeholder="Nova categoria (ex: Pilates)" />
-        <button onClick={criar} disabled={!nova.trim()} className="btn btn-primary btn-sm">+ Add</button>
-      </div>
+      {!categorias.length && <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhuma categoria ainda.</p>}
+      <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10 }}>✏️ renomear · ⏸️ desativar (some da lista de escolha, quem já usa continua) · 🗑️ apagar</p>
     </div>
   )
 }
@@ -245,60 +278,113 @@ function Limpeza() {
   )
 }
 
-function Secao({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+function NumerosBloqueados() {
+  const [lista, setLista] = useState<string[]>([])
+  const [existe, setExiste] = useState(false)
+  const [novo, setNovo] = useState('')
+  useEffect(() => { lerConfig('numeros_bloqueados').then(r => { setExiste(r.existe); setLista(r.valor.split(',').map(x => x.trim()).filter(Boolean)) }) }, [])
+  async function gravar(nova: string[]) {
+    const { error } = await gravarConfig('numeros_bloqueados', nova.join(','), existe)
+    if (error) { alert('Não consegui salvar: ' + error.message); return }
+    setExiste(true); setLista(nova)
+  }
+  function adicionar() {
+    let d = novo.replace(/\D/g, '')
+    if (d.length === 10 || d.length === 11) d = '55' + d
+    if (d.length < 10) { alert('Número incompleto. Coloque com DDD, ex: 21 99999-8888'); return }
+    if (lista.includes(d)) { setNovo(''); return }
+    gravar([...lista, d]); setNovo('')
+  }
+  function remover(n: string) {
+    if (!confirm(`Desbloquear ${fmt(n)}? A Elen volta a responder esse número.`)) return
+    gravar(lista.filter(x => x !== n))
+  }
+  function fmt(n: string) {
+    const d = n.replace(/^55/, '')
+    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+    return n
+  }
   return (
-    <section id={id} style={{ scrollMarginTop: 70, marginBottom: 26 }}>
-      <h2 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>{label}</h2>
-      {children}
-    </section>
+    <div className="card" style={card}>
+      <div style={titulo}>Números bloqueados</div>
+      <p style={ajuda}>A Elen ignora mensagens desses números (robôs de operadora, propaganda, golpes).</p>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {lista.map(n => (
+          <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 6px 5px 10px', borderRadius: 999, background: 'var(--bg)', border: '1px solid var(--border)', fontSize: 12 }}>
+            🚫 {fmt(n)}
+            <button onClick={() => remover(n)} title="Desbloquear" style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+          </span>
+        ))}
+        {!lista.length && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum número bloqueado.</span>}
+      </div>
+      <div style={{ display: 'flex', gap: 8, maxWidth: 420 }}>
+        <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') adicionar() }} placeholder="Ex: 21 99999-8888" style={{ ...inputStyle, flex: 1, width: 'auto' }} />
+        <button onClick={adicionar} disabled={!novo.trim()} className="btn btn-primary btn-sm">+ Bloquear</button>
+      </div>
+    </div>
   )
 }
 
 function ConfiguracoesContent() {
+  const [aba, setAba] = useState('pagamentos')
+  useEffect(() => {
+    const ler = () => { const h = window.location.hash.slice(1); if (SECOES.some(s => s.id === h)) setAba(h) }
+    ler()
+    window.addEventListener('hashchange', ler)
+    return () => window.removeEventListener('hashchange', ler)
+  }, [])
+  function escolher(id: string) {
+    setAba(id)
+    history.replaceState(null, '', `#${id}`)
+  }
+  const atual = SECOES.find(s => s.id === aba)!
   return (
     <div>
+      <style>{`
+        .cfg-wrap { display: grid; grid-template-columns: 210px 1fr; gap: 20px; align-items: start; }
+        .cfg-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 70px; }
+        .cfg-tab { text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 9px 12px; cursor: pointer; color: var(--text2); font-family: inherit; }
+        .cfg-tab:hover { background: var(--card); }
+        .cfg-tab.ativo { background: var(--card); border-color: var(--border); color: var(--text); }
+        .cfg-tab small { display: block; font-size: 10px; color: var(--text3); margin-top: 2px; }
+        @media (max-width: 760px) {
+          .cfg-wrap { grid-template-columns: 1fr; gap: 12px; }
+          .cfg-nav { flex-direction: row; overflow-x: auto; position: static; padding-bottom: 4px; }
+          .cfg-tab { white-space: nowrap; padding: 7px 12px; }
+          .cfg-tab small { display: none; }
+        }
+      `}</style>
       <h1 style={{ fontSize: 26, marginBottom: 4 }}>Configurações</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Todos os ajustes gerais do sistema e da Elen num lugar só.</p>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 22 }}>
-        {SECOES.map(s => <a key={s.id} href={`#${s.id}`} className="btn btn-ghost btn-sm">{s.label}</a>)}
-      </div>
-
-      <Secao id="pagamentos" label="💳 Pagamentos">
-        <CampoConfig chave="chave_pix_padrao" rotulo="Chave Pix padrão"
-          descricao="Usada quando um plano ou serviço não tem chave Pix própria. A Elen manda essa chave e informa o valor pro aluno digitar."
-          placeholder="Ex: (21) 98103-7108" />
-        <CampoConfig chave="chave_pix_desconto" rotulo="Chave Pix de desconto"
-          descricao="Chave sem valor travado, usada só quando o aluno tem desconto. A Elen manda essa chave e informa o valor já com desconto."
-          placeholder="Ex: (21) 98103-7108 ou um copia-e-cola sem valor" />
-        <p style={ajuda}>A chave Pix e o link de cartão de cada plano ficam no próprio plano, em <Link href="/admin/planos" style={{ color: '#4a90d9' }}>Planos</Link>. Os de cada serviço, em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
-      </Secao>
-
-      <Secao id="contrato" label="📄 Contrato">
-        <ModeloContrato />
-      </Secao>
-
-      <Secao id="categorias" label="🏷️ Categorias de serviços">
-        <CategoriasServicos />
-      </Secao>
-
-      <Secao id="elen" label="🤖 Elen (WhatsApp)">
-        <CampoConfig chave="numeros_bloqueados" rotulo="Números bloqueados"
-          descricao="A Elen ignora mensagens desses números (robôs de operadora, propaganda etc.). Coloque com DDI e DDD, só números, separados por vírgula. Ex: 5521999998888"
-          placeholder="5521999998888, 5511988887777" multilinha
-          normalizar={v => v.split(/[,;\s]+/).map(n => n.replace(/\D/g, '')).filter(Boolean).join(',')} />
-      </Secao>
-
-      <Secao id="atalhos" label="🔗 Outros ajustes">
-        <div className="card" style={{ ...card, display: 'grid', gap: 8, fontSize: 13 }}>
-          <Link href="/admin/servicos" style={{ color: 'var(--text)' }}>🧾 Serviços, valores e Pix de cada serviço → <span style={{ color: 'var(--text3)' }}>em Serviços</span></Link>
-          <Link href="/admin/planos" style={{ color: 'var(--text)' }}>💰 Planos, valores e descontos → <span style={{ color: 'var(--text3)' }}>em Planos</span></Link>
-          <Link href="/admin/professores" style={{ color: 'var(--text)' }}>🗓️ Horários e vagas da agenda → <span style={{ color: 'var(--text3)' }}>em Professores</span></Link>
+      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 18 }}>Ajustes gerais do sistema e da Elen.</p>
+      <div className="cfg-wrap">
+        <nav className="cfg-nav">
+          {SECOES.map(s => (
+            <button key={s.id} onClick={() => escolher(s.id)} className={`cfg-tab${aba === s.id ? ' ativo' : ''}`}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{s.label}</span>
+              <small>{s.desc}</small>
+            </button>
+          ))}
+        </nav>
+        <div>
+          <h2 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>{atual.label}</h2>
+          {aba === 'pagamentos' && (
+            <>
+              <CampoConfig chave="chave_pix_padrao" rotulo="Chave Pix padrão"
+                descricao="Usada quando um plano ou serviço não tem chave Pix própria. A Elen manda essa chave e informa o valor pro aluno digitar."
+                placeholder="Ex: (21) 98103-7108" />
+              <CampoConfig chave="chave_pix_desconto" rotulo="Chave Pix de desconto"
+                descricao="Sem valor travado, usada só quando o aluno tem desconto. A Elen manda essa chave e informa o valor já com desconto."
+                placeholder="Ex: (21) 98103-7108 ou um copia-e-cola sem valor" />
+              <p style={ajuda}>A chave Pix e o link de cartão de cada plano ficam em <Link href="/admin/planos" style={{ color: '#4a90d9' }}>Planos</Link>; os de cada serviço, em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
+            </>
+          )}
+          {aba === 'contrato' && <ModeloContrato />}
+          {aba === 'categorias' && <CategoriasServicos />}
+          {aba === 'elen' && <NumerosBloqueados />}
+          {aba === 'limpeza' && <Limpeza />}
         </div>
-      </Secao>
-
-      <Secao id="limpeza" label="🧹 Limpeza de dados antigos">
-        <Limpeza />
-      </Secao>
+      </div>
     </div>
   )
 }
