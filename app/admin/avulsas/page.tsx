@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type AlunoOpt = { id: string; nome: string }
 
@@ -131,15 +132,15 @@ export default function AvulsasPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
-        <h1 style={{ fontSize: 28 }}>Créditos de aula avulsa</h1>
-        <button onClick={() => setNovoModal(true)} className="btn btn-primary">
-          + Registrar crédito
-        </button>
-      </div>
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-        Quem comprou aula avulsa — a pessoa paga, você confirma, e ela pode marcar o dia que quiser em até 7 dias. (O preço e o Pix da aula avulsa se ajustam em Serviços → Aula Avulsa.) Vale tanto pra quem não tem plano fixo quanto pra aluno com plano mensal que quer uma aula extra.
-      </p>
+      <Cabecalho
+        titulo="Créditos de aula avulsa"
+        subtitulo="Quem comprou aula avulsa — a pessoa paga, você confirma, e ela pode marcar o dia que quiser em até 7 dias. (O preço e o Pix da aula avulsa se ajustam em Serviços → Aula Avulsa.) Vale tanto pra quem não tem plano fixo quanto pra aluno com plano mensal que quer uma aula extra."
+        acoes={
+          <button onClick={() => setNovoModal(true)} className="btn btn-primary">
+            + Registrar crédito
+          </button>
+        }
+      />
 
       {pendentes > 0 && (
         <div style={{ background: '#f0a50022', border: '1px solid #f0a500', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f0a500', fontWeight: 700 }}>
