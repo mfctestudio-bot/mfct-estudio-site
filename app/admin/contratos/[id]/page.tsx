@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { MODELO_CONTRATO_PADRAO, preencherContrato } from '@/lib/contrato'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const dataBR = (iso?: string | null) => (iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : '')
 const brl = (v?: number | null) => (v == null ? '' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
@@ -65,17 +66,18 @@ function ContratoAlunoContent() {
           @page { margin: 2cm; }
         }
       `}</style>
-      <div className="no-print" style={{ marginBottom: 16 }}>
-        <Link href="/admin/contratos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← Contratos</Link>
-        <h1 style={{ fontSize: 22, margin: '8px 0 4px' }}>Contrato de {nome}</h1>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>
+      <Cabecalho
+        className="no-print"
+        voltar={{ href: '/admin/contratos', label: 'Contratos' }}
+        titulo={`Contrato de ${nome}`}
+        subtitulo={<>
           Confira os dados antes de imprimir. {faltando > 0 && <span style={{ color: '#e0a020' }}>⚠️ Tem campo em branco (linha ____) — complete o cadastro do aluno ou preencha à mão.</span>}
-        </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        </>}
+        acoes={<>
           <button onClick={() => window.print()} className="btn btn-primary btn-sm">🖨️ Imprimir / Salvar PDF</button>
           <Link href={`/admin/alunos/${id}`} className="btn btn-ghost btn-sm">Ver cadastro do aluno</Link>
-        </div>
-      </div>
+        </>}
+      />
       {paginas.map((p, i) => <div key={i} className="folha">{p.trim()}</div>)}
     </div>
   )
