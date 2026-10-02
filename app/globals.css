@@ -131,3 +131,35 @@ img { max-width: 100%; height: auto; }
 .glow-accent { box-shadow: 0 0 0 1px var(--accent2), 0 0 24px -6px color-mix(in srgb, var(--accent2) 55%, transparent); }
 .glow-danger { box-shadow: 0 0 0 1px var(--danger), 0 0 24px -6px color-mix(in srgb, var(--danger) 55%, transparent); }
 .glow-warning { box-shadow: 0 0 0 1px #f0a500, 0 0 24px -6px color-mix(in srgb, #f0a500 55%, transparent); }
+
+/* ---------------------------------------------------------------------
+   Cabeçalho padrão das páginas do admin (components/ui/Cabecalho.tsx).
+   Todas as telas usam o mesmo tamanho de título e de texto de ajuda.
+--------------------------------------------------------------------- */
+.page-header { margin-bottom: 20px; }
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.page-header-text { min-width: 0; flex: 1 1 260px; }
+.page-title { font-size: 26px; margin: 0; }
+.page-sub {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.55;
+  margin-top: 6px;
+  max-width: 860px;
+}
+.page-sub a { color: #4a90d9; }
+.page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.page-back {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--text2);
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+.page-back:hover { color: var(--text); }
