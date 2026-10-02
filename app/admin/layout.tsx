@@ -68,7 +68,6 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
     titulo: 'Serviços',
     itens: [
       { href: '/admin/servicos', label: 'Serviços', icon: 'sliders', accordion: 'servicos' },
-      { href: '/admin/avulsas', label: 'Aulas avulsas', icon: 'tag' },
     ],
   },
   {
@@ -79,6 +78,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         subitens: [
           { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
           { href: '/admin/pagamentos', label: 'Pagamentos', icon: 'card' },
+          { href: '/admin/avulsas', label: 'Créditos avulsos', icon: 'tag' },
         ],
       },
       { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },

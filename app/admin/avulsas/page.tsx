@@ -71,6 +71,13 @@ export default function AvulsasPage() {
 
   useEffect(() => {
     supabase.from('alunos').select('id, nome').order('nome').then(({ data }) => setAlunosOpt((data as AlunoOpt[]) || []))
+    // Valor padrão vem do serviço da categoria "Aula avulsa"
+    supabase.from('servicos').select('nome, valor, servicos_categorias(nome)').then(({ data }) => {
+      const lista = (data as unknown as { nome: string; valor: number; servicos_categorias: { nome: string } | { nome: string }[] | null }[]) || []
+      const cat = (x: typeof lista[number]) => ((Array.isArray(x.servicos_categorias) ? x.servicos_categorias[0] : x.servicos_categorias)?.nome || '').toLowerCase()
+      const s = lista.find(x => cat(x).includes('avulsa')) || lista.find(x => x.nome.toLowerCase().includes('avulsa'))
+      if (s) setNovoValor(String(Number(s.valor)))
+    })
   }, [])
 
   async function confirmar(id: string) {
@@ -125,13 +132,13 @@ export default function AvulsasPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
-        <h1 style={{ fontSize: 28 }}>Aulas Avulsas</h1>
+        <h1 style={{ fontSize: 28 }}>Créditos de aula avulsa</h1>
         <button onClick={() => setNovoModal(true)} className="btn btn-primary">
           + Registrar crédito
         </button>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-        Créditos de aula avulsa — a pessoa paga, você confirma, e ela pode marcar o dia que quiser em até 7 dias. Vale tanto pra quem não tem plano fixo quanto pra aluno com plano mensal que quer uma aula extra.
+        Quem comprou aula avulsa — a pessoa paga, você confirma, e ela pode marcar o dia que quiser em até 7 dias. (O preço e o Pix da aula avulsa se ajustam em Serviços → Aula Avulsa.) Vale tanto pra quem não tem plano fixo quanto pra aluno com plano mensal que quer uma aula extra.
       </p>
 
       {pendentes > 0 && (
