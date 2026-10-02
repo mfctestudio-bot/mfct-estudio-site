@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje } from '@/lib/periodos'
 import { DOBRAS, dobrasDoProtocolo, calcularDobras, idadeEm, type Sexo, type Protocolo } from '@/lib/dobras'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 type Aluno = { id: string; nome: string; status_plano: string; meta_peso: number | null; meta_gordura_pct: number | null; token_avaliacao: string; data_nascimento: string | null }
 
@@ -360,10 +361,12 @@ export default function AvaliacoesPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Avaliações Físicas</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Registre os dados da balança Omron HBF-514C e, se quiser, as dobras cutâneas. O valor vem do serviço {servicoAval ? `“${servicoAval.nome}” (R$ ${servicoAval.valor.toFixed(2).replace('.', ',')})` : '“Avaliação Física”'} — avaliação marcada como paga entra automaticamente nos Relatórios como venda desse serviço. As fotos que o aluno manda pelo WhatsApp mencionando &quot;avaliação&quot; entram aqui automaticamente.
-      </p>
+      <Cabecalho
+        titulo="Avaliações Físicas"
+        subtitulo={<>
+          Registre os dados da balança Omron HBF-514C e, se quiser, as dobras cutâneas. O valor vem do serviço {servicoAval ? `“${servicoAval.nome}” (R$ ${servicoAval.valor.toFixed(2).replace('.', ',')})` : '“Avaliação Física”'} — avaliação marcada como paga entra automaticamente nos Relatórios como venda desse serviço. As fotos que o aluno manda pelo WhatsApp mencionando &quot;avaliação&quot; entram aqui automaticamente.
+        </>}
+      />
 
       <div style={{ marginBottom: 20 }}>
         <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
