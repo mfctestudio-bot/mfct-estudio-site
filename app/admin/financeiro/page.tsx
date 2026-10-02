@@ -5,6 +5,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { periodoAtualHoje } from '@/lib/periodos'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const MESES_LONGOS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -268,7 +269,7 @@ export default function FinanceiroPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 16 }}>Financeiro</h1>
+      <Cabecalho titulo="Financeiro" />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <button onClick={() => setAba('visao')} style={{
