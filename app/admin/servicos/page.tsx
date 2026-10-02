@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 
@@ -108,10 +109,6 @@ function ServicosContent() {
   const [categoriaId, setCategoriaId] = useState('')
 
   const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [mostrarCategorias, setMostrarCategorias] = useState(false)
-  const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
-  const [categoriaEditandoId, setCategoriaEditandoId] = useState<string | null>(null)
-  const [categoriaEditNome, setCategoriaEditNome] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editAgendaTipoId, setEditAgendaTipoId] = useState('')
   const [agendaTipoId, setAgendaTipoId] = useState('')
@@ -218,41 +215,6 @@ function ServicosContent() {
     carregar()
   }
 
-  async function criarCategoria() {
-    const n = novaCategoriaNome.trim()
-    if (!n) return
-    const { error } = await supabase.from('servicos_categorias').insert({ nome: n, ativo: true })
-    if (error) { alert(error.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não consegui criar a categoria: ' + error.message); return }
-    setNovaCategoriaNome('')
-    carregar()
-  }
-
-  async function salvarCategoria(id: string) {
-    const n = categoriaEditNome.trim()
-    if (!n) return
-    const { error } = await supabase.from('servicos_categorias').update({ nome: n }).eq('id', id)
-    if (error) { alert(error.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não consegui salvar: ' + error.message); return }
-    setCategoriaEditandoId(null)
-    carregar()
-  }
-
-  async function toggleCategoriaAtiva(c: Categoria) {
-    const { error } = await supabase.from('servicos_categorias').update({ ativo: !c.ativo }).eq('id', c.id)
-    if (error) { alert('Não consegui alterar: ' + error.message); return }
-    setCategorias(prev => prev.map(x => x.id === c.id ? { ...x, ativo: !x.ativo } : x))
-  }
-
-  async function excluirCategoria(c: Categoria) {
-    const emUso = servicos.filter(s => s.categoria_id === c.id).length
-    const aviso = emUso
-      ? `A categoria "${c.nome}" está em ${emUso} serviço(s). Se apagar, esses serviços ficam sem categoria. Apagar mesmo?`
-      : `Apagar a categoria "${c.nome}"?`
-    if (!confirm(aviso)) return
-    const { error } = await supabase.from('servicos_categorias').delete().eq('id', c.id)
-    if (error) { alert('Não consegui apagar: ' + error.message); return }
-    carregar()
-  }
-
   function nomeTipoAgenda(id: string | null) {
     if (!id) return null
     return tiposAgenda.find(t => t.id === id)?.nome || null
@@ -324,63 +286,9 @@ function ServicosContent() {
         Cadastre aqui também a chave Pix (já com o valor certo) e o link de cartão — é isso que a Elen vai mandar pro aluno.
       </p>
 
-      <div className="card" style={{ padding: '14px 18px', marginBottom: 16 }}>
-        <div
-          onClick={() => setMostrarCategorias(!mostrarCategorias)}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-        >
-          <span style={{ fontWeight: 700, fontSize: 14 }}>🏷️ Categorias ({categorias.filter(c => c.ativo).length})</span>
-          <span style={{
-            fontSize: 12, color: 'var(--text3)', display: 'inline-block',
-            transform: mostrarCategorias ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease',
-          }}>▸</span>
-        </div>
-        {mostrarCategorias && (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-              Ajudam a organizar os serviços e a Elen a entender o que cada um é. Categoria desativada some da lista de escolha, mas os serviços que já usam ela continuam com ela.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-              {categorias.map(c => {
-                const emUso = servicos.filter(s => s.categoria_id === c.id).length
-                return (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: c.ativo ? 1 : 0.5, flexWrap: 'wrap' }}>
-                    {categoriaEditandoId === c.id ? (
-                      <input value={categoriaEditNome} onChange={e => setCategoriaEditNome(e.target.value)} style={{ ...inputStyle, flex: '1 1 160px' }} />
-                    ) : (
-                      <span style={{ fontSize: 13 }}>
-                        {c.nome}
-                        <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>
-                          {emUso ? `${emUso} serviço${emUso > 1 ? 's' : ''}` : 'sem serviço'}{!c.ativo && ' · desativada'}
-                        </span>
-                      </span>
-                    )}
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {categoriaEditandoId === c.id ? (
-                        <>
-                          <button onClick={() => salvarCategoria(c.id)} className="btn btn-primary btn-sm">Salvar</button>
-                          <button onClick={() => setCategoriaEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => { setCategoriaEditandoId(c.id); setCategoriaEditNome(c.nome) }} className="btn btn-ghost btn-sm">✏️</button>
-                          <button onClick={() => toggleCategoriaAtiva(c)} className="btn btn-ghost btn-sm">{c.ativo ? 'Desativar' : 'Ativar'}</button>
-                          <button onClick={() => excluirCategoria(c)} className="btn btn-outline-danger btn-sm">Apagar</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-              {!categorias.length && <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhuma categoria ainda.</p>}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input value={novaCategoriaNome} onChange={e => setNovaCategoriaNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criarCategoria() }} style={{ ...inputStyle, flex: 1 }} placeholder="Nova categoria (ex: Pilates)" />
-              <button onClick={criarCategoria} disabled={!novaCategoriaNome.trim()} className="btn btn-primary btn-sm">+ Add</button>
-            </div>
-          </div>
-        )}
-      </div>
+      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+        🏷️ As categorias dos serviços (criar, renomear, desativar) ficam em <Link href="/admin/configuracoes#categorias" style={{ color: '#4a90d9' }}>Configurações → Categorias de serviços</Link>.
+      </p>
 
       {loading ? (
         <p style={{ color: 'var(--text2)' }}>Carregando...</p>

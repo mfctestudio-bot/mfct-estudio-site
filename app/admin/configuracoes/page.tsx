@@ -15,6 +15,7 @@ const ajuda: React.CSSProperties = { fontSize: 12, color: 'var(--text3)', margin
 const SECOES = [
   { id: 'pagamentos', label: '💳 Pagamentos' },
   { id: 'contrato', label: '📄 Contrato' },
+  { id: 'categorias', label: '🏷️ Categorias de serviços' },
   { id: 'elen', label: '🤖 Elen' },
   { id: 'atalhos', label: '🔗 Outros ajustes' },
   { id: 'limpeza', label: '🧹 Limpeza' },
@@ -91,6 +92,91 @@ function ModeloContrato() {
         · Pra começar uma folha nova na impressão, deixe uma linha com <code>==== QUEBRA DE PÁGINA ====</code>.
       </p>
       <textarea value={modelo} onChange={e => setModelo(e.target.value)} style={{ ...inputStyle, minHeight: 420, fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.5 }} />
+    </div>
+  )
+}
+
+type Categoria = { id: string; nome: string; ativo: boolean }
+
+function CategoriasServicos() {
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [uso, setUso] = useState<Record<string, number>>({})
+  const [nova, setNova] = useState('')
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [editNome, setEditNome] = useState('')
+
+  async function carregar() {
+    const [{ data: cats }, { data: servs }] = await Promise.all([
+      supabase.from('servicos_categorias').select('id, nome, ativo').order('nome'),
+      supabase.from('servicos').select('categoria_id'),
+    ])
+    setCategorias((cats as Categoria[]) || [])
+    const c: Record<string, number> = {}
+    for (const s of (servs as { categoria_id: string | null }[]) || []) if (s.categoria_id) c[s.categoria_id] = (c[s.categoria_id] || 0) + 1
+    setUso(c)
+  }
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { carregar() }, [])
+
+  async function criar() {
+    const n = nova.trim()
+    if (!n) return
+    const { error } = await supabase.from('servicos_categorias').insert({ nome: n, ativo: true })
+    if (error) { alert(error.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não consegui criar: ' + error.message); return }
+    setNova(''); carregar()
+  }
+  async function salvar(id: string) {
+    const n = editNome.trim()
+    if (!n) return
+    const { error } = await supabase.from('servicos_categorias').update({ nome: n }).eq('id', id)
+    if (error) { alert(error.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não consegui salvar: ' + error.message); return }
+    setEditandoId(null); carregar()
+  }
+  async function alternar(c: Categoria) {
+    const { error } = await supabase.from('servicos_categorias').update({ ativo: !c.ativo }).eq('id', c.id)
+    if (error) { alert('Não consegui alterar: ' + error.message); return }
+    carregar()
+  }
+  async function apagar(c: Categoria) {
+    const n = uso[c.id] || 0
+    if (!confirm(n ? `A categoria "${c.nome}" está em ${n} serviço(s). Se apagar, esses serviços ficam sem categoria. Apagar mesmo?` : `Apagar a categoria "${c.nome}"?`)) return
+    const { error } = await supabase.from('servicos_categorias').delete().eq('id', c.id)
+    if (error) { alert('Não consegui apagar: ' + error.message); return }
+    carregar()
+  }
+
+  return (
+    <div className="card" style={card}>
+      <div style={titulo}>Categorias de serviços</div>
+      <p style={ajuda}>Organizam os serviços e ajudam a Elen a entender o que cada um é. Desativada some da lista de escolha, mas quem já usa continua com ela. A categoria de cada serviço se escolhe em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+        {categorias.map(c => (
+          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: c.ativo ? 1 : 0.5, flexWrap: 'wrap' }}>
+            {editandoId === c.id
+              ? <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '1 1 160px', width: 'auto' }} />
+              : <span style={{ fontSize: 13 }}>{c.nome}<span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>{uso[c.id] ? `${uso[c.id]} serviço${uso[c.id] > 1 ? 's' : ''}` : 'sem serviço'}{!c.ativo && ' · desativada'}</span></span>}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {editandoId === c.id ? (
+                <>
+                  <button onClick={() => salvar(c.id)} className="btn btn-primary btn-sm">Salvar</button>
+                  <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => { setEditandoId(c.id); setEditNome(c.nome) }} className="btn btn-ghost btn-sm">✏️</button>
+                  <button onClick={() => alternar(c)} className="btn btn-ghost btn-sm">{c.ativo ? 'Desativar' : 'Ativar'}</button>
+                  <button onClick={() => apagar(c)} className="btn btn-outline-danger btn-sm">Apagar</button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+        {!categorias.length && <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhuma categoria ainda.</p>}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input value={nova} onChange={e => setNova(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} style={{ ...inputStyle, flex: 1, width: 'auto' }} placeholder="Nova categoria (ex: Pilates)" />
+        <button onClick={criar} disabled={!nova.trim()} className="btn btn-primary btn-sm">+ Add</button>
+      </div>
     </div>
   )
 }
@@ -191,6 +277,10 @@ function ConfiguracoesContent() {
         <ModeloContrato />
       </Secao>
 
+      <Secao id="categorias" label="🏷️ Categorias de serviços">
+        <CategoriasServicos />
+      </Secao>
+
       <Secao id="elen" label="🤖 Elen (WhatsApp)">
         <CampoConfig chave="numeros_bloqueados" rotulo="Números bloqueados"
           descricao="A Elen ignora mensagens desses números (robôs de operadora, propaganda etc.). Coloque com DDI e DDD, só números, separados por vírgula. Ex: 5521999998888"
@@ -200,7 +290,7 @@ function ConfiguracoesContent() {
 
       <Secao id="atalhos" label="🔗 Outros ajustes">
         <div className="card" style={{ ...card, display: 'grid', gap: 8, fontSize: 13 }}>
-          <Link href="/admin/servicos" style={{ color: 'var(--text)' }}>🏷️ Categorias de serviços → <span style={{ color: 'var(--text3)' }}>em Serviços (bloco “Categorias”)</span></Link>
+          <Link href="/admin/servicos" style={{ color: 'var(--text)' }}>🧾 Serviços, valores e Pix de cada serviço → <span style={{ color: 'var(--text3)' }}>em Serviços</span></Link>
           <Link href="/admin/planos" style={{ color: 'var(--text)' }}>💰 Planos, valores e descontos → <span style={{ color: 'var(--text3)' }}>em Planos</span></Link>
           <Link href="/admin/professores" style={{ color: 'var(--text)' }}>🗓️ Horários e vagas da agenda → <span style={{ color: 'var(--text3)' }}>em Professores</span></Link>
         </div>

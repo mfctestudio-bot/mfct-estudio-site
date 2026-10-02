@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-type Entrada = { data: string; nome: string; tipo: 'Mensalidade' | 'Aula avulsa' | 'Serviço'; detalhe?: string; metodo: string; valor: number; vendaId?: string }
+type Entrada = { data: string; nome: string; tipo: 'Mensalidade' | 'Aula avulsa' | 'Serviço'; detalhe?: string; metodo: string; valor: number; vendaId?: string; daAvaliacao?: boolean }
 type ServicoOpt = { id: string; nome: string; valor: number }
 type AlunoOpt = { id: string; nome: string }
 type Despesa = { id: string; mes: string; categoria: string; valor: number; observacao: string | null }
@@ -62,7 +62,7 @@ async function buscarEntradas(iniISO: string, proxISO: string): Promise<Entrada[
       .select('valor, confirmado_em, metodo_pagamento, status, alunos(nome)')
       .not('confirmado_em', 'is', null).neq('status', 'cancelado').gte('confirmado_em', iniISO).lt('confirmado_em', proxISO),
     supabase.from('vendas_servicos')
-      .select('id, servico_nome, cliente_nome, valor, data_venda, metodo_pagamento, alunos(nome)')
+      .select('id, servico_nome, cliente_nome, valor, data_venda, metodo_pagamento, observacao, alunos(nome)')
       .gte('data_venda', iniISO).lt('data_venda', proxISO),
   ])
   const nomeDe = (a: unknown) => {
@@ -76,9 +76,9 @@ async function buscarEntradas(iniISO: string, proxISO: string): Promise<Entrada[
   for (const c of (avs as { valor: number; confirmado_em: string; metodo_pagamento: string | null; alunos: unknown }[]) || []) {
     lista.push({ data: c.confirmado_em, nome: nomeDe(c.alunos), tipo: 'Aula avulsa', metodo: nomeMetodo(c.metodo_pagamento), valor: Number(c.valor) || 0 })
   }
-  for (const v of (vendas as { id: string; servico_nome: string; cliente_nome: string | null; valor: number; data_venda: string; metodo_pagamento: string | null; alunos: unknown }[]) || []) {
+  for (const v of (vendas as { id: string; servico_nome: string; cliente_nome: string | null; valor: number; data_venda: string; metodo_pagamento: string | null; observacao: string | null; alunos: unknown }[]) || []) {
     const nomeAluno = v.alunos ? nomeDe(v.alunos) : (v.cliente_nome || 'Cliente')
-    lista.push({ data: v.data_venda, nome: nomeAluno, tipo: 'Serviço', detalhe: v.servico_nome, metodo: nomeMetodo(v.metodo_pagamento), valor: Number(v.valor) || 0, vendaId: v.id })
+    lista.push({ data: v.data_venda, nome: nomeAluno, tipo: 'Serviço', detalhe: v.servico_nome, metodo: nomeMetodo(v.metodo_pagamento), valor: Number(v.valor) || 0, vendaId: v.id, daAvaliacao: (v.observacao || '').includes('[avaliacao:') })
   }
   return lista.sort((a, b) => a.data.localeCompare(b.data))
 }
@@ -440,7 +440,7 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
               {listaEntradas.filter(e => e.tipo === 'Serviço').map((e, i) => (
                 <tr key={i}>
                   <td style={td}>{dataBR(e.data)}</td><td style={td}>{e.nome}</td><td style={td}>{e.detalhe}</td><td style={td}>{e.metodo}</td><td style={tdNum}>{brl(e.valor)}</td>
-                  {!fechado && <td style={{ ...td, width: 40 }} className="no-print">{e.vendaId && <button onClick={() => apagarVenda(e.vendaId!, e.nome)} className="btn btn-outline-danger btn-sm" title="Apagar">✕</button>}</td>}
+                  {!fechado && <td style={{ ...td, width: 40 }} className="no-print">{e.daAvaliacao ? <a href="/admin/avaliacoes" title="Venda criada pela avaliação física — altere ou apague lá em Avaliações" style={{ fontSize: 11, color: 'var(--text3)', textDecoration: 'none' }}>📋</a> : e.vendaId && <button onClick={() => apagarVenda(e.vendaId!, e.nome)} className="btn btn-outline-danger btn-sm" title="Apagar">✕</button>}</td>}
                 </tr>
               ))}
             </tbody>

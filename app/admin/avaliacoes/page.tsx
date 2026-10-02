@@ -179,6 +179,9 @@ export default function AvaliacoesPage() {
       .order('data', { ascending: true })
     const lista = (avals as Avaliacao[]) || []
     setAvaliacoes(lista)
+    // Lembra sexo e protocolo usados na última avaliação com dobras desse aluno
+    const ultDobras = [...lista].reverse().find(x => x.medidas?.dobras)?.medidas?.dobras
+    if (ultDobras) { setSexo(ultDobras.sexo); setProtocolo(ultDobras.protocolo) }
 
     if (lista.length > 0) {
       const ids = lista.map(a => a.id)
