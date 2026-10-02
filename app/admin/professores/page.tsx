@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Professor, Horario } from '@/lib/supabase'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
@@ -90,10 +91,12 @@ export default function ProfessoresPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Professores</h1>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Cadastre os professores e o valor pago por aula de cada um. Depois, atribua cada professor aos horários da grade em Agenda → Grade de horários. O valor por aula é usado no cálculo de horas trabalhadas, na aba Horas trabalhadas do Financeiro.
-      </p>
+      <Cabecalho
+        titulo="Professores"
+        subtitulo={<>
+          Cadastre os professores e o valor pago por aula de cada um. Depois, atribua cada professor aos horários da grade em Agenda → Grade de horários. O valor por aula é usado no cálculo de horas trabalhadas, na aba Horas trabalhadas do Financeiro.
+        </>}
+      />
 
       <RegrasPagamentoCancelamento />
 
