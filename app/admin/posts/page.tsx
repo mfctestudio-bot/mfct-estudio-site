@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Post } from '@/lib/supabase'
+import { Cabecalho } from '@/components/ui/Cabecalho'
 
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -78,7 +79,7 @@ export default function PostsPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 20 }}>Posts / Dicas</h1>
+      <Cabecalho titulo="Posts / Dicas" />
 
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 20 }}>
         <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14 }}>
