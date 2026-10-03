@@ -73,8 +73,8 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
           { href: '/admin/agenda#semana', label: 'Semana', icon: 'calendar' },
           { href: '/admin/agenda#aulas', label: 'Próximas aulas', icon: 'calendar' },
           { href: '/admin/agenda#grade', label: 'Grade de horário geral', icon: 'calendar' },
-          { href: '/admin/professores', label: 'Grade dos professores', icon: 'users' },
-          { href: '/admin/servicos', label: 'Grade de serviços', icon: 'sliders' },
+          { href: '/admin/agenda-professores', label: 'Grade dos professores', icon: 'users' },
+          { href: '/admin/agenda-servicos', label: 'Agenda dos serviços', icon: 'sliders' },
         ],
       },
     ],
@@ -97,27 +97,15 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         ],
       },
       {
-        href: '/admin/arrecadacao', label: 'Caixa', icon: 'chart',
+        href: '/admin/caixa', label: 'Caixa', icon: 'chart',
         subitens: [
-          { href: '/admin/arrecadacao', label: 'Arrecadação', icon: 'chart' },
-          { href: '/admin/financeiro#caixa', label: 'Controle de caixa', icon: 'chart' },
-          { href: '/admin/financeiro#historico', label: 'Histórico mensal', icon: 'chart' },
+          { href: '/admin/caixa#mes', label: 'Fechamento do mês', icon: 'chart' },
+          { href: '/admin/caixa#entradas', label: 'Entradas por serviço', icon: 'chart' },
+          { href: '/admin/caixa#ano', label: 'Resumo do ano', icon: 'file' },
+          { href: '/admin/caixa#despesas', label: 'Despesas fixas', icon: 'file' },
         ],
       },
-      {
-        href: '/admin/relatorios', label: 'Relatórios', icon: 'file',
-        subitens: [
-          { href: '/admin/relatorios#mes', label: 'Relatório mensal (e despesas)', icon: 'file' },
-          { href: '/admin/relatorios#ano', label: 'Relatório anual', icon: 'file' },
-        ],
-      },
-      {
-        href: '/admin/financeiro', label: 'Gestão financeira', icon: 'chart',
-        subitens: [
-          { href: '/admin/financeiro#visao', label: 'Visão completa', icon: 'chart' },
-          { href: '/admin/financeiro#horas', label: 'Horas trabalhadas', icon: 'users' },
-        ],
-      },
+      { href: '/admin/pagamento-professores', label: 'Pagamento de professores', icon: 'users' },
     ],
   },
   {
@@ -131,6 +119,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         href: '/admin/configuracoes', label: 'Configurações', icon: 'gear',
         subitens: [
           { href: '/admin/configuracoes#pagamentos', label: 'Financeiro (Pix)', icon: 'card' },
+          { href: '/admin/configuracoes#professores', label: 'Professores', icon: 'users' },
           { href: '/admin/configuracoes#contrato', label: 'Matrículas (contrato)', icon: 'file' },
           { href: '/admin/configuracoes#categorias', label: 'Serviços (categorias)', icon: 'tag' },
           { href: '/admin/configuracoes#elen', label: 'Elen (WhatsApp)', icon: 'users' },
@@ -144,8 +133,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
 // Aba que cada página abre quando não tem "#aba" no endereço.
 const ABA_PADRAO: Record<string, string> = {
   '/admin/agenda': 'semana',
-  '/admin/financeiro': 'visao',
-  '/admin/relatorios': 'mes',
+  '/admin/caixa': 'mes',
   '/admin/configuracoes': 'pagamentos',
 }
 
