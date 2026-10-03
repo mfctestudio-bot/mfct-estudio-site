@@ -100,47 +100,37 @@ export default function MensalidadesPage() {
         subtitulo={<>
           Quem está em dia, quem venceu, e quem já renovou pro próximo período. Pra renovar, trocar de
           plano, pausar ou cancelar, clique no aluno. Pra confirmar um pagamento pendente ou estornar,
-          use a tela de <Link href="/admin/pagamentos" style={{ color: 'var(--accent2)' }}>Pagamentos</Link> —
+          use a tela de <Link href="/admin/pagamentos">Pagamentos</Link> —
           assim que um pagamento é confirmado por lá, a mensalidade do aluno é liberada aqui automaticamente.
         </>}
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="barra-filtros">
+        <input
+          className="busca"
+          placeholder="Buscar aluno..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+        />
+      </div>
+
+      <div className="chips">
         {([
           ['todos', `Todos (${alunos.length})`],
           ['vencido', `Vencidos (${contagens.vencido})`],
           ['ativo', `Em dia (${contagens.ativo})`],
           ['sem_periodo', `Sem registro (${contagens.sem_periodo})`],
         ] as const).map(([valor, label]) => (
-          <button
-            key={valor}
-            onClick={() => setFiltro(valor)}
-            style={{
-              padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              border: `1px solid ${filtro === valor ? 'var(--accent2)' : 'var(--border)'}`,
-              background: filtro === valor ? 'var(--accent2)15' : 'var(--card)',
-              color: filtro === valor ? 'var(--accent2)' : 'var(--text2)',
-            }}
-          >
+          <button key={valor} onClick={() => setFiltro(valor)} className={`chip${filtro === valor ? ' ativo' : ''}`}>
             {label}
           </button>
         ))}
       </div>
 
-      <input
-        placeholder="Buscar aluno..."
-        value={busca}
-        onChange={e => setBusca(e.target.value)}
-        style={{
-          width: '100%', padding: '10px 12px', borderRadius: 6, marginBottom: 16, boxSizing: 'border-box',
-          background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13,
-        }}
-      />
-
       {loading ? (
-        <p style={{ color: 'var(--text3)', fontSize: 13 }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="lista">
           {filtrados.map(a => {
             const statusAtual = a.periodoAtual ? statusPeriodoHoje(a.periodoAtual) : 'sem_periodo'
             const info = STATUS_INFO[statusAtual]
@@ -148,28 +138,24 @@ export default function MensalidadesPage() {
               <div
                 key={a.id}
                 onClick={() => router.push(`/admin/mensalidades/${a.id}`)}
-                className="card card-hover"
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                  padding: '12px 14px', flexWrap: 'wrap', cursor: 'pointer',
-                  borderColor: statusAtual === 'vencido' ? info.cor : 'var(--border)',
-                }}
+                className="card card-hover item-lista clicavel"
+                style={{ borderColor: statusAtual === 'vencido' ? info.cor : 'var(--border)' }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{a.nome}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                  <div className="item-titulo">{a.nome}</div>
+                  <div className="item-sub">
                     {a.periodoAtual
                       ? `${statusAtual === 'vencido' ? 'Venceu' : 'Vale até'} ${new Date(a.periodoAtual.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
                       : 'Nenhum período registrado ainda'}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div className="item-acoes">
                   {a.periodoFuturo && (
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: STATUS_INFO.agendado.cor, background: STATUS_INFO.agendado.bg }}>
+                    <span className="etiqueta" style={{ color: STATUS_INFO.agendado.cor }}>
                       Renovado até {new Date(a.periodoFuturo.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </span>
                   )}
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, color: info.cor, background: info.bg }}>
+                  <span className="etiqueta" style={{ color: info.cor }}>
                     {info.label}
                   </span>
                 </div>
@@ -177,7 +163,7 @@ export default function MensalidadesPage() {
             )
           })}
           {!filtrados.length && (
-            <p style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 20 }}>Ninguém encontrado com esse filtro.</p>
+            <p className="vazio">Ninguém encontrado com esse filtro.</p>
           )}
         </div>
       )}
