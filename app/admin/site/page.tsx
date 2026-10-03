@@ -85,7 +85,7 @@ export default function SitePage() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gap: 12, maxWidth: 760 }}>
+      <div className="pilha">
         {aba === 'topo' && <>
           <Cartao titulo="Foto de fundo do topo">
             <Foto valor={c.topo.imagemFundo} onChange={v => mudar('topo', { imagemFundo: v })} largura={320} />
@@ -206,15 +206,15 @@ export default function SitePage() {
 
 function Cartao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="card" style={{ padding: '18px 20px' }}>
+    <div className="card bloco">
       <div className="secao-titulo">{titulo}</div>
-      <div style={{ display: 'grid', gap: 12 }}>{children}</div>
+      <div style={{ display: 'grid', gap: 16 }}>{children}</div>
     </div>
   )
 }
 
 function Duas({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>{children}</div>
+  return <div className="form-grade">{children}</div>
 }
 
 function Campo({ rotulo, valor, onChange, linhas }: { rotulo: string; valor: string; onChange: (v: string) => void; linhas?: number }) {
