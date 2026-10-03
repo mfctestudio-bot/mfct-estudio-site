@@ -357,7 +357,7 @@ export default function AvaliacoesPage() {
   const alunosFiltrados = alunos.filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
   const alunoAtual = alunos.find(a => a.id === alunoId)
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   return (
     <div>
@@ -369,17 +369,17 @@ export default function AvaliacoesPage() {
       />
 
       <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
+        <label className="rotulo">Aluno</label>
         <input
           placeholder="Buscar aluno..."
           value={buscaAluno}
           onChange={e => setBuscaAluno(e.target.value)}
-          style={{ width: '100%', maxWidth: 320, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }}
+          style={{ width: '100%', maxWidth: 320, marginBottom: 8 }}
         />
         <select
           value={alunoId}
           onChange={e => setAlunoId(e.target.value)}
-          style={{ width: '100%', maxWidth: 320, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+          style={{ width: '100%', maxWidth: 320 }}
         >
           <option value="">— selecione —</option>
           {alunosFiltrados.map(a => (
@@ -412,7 +412,7 @@ export default function AvaliacoesPage() {
                   navigator.clipboard.writeText(url)
                   alert('Link copiado! ' + url)
                 }}
-                style={{ background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                className="btn btn-outline-primary btn-sm"
               >
                 🔗 Copiar link de evolução do aluno
               </button>
@@ -422,21 +422,21 @@ export default function AvaliacoesPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Meta de peso (kg)</label>
+                <label className="rotulo">Meta de peso (kg)</label>
                 <input
                   type="number" step="0.1" placeholder="—" value={metaPesoInput}
                   onChange={e => setMetaPesoInput(e.target.value)}
                   onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
-                  style={{ width: 110, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                  style={{ width: 110 }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Meta de gordura corporal (%)</label>
+                <label className="rotulo">Meta de gordura corporal (%)</label>
                 <input
                   type="number" step="0.1" placeholder="—" value={metaGorduraInput}
                   onChange={e => setMetaGorduraInput(e.target.value)}
                   onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
-                  style={{ width: 110, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                  style={{ width: 110 }}
                 />
               </div>
             </div>
@@ -448,22 +448,22 @@ export default function AvaliacoesPage() {
                 <p style={{ fontSize: 12, color: '#4a90d9', marginBottom: 10, fontWeight: 700 }}>✏️ Editando avaliação existente</p>
               )}              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
                 <div>
-                  <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Data</label>
+                  <label className="rotulo">Data</label>
                   <input
                     type="date" value={novaData} onChange={e => setNovaData(e.target.value)}
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    style={{ width: '100%' }}
                   />
                 </div>
                 {CAMPOS_OMRON.map(campo => (
                   <div key={campo.chave as string}>
-                    <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>
+                    <label className="rotulo">
                       {campo.label}{campo.unidade ? ` (${campo.unidade})` : ''}
                     </label>
                     <input
                       type="number" step={campo.step} placeholder="—"
                       value={novosValores[campo.chave as string] || ''}
                       onChange={e => setNovosValores(prev => ({ ...prev, [campo.chave as string]: e.target.value }))}
-                      style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      style={{ width: '100%' }}
                     />
                   </div>
                 ))}
@@ -477,10 +477,10 @@ export default function AvaliacoesPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                       {CAMPOS_OMRON_EXTRA.filter(c => c.grupo === grupo).map(c => (
                         <div key={c.chave}>
-                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>{c.label} ({c.unidade})</label>
+                          <label className="rotulo">{c.label} ({c.unidade})</label>
                           <input type="number" step={c.step} placeholder="—" value={omronExtra[c.chave] || ''}
                             onChange={e => setOmronExtra(prev => ({ ...prev, [c.chave]: e.target.value }))}
-                            style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            style={{ width: '100%' }} />
                         </div>
                       ))}
                     </div>
@@ -497,39 +497,38 @@ export default function AvaliacoesPage() {
                   const res = resultadoDobras()
                   const idade = idadeAvaliacao()
                   const usadas = dobrasDoProtocolo(protocolo, sexo)
-                  const sel: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }
                   const gordBalanca = Number(novosValores.gordura_corporal_pct)
                   return (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 10 }}>
                         <div>
-                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Protocolo</label>
-                          <select value={protocolo} onChange={e => setProtocolo(e.target.value as Protocolo)} style={sel}>
+                          <label className="rotulo">Protocolo</label>
+                          <select value={protocolo} onChange={e => setProtocolo(e.target.value as Protocolo)}>
                             <option value="jp7">Jackson & Pollock — 7 dobras</option>
                             <option value="jp3">Jackson & Pollock — 3 dobras</option>
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Sexo</label>
-                          <select value={sexo} onChange={e => setSexo(e.target.value as Sexo)} style={sel}>
+                          <label className="rotulo">Sexo</label>
+                          <select value={sexo} onChange={e => setSexo(e.target.value as Sexo)}>
                             <option value="F">Feminino</option>
                             <option value="M">Masculino</option>
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Idade</label>
+                          <label className="rotulo">Idade</label>
                           <input type="number" value={idadeManual} placeholder={idadeEm(alunoAtual?.data_nascimento, novaData)?.toString() || 'anos'}
-                            onChange={e => setIdadeManual(e.target.value)} style={{ ...sel, width: 80 }} />
+                            onChange={e => setIdadeManual(e.target.value)} style={{ width: 80 }} />
                         </div>
                       </div>
                       {!idade && <p style={{ fontSize: 11, color: '#e0a020', marginBottom: 8 }}>Aluno sem data de nascimento no cadastro — digite a idade pra calcular.</p>}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
                         {DOBRAS.filter(d => usadas.includes(d.chave)).map(d => (
                           <div key={d.chave}>
-                            <label title={d.dica} style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>{d.label} (mm)</label>
+                            <label title={d.dica} className="rotulo">{d.label} (mm)</label>
                             <input type="number" step="0.5" placeholder="—" value={dobras[d.chave] || ''}
                               onChange={e => setDobras(prev => ({ ...prev, [d.chave]: e.target.value }))}
-                              style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
+                              style={{ width: '100%' }} />
                             <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{d.dica}</div>
                           </div>
                         ))}
@@ -546,10 +545,10 @@ export default function AvaliacoesPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nível de atividade (pra calcular a taxa de manutenção)</label>
+                <label className="rotulo">Nível de atividade (pra calcular a taxa de manutenção)</label>
                 <select
                   value={novoNivelAtividade} onChange={e => setNovoNivelAtividade(e.target.value)}
-                  style={{ width: '100%', maxWidth: 320, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                  style={{ width: '100%', maxWidth: 320 }}
                 >
                   {Object.entries(FATORES_ATIVIDADE).map(([chave, info]) => (
                     <option key={chave} value={chave}>{info.label}</option>
@@ -558,10 +557,10 @@ export default function AvaliacoesPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Objetivo (pra calcular água e macronutrientes)</label>
+                <label className="rotulo">Objetivo (pra calcular água e macronutrientes)</label>
                 <select
                   value={novoObjetivo} onChange={e => setNovoObjetivo(e.target.value)}
-                  style={{ width: '100%', maxWidth: 320, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                  style={{ width: '100%', maxWidth: 320 }}
                 >
                   {Object.entries(OBJETIVOS).map(([chave, info]) => (
                     <option key={chave} value={chave}>{info.label}</option>
@@ -622,10 +621,10 @@ export default function AvaliacoesPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
                 <div>
-                  <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor cobrado (R$)</label>
+                  <label className="rotulo">Valor cobrado (R$)</label>
                   <input
                     type="number" step="0.01" value={novoValorCobrado} onChange={e => setNovoValorCobrado(e.target.value)}
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 8 }}>
@@ -637,10 +636,10 @@ export default function AvaliacoesPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Observações</label>
+                <label className="rotulo">Observações</label>
                 <textarea
                   value={novaObs} onChange={e => setNovaObs(e.target.value)} rows={3}
-                  style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
+                  style={{ width: '100%', resize: 'vertical' }}
                 />
               </div>
 
@@ -671,7 +670,7 @@ export default function AvaliacoesPage() {
                           <span style={{ fontSize: 11, color: a.pago ? '#3fb950' : 'var(--danger)' }}>
                             {a.pago ? `✅ Pago (R$ ${Number(a.valor).toFixed(2)})` : `⏳ Pendente (R$ ${Number(a.valor).toFixed(2)})`}
                           </span>
-                          <button onClick={() => abrirEdicao(a)} style={{ background: 'transparent', border: '1px solid #4a90d9', color: '#4a90d9', borderRadius: 4, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <button onClick={() => abrirEdicao(a)} className="btn btn-outline-primary btn-sm">
                             ✏️ Editar
                           </button>
                           <button onClick={() => apagarAvaliacao(a.id)} className="btn btn-outline-danger btn-sm">
