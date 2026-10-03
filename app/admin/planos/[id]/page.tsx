@@ -135,52 +135,52 @@ export default function PlanoPage() {
       </div>
 
       {aba === 'dados' && (
-        <div className="card" style={{ padding: '18px 20px', maxWidth: 720 }}>
+        <div className="card bloco">
           <div className="secao-titulo">Dados do plano</div>
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div>
+          <div className="form-grade">
+            <div className="inteiro">
               <label className="rotulo">Nome</label>
               <input className="campo" value={nome} onChange={e => setNome(e.target.value)} />
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 160px' }}>
-                <label className="rotulo">Vezes por semana</label>
-                <input className="campo" type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} />
-              </div>
-              <div style={{ flex: '1 1 160px' }}>
-                <label className="rotulo">Valor mensal (R$)</label>
-                <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} />
-              </div>
+            <div>
+              <label className="rotulo">Vezes por semana</label>
+              <input className="campo" type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} />
+            </div>
+            <div>
+              <label className="rotulo">Valor mensal (R$)</label>
+              <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} />
             </div>
           </div>
-          <div style={{ marginTop: 18 }}>
+          <div className="form-acoes">
             <button onClick={salvar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">{salvando ? 'Salvando...' : 'Salvar'}</button>
           </div>
         </div>
       )}
 
       {aba === 'pagamento' && (
-        <div style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
-          {pixAntigo && <div className="aviso aviso-atencao">⚠️ O preço mudou depois que a chave Pix foi cadastrada. Confira se o Pix ainda está com o valor certo.</div>}
-          <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="pilha">
+          {pixAntigo && <div className="aviso aviso-atencao" style={{ marginBottom: 0 }}>⚠️ O preço mudou depois que a chave Pix foi cadastrada. Confira se o Pix ainda está com o valor certo.</div>}
+          <div className="lado-a-lado">
+          <div className="card bloco">
             <div className="secao-titulo">🔑 Pagamento via Pix</div>
-            <textarea className="campo" value={chavePix} onChange={e => setChavePix(e.target.value)} style={{ minHeight: 70, marginBottom: 10 }}
+            <textarea className="campo" value={chavePix} onChange={e => setChavePix(e.target.value)} rows={2} style={{ marginBottom: 10 }}
               placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse plano)" />
             <Segmento value={chaveFixa} onChange={setChaveFixa} trueLabel="Valor fixo (só copia e cola)" falseLabel="Chave aberta (aluno digita)" />
             <p className="ajuda" style={{ marginTop: 8 }}>Sem chave aqui, a Elen usa a chave Pix padrão de <Link href="/admin/configuracoes#pagamentos">Configurações</Link>.</p>
           </div>
-          <div className="card" style={{ padding: '18px 20px' }}>
+          <div className="card bloco">
             <div className="secao-titulo">💳 Pagamento no cartão</div>
             <input className="campo" value={linkCartao} onChange={e => setLinkCartao(e.target.value)} style={{ marginBottom: 10 }}
               placeholder="Cole aqui o link de pagamento no cartão deste plano" />
             <Segmento value={linkFixo} onChange={setLinkFixo} trueLabel="Valor fixo (só clica e paga)" falseLabel="Link aberto (aluno digita)" />
+          </div>
           </div>
           <div><button onClick={salvar} disabled={salvando} className="btn btn-primary">{salvando ? 'Salvando...' : 'Salvar'}</button></div>
         </div>
       )}
 
       {aba === 'descontos' && (
-        <div className="card" style={{ padding: '18px 20px', maxWidth: 720 }}>
+        <div className="card bloco">
           <div className="secao-titulo">Descontos que a Elen pode oferecer</div>
           <p className="ajuda" style={{ marginBottom: 12 }}>A Elen só oferece os descontos que estiverem aqui — ela nunca inventa um valor.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
