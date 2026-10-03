@@ -46,10 +46,6 @@ const STATUS_COLOR: Record<string, string> = {
   cancelado: 'var(--text3)',
 }
 
-const inputStyle = {
-  background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)',
-  borderRadius: 6, padding: '8px 12px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const,
-}
 
 function PagamentosContent() {
   const params = useSearchParams()
@@ -216,30 +212,22 @@ function PagamentosContent() {
     <div>
       <Cabecalho
         titulo="Pagamentos"
-        subtitulo="Histórico financeiro. Pra criar uma mensalidade nova (renovação, troca de plano), vá em Financeiro → Mensalidades → o aluno."
+        subtitulo="Histórico financeiro. Pra criar uma mensalidade nova (renovação, troca de plano), vá em Alunos → Mensalidades → o aluno."
       />
       {pendentes > 0 && (
-        <div style={{ background: '#f0a50022', border: '1px solid #f0a500', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f0a500', fontWeight: 700 }}>
+        <div className="aviso aviso-atencao">
           ⚠️ {pendentes} comprovante{pendentes > 1 ? 's' : ''} aguardando sua confirmação
         </div>
       )}
 
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="chips">
         {['pendente', 'aguardando_confirmacao', 'pago', 'estornado', 'cancelado', 'todos'].map(s => (
-          <button key={s} onClick={() => setFiltro(s)} style={{
-            background: filtro === s ? '#3fb95022' : 'var(--card)',
-            border: `1.5px solid ${filtro === s ? '#3fb950' : 'var(--border)'}`, color: filtro === s ? '#3fb950' : 'var(--text2)',
-            borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}>
+          <button key={s} onClick={() => setFiltro(s)} className={`chip${filtro === s ? ' ativo' : ''}`}>
             {s === 'aguardando_confirmacao' ? '⚠️ Aguardando' : s === 'todos' ? 'Todos' : STATUS_LABEL[s]}
           </button>
         ))}
-        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)} style={{
-          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
-          padding: '6px 12px', color: 'var(--text)', fontSize: 12, outline: 'none', fontFamily: 'inherit',
-        }}>
+        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)}>
           <option value="recentes">Mais recentes</option>
           <option value="antigos">Mais antigos</option>
           <option value="maior_valor">Maior valor</option>
@@ -250,7 +238,7 @@ function PagamentosContent() {
       </div>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : rows.length === 0 ? (
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13 }}>
           Nenhum pagamento encontrado.
@@ -313,19 +301,17 @@ function PagamentosContent() {
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 130 }}>
                     <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Data do pagamento</div>
-                    <input
+                    <input className="campo"
                       type="date"
                       value={dataConfirm[p.id] || new Date().toISOString().slice(0, 10)}
                       onChange={e => setDataConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
-                      style={inputStyle}
                     />
                   </div>
                   <div style={{ flex: 1, minWidth: 110 }}>
                     <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Como pagou</div>
-                    <select
+                    <select className="campo"
                       value={metodoConfirm[p.id] || 'pix'}
                       onChange={e => setMetodoConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
-                      style={inputStyle}
                     >
                       <option value="pix">Pix</option>
                       <option value="dinheiro">Dinheiro</option>
@@ -352,10 +338,7 @@ function PagamentosContent() {
                   <button
                     onClick={() => repararPeriodo(p.id)}
                     disabled={reparando === p.id}
-                    style={{
-                      marginTop: 8, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)',
-                      borderRadius: 6, padding: '7px 12px', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit',
-                    }}
+                    className="btn btn-ghost btn-sm" style={{ marginTop: 8 }}
                     title="Use só se o aluno pagou mas o plano continua mostrando vencido -- confere e recria o período de 30 dias desse pagamento, se estiver faltando."
                   >
                     {reparando === p.id ? 'Verificando...' : '🔧 Verificar/recriar período desse pagamento'}
@@ -367,29 +350,24 @@ function PagamentosContent() {
               {p.status === 'aguardando_confirmacao' && (
                 <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   {p.comprovante_url && (
-                    <button onClick={() => setImgModal(p.comprovante_url!)} style={{
-                      background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)',
-                      borderRadius: 6, padding: '8px 14px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
+                    <button onClick={() => setImgModal(p.comprovante_url!)} className="btn btn-ghost btn-sm">
                       🖼️ Ver comprovante
                     </button>
                   )}
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 130 }}>
                       <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Data do pagamento</div>
-                      <input
+                      <input className="campo"
                         type="date"
                         value={dataConfirm[p.id] || new Date().toISOString().slice(0, 10)}
                         onChange={e => setDataConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        style={inputStyle}
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: 110 }}>
                       <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Como pagou</div>
-                      <select
+                      <select className="campo"
                         value={metodoConfirm[p.id] || 'pix'}
                         onChange={e => setMetodoConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        style={inputStyle}
                       >
                         <option value="pix">Pix</option>
                         <option value="dinheiro">Dinheiro</option>
