@@ -29,10 +29,6 @@ type Desconto = {
   ativo: boolean
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '9px 12px', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
-}
 
 function pixDesatualizado(p: Plano) {
   if (!p.pix_atualizado_em) return true
@@ -215,7 +211,7 @@ function PlanosContent() {
       </p>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
           {planos.map(p => {
@@ -231,21 +227,21 @@ function PlanosContent() {
                   <div style={sectionBox}>
                     <div style={sectionTitle}>📋 Dados do plano</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '2 1 160px' }} placeholder="Nome do plano" />
-                      <input type="number" min={1} value={editVezes} onChange={e => setEditVezes(e.target.value)} style={{ ...inputStyle, flex: '1 1 80px' }} placeholder="Vezes/semana" />
-                      <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
+                      <input className="campo" value={editNome} onChange={e => setEditNome(e.target.value)} style={{ flex: '2 1 160px' }} placeholder="Nome do plano" />
+                      <input className="campo" type="number" min={1} value={editVezes} onChange={e => setEditVezes(e.target.value)} style={{ flex: '1 1 80px' }} placeholder="Vezes/semana" />
+                      <input className="campo" type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ flex: '1 1 100px' }} placeholder="Valor (R$)" />
                     </div>
                   </div>
 
                   <div style={sectionBox}>
                     <div style={sectionTitle}>🔑 Pagamento via Pix</div>
-                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical', marginBottom: 10 }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse plano)" />
+                    <textarea className="campo" value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ minHeight: 60, resize: 'vertical', marginBottom: 10 }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse plano)" />
                     <SegmentedToggle value={editChaveValorFixo} onChange={setEditChaveValorFixo} trueLabel="Valor fixo (só copia e cola)" falseLabel="Chave aberta (aluno digita)" />
                   </div>
 
                   <div style={sectionBox}>
                     <div style={sectionTitle}>💳 Pagamento no cartão</div>
-                    <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={{ ...inputStyle, marginBottom: 10 }} placeholder="Cole aqui o link de pagamento no cartão deste plano" />
+                    <input className="campo" value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={{ marginBottom: 10 }} placeholder="Cole aqui o link de pagamento no cartão deste plano" />
                     <SegmentedToggle value={editLinkValorFixo} onChange={setEditLinkValorFixo} trueLabel="Valor fixo (só clica e paga)" falseLabel="Link aberto (aluno digita)" />
                   </div>
 
@@ -291,10 +287,7 @@ function PlanosContent() {
                         <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
                           ✏️ Editar
                         </button>
-                        <button onClick={() => toggleAtivo(p)} style={{
-                          background: 'transparent', border: `1px solid ${p.ativo ? 'var(--border)' : 'var(--danger)'}`,
-                          color: p.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-                        }}>
+                        <button onClick={() => toggleAtivo(p)} className={`btn btn-sm ${p.ativo ? 'btn-ghost' : 'btn-outline-success'}`}>
                           {p.ativo ? 'Desativar' : 'Ativar'}
                         </button>
                       </div>
@@ -327,8 +320,8 @@ function PlanosContent() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input value={novoDescNome} onChange={e => setNovoDescNome(e.target.value)} placeholder="Ex: Falta de dinheiro" style={{ ...inputStyle, flex: 2 }} />
-                    <input type="number" step="0.01" value={novoDescValor} onChange={e => setNovoDescValor(e.target.value)} placeholder="Valor R$" style={{ ...inputStyle, flex: 1 }} />
+                    <input className="campo" value={novoDescNome} onChange={e => setNovoDescNome(e.target.value)} placeholder="Ex: Falta de dinheiro" style={{ flex: 2 }} />
+                    <input className="campo" type="number" step="0.01" value={novoDescValor} onChange={e => setNovoDescValor(e.target.value)} placeholder="Valor R$" style={{ flex: 1 }} />
                     <button onClick={() => criarDesconto(p.id)} disabled={!novoDescNome.trim() || !novoDescValor} className="btn btn-primary btn-sm">
                       + Add
                     </button>
@@ -342,10 +335,7 @@ function PlanosContent() {
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} style={{
-          background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)',
-          borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setMostrarForm(true)} className="btn btn-primary">
           + Criar novo plano
         </button>
       ) : (
@@ -353,17 +343,17 @@ function PlanosContent() {
           <h3 style={{ fontSize: 14, marginBottom: 12 }}>Novo plano</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nome</label>
-              <input value={nome} onChange={e => setNome(e.target.value)} style={inputStyle} placeholder="Ex: Plano 5x semana" />
+              <label className="rotulo">Nome</label>
+              <input className="campo" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Plano 5x semana" />
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vezes por semana</label>
-                <input type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} style={inputStyle} />
+                <label className="rotulo">Vezes por semana</label>
+                <input className="campo" type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor mensal (R$)</label>
-                <input type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} style={inputStyle} placeholder="Ex: 199.90" />
+                <label className="rotulo">Valor mensal (R$)</label>
+                <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 199.90" />
               </div>
             </div>
             <p style={{ fontSize: 11, color: 'var(--text3)' }}>
