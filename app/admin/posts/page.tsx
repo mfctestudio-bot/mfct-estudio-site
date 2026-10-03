@@ -81,10 +81,10 @@ export default function PostsPage() {
     <div>
       <Cabecalho titulo="Posts / Dicas" />
 
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14 }}>
+      <div className="card bloco" style={{ marginBottom: 20 }}>
+        <div className="secao-titulo">
           {editId ? 'Editar post' : 'Novo post'}
-        </h3>
+        </div>
         <div style={{ marginBottom: 12 }}>
           <label className="rotulo">Título</label>
           <input className="campo" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: 3 dicas pra não perder o treino no fim de semana" />
