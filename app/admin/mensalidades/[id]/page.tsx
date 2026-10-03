@@ -375,7 +375,7 @@ export default function MensalidadeAlunoPage() {
         subtitulo="Plano, pagamentos e histórico de períodos desse aluno."
       />
 
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+      <div className="card bloco" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>
