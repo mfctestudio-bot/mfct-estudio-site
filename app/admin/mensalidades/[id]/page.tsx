@@ -364,7 +364,7 @@ export default function MensalidadeAlunoPage() {
     carregar()
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
   if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
 
   return (
@@ -437,12 +437,7 @@ export default function MensalidadeAlunoPage() {
           <SubLabel>Trocar tipo de plano</SubLabel>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
             {planos.filter(p => p.vezes_semana > 1).map(p => (
-              <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} style={{
-                background: aluno.plano_id === p.id ? '#3fb95022' : 'var(--bg)',
-                border: `1.5px solid ${aluno.plano_id === p.id ? '#3fb950' : 'var(--border)'}`,
-                color: aluno.plano_id === p.id ? '#3fb950' : 'var(--text)',
-                borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              <button key={p.id} onClick={() => abrirModalAtivacao(p.id)} className={`chip${aluno.plano_id === p.id ? ' ativo' : ''}`}>
                 {p.nome} — R$ {Number(p.valor).toFixed(2).replace('.', ',')}
               </button>
             ))}
@@ -451,7 +446,6 @@ export default function MensalidadeAlunoPage() {
           <select
             value={aluno.dia_vencimento || ''}
             onChange={e => alterarVencimento(Number(e.target.value))}
-            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}
           >
             <option value="">-- selecionar --</option>
             {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
@@ -507,18 +501,12 @@ export default function MensalidadeAlunoPage() {
                       </button>
                     )}
                     {!editandoValor && pagamento && (
-                      <button onClick={() => abrirEdicaoValor(periodo)} style={{
-                        background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)',
-                        borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
+                      <button onClick={() => abrirEdicaoValor(periodo)} className="btn btn-ghost btn-sm">
                         💲 Editar valor
                       </button>
                     )}
                     {!editando && (
-                      <button onClick={() => abrirEdicaoData(periodo)} style={{
-                        background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text2)',
-                        borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
+                      <button onClick={() => abrirEdicaoData(periodo)} className="btn btn-ghost btn-sm">
                         ✏️ Corrigir data
                       </button>
                     )}
@@ -535,11 +523,11 @@ export default function MensalidadeAlunoPage() {
                 {editando && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, color: 'var(--text2)' }}>Nova data de início:</span>
-                    <input
+                    <input className="campo"
                       type="date"
                       value={novaDataInicio}
                       onChange={e => setNovaDataInicio(e.target.value)}
-                      style={{ ...inputStyle, width: 'auto' }}
+                      style={{ width: 'auto' }}
                     />
                     <button onClick={() => salvarNovaData(periodo.id)} disabled={salvandoData} className="btn btn-success btn-sm">
                       {salvandoData ? 'Salvando...' : 'Salvar'}
@@ -552,11 +540,11 @@ export default function MensalidadeAlunoPage() {
                 {editandoValor && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, color: 'var(--text2)' }}>Novo valor (R$):</span>
-                    <input
+                    <input className="campo"
                       type="number" step="0.01"
                       value={novoValorMensalidade}
                       onChange={e => setNovoValorMensalidade(e.target.value)}
-                      style={{ ...inputStyle, width: 120 }}
+                      style={{ width: 120 }}
                     />
                     <button onClick={() => salvarNovoValor(periodo)} disabled={salvandoValor} className="btn btn-success btn-sm">
                       {salvandoValor ? 'Salvando...' : 'Salvar'}
@@ -603,12 +591,12 @@ export default function MensalidadeAlunoPage() {
             )}
 
             <Campo label="Valor cobrado (R$)">
-              <input type="number" step="0.01" value={modalValor} onChange={e => setModalValor(e.target.value)} style={inputStyle} />
+              <input className="campo" type="number" step="0.01" value={modalValor} onChange={e => setModalValor(e.target.value)} />
             </Campo>
             <Campo label="Desconto aplicado">
               <div style={{ display: 'flex', gap: 8 }}>
                 {modalDescontoTipo === 'percentual' ? (
-                  <select
+                  <select className="campo"
                     value={modalDesconto}
                     onChange={e => {
                       const novoDesconto = e.target.value
@@ -617,13 +605,13 @@ export default function MensalidadeAlunoPage() {
                       const descontoReais = valorOriginal * (Number(novoDesconto || 0) / 100)
                       setModalValor(String(Math.max(0, Math.round((valorOriginal - descontoReais) * 100) / 100)))
                     }}
-                    style={{ ...inputStyle, flex: 1 }}
+                    style={{ flex: 1 }}
                   >
                     <option value="0">Sem desconto</option>
                     {[5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100].map(p => <option key={p} value={p}>{p}%</option>)}
                   </select>
                 ) : (
-                  <input
+                  <input className="campo"
                     type="number" step="0.01" value={modalDesconto}
                     onChange={e => {
                       const novoDesconto = e.target.value
@@ -631,7 +619,7 @@ export default function MensalidadeAlunoPage() {
                       const valorOriginal = Number(modalPlano.valor)
                       setModalValor(String(Math.max(0, Math.round((valorOriginal - Number(novoDesconto || 0)) * 100) / 100)))
                     }}
-                    style={{ ...inputStyle, flex: 1 }} placeholder="0"
+                    style={{ flex: 1 }} placeholder="0"
                   />
                 )}
                 <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
@@ -667,7 +655,7 @@ export default function MensalidadeAlunoPage() {
             </Campo>
             {modalPago ? (
               <Campo label="Data do pagamento">
-                <input type="date" value={modalData} onChange={e => setModalData(e.target.value)} style={inputStyle} />
+                <input className="campo" type="date" value={modalData} onChange={e => setModalData(e.target.value)} />
               </Campo>
             ) : (
               <p style={{ fontSize: 12, color: '#f0a500', marginBottom: 12, background: '#f0a50015', padding: '8px 10px', borderRadius: 6 }}>
@@ -702,14 +690,9 @@ function SubLabel({ children }: { children: React.ReactNode }) {
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>{label}</label>
+      <label className="rotulo">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-  fontFamily: 'inherit',
-}
