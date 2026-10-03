@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje } from '@/lib/periodos'
@@ -350,6 +351,14 @@ export default function AvaliacoesPage() {
     carregarHistorico(alunoId)
   }
 
+  async function enviarPdfAvaliacao(avaliacaoId: string) {
+    const nome = alunos.find(x => x.id === alunoId)?.nome || 'o aluno'
+    if (!confirm(`Mandar o PDF dessa avaliação pro WhatsApp de ${nome}?`)) return
+    const resp = await fetch('/api/enviar-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'avaliacao', id: avaliacaoId }) })
+    const j = await resp.json().catch(() => ({}))
+    alert(resp.ok ? 'PDF enviado no WhatsApp ✅' : 'Não consegui mandar: ' + (j.error || resp.status))
+  }
+
   async function salvarMetas(metaPeso: string, metaGordura: string) {
     if (!alunoId) return
     // Trava (03/10/2026): não grava meta absurda por erro de digitação.
@@ -425,6 +434,7 @@ export default function AvaliacoesPage() {
                 >
                   🔗 Copiar link de evolução
                 </button>
+                <Link href={`/admin/anamneses/${alunoId}`} className="btn btn-ghost btn-sm">📋 Anamnese</Link>
               </div>
               <p className="ajuda" style={{ marginTop: 8 }}>O link só mostra os dados enquanto o plano do aluno estiver ativo.</p>
             </div>
@@ -684,14 +694,16 @@ export default function AvaliacoesPage() {
                   const fotosAval = fotos.filter(f => f.avaliacao_id === a.id)
                   const dataFmt = new Date(a.data + 'T12:00:00').toLocaleDateString('pt-BR')
                   return (
-                    <div key={a.id} className="card card-hover" style={{ padding: '12px 16px' }}>
+                    <div key={a.id} className="card bloco">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 14 }}>{dataFmt}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 11, color: a.pago ? '#3fb950' : 'var(--danger)' }}>
-                            {a.pago ? `✅ Pago (R$ ${Number(a.valor).toFixed(2)})` : `⏳ Pendente (R$ ${Number(a.valor).toFixed(2)})`}
+                          <span className="etiqueta" style={{ color: a.pago ? '#3fb950' : 'var(--danger)' }}>
+                            {a.pago ? `Pago · R$ ${Number(a.valor).toFixed(2).replace('.', ',')}` : `Pendente · R$ ${Number(a.valor).toFixed(2).replace('.', ',')}`}
                           </span>
-                          <button onClick={() => abrirEdicao(a)} className="btn btn-outline-primary btn-sm">
+                          <a href={`/api/pdf?tipo=avaliacao&id=${a.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">📄 PDF</a>
+                          <button onClick={() => enviarPdfAvaliacao(a.id)} className="btn btn-outline-whatsapp btn-sm">📲 Mandar</button>
+                          <button onClick={() => abrirEdicao(a)} className="btn btn-ghost btn-sm">
                             ✏️ Editar
                           </button>
                           <button onClick={() => apagarAvaliacao(a.id)} className="btn btn-outline-danger btn-sm">
