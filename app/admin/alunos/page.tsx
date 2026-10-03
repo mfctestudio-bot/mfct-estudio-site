@@ -110,6 +110,7 @@ function AlunosContent() {
     <div>
       <Cabecalho
         titulo="Matrículas"
+        subtitulo="Cadastro e dados de cada aluno. Clique no aluno pra ver o perfil, gerar contrato e termo."
         acoes={
           <button onClick={() => setNovoOpen(true)} className="btn btn-primary">
             + Novo aluno
@@ -117,28 +118,19 @@ function AlunosContent() {
         }
       />
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="barra-filtros">
         <input
+          className="busca"
           placeholder="Buscar por nome, CPF ou telefone..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          style={{
-            flex: 1, minWidth: 200, background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 6, padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none',
-          }}
         />
-        <select value={statusFiltro} onChange={e => setStatusFiltro(e.target.value)} style={{
-          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
-          padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none',
-        }}>
+        <select value={statusFiltro} onChange={e => setStatusFiltro(e.target.value)}>
           <option value="todos">Todos os status</option>
           <option value="leads">Leads / em negociação</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)} style={{
-          background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6,
-          padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none',
-        }}>
+        <select value={ordenacao} onChange={e => setOrdenacao(e.target.value)}>
           <option value="nome_az">Nome (A-Z)</option>
           <option value="nome_za">Nome (Z-A)</option>
           <option value="recentes">Mais recentes</option>
@@ -148,40 +140,29 @@ function AlunosContent() {
       </div>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : filtrados.length === 0 ? (
-        <p style={{ color: 'var(--text2)' }}>Nenhum aluno encontrado.</p>
+        <p className="vazio">Nenhum aluno encontrado.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+        <div className="lista">
           {filtrados.map(a => (
-            <Link key={a.id} href={`/admin/alunos/${a.id}`} className="card card-hover" style={{
-              padding: '14px 16px', textDecoration: 'none', color: 'var(--text)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-            }}>
+            <Link key={a.id} href={`/admin/alunos/${a.id}`} className="card card-hover item-lista">
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{a.nome}</div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                <div className="item-titulo">{a.nome}</div>
+                <div className="item-sub">
                   {a.telefone || 'sem telefone'} {a.planos ? `· ${a.planos.nome}` : ''}
                   {statusEfetivo[a.id] === 'ativo' && a.dia_vencimento && (
                     <span style={{ color: 'var(--text3)' }}> · vence dia {a.dia_vencimento}</span>
                   )}
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="item-acoes">
                 {comAvulsa.has(a.id) && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-                    color: '#f0a500', border: '1px solid #f0a500',
-                    textTransform: 'uppercase', letterSpacing: '0.5px',
-                  }}>
+                  <span className="etiqueta" style={{ color: '#f0a500' }}>
                     🎫 Avulsa
                   </span>
                 )}
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 4,
-                    color: STATUS_COLOR[statusEfetivo[a.id] || a.status_plano], border: `1px solid ${STATUS_COLOR[statusEfetivo[a.id] || a.status_plano]}`,
-                  textTransform: 'uppercase', letterSpacing: '0.5px',
-                }}>
+                <span className="etiqueta" style={{ color: STATUS_COLOR[statusEfetivo[a.id] || a.status_plano] }}>
                   {STATUS_LABEL[statusEfetivo[a.id] || a.status_plano]}
                 </span>
               </div>
@@ -255,10 +236,10 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '1.5rem', width: '100%', maxWidth: 420 }}>
         <h2 style={{ fontSize: 20, marginBottom: 16 }}>Novo aluno</h2>
         <Campo label="Nome">
-          <input value={nome} onChange={e => setNome(e.target.value)} style={inputStyle} autoFocus />
+          <input className="campo" value={nome} onChange={e => setNome(e.target.value)} autoFocus />
         </Campo>
         <Campo label="CPF">
-          <input value={cpf} onChange={e => setCpf(e.target.value)} style={inputStyle} placeholder="opcional" />
+          <input className="campo" value={cpf} onChange={e => setCpf(e.target.value)} placeholder="opcional" />
         </Campo>
         <Campo label="Telefone">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -268,10 +249,9 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
             }}>
               +55
             </span>
-            <input
+            <input className="campo"
               value={telefone}
               onChange={e => setTelefone(e.target.value)}
-              style={inputStyle}
               placeholder="21 98765-4321"
               inputMode="numeric"
             />
@@ -288,10 +268,7 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
                 }}>
                   Ver cadastro existente
                 </a>
-                <button onClick={() => setForcarCriacao(true)} style={{
-                  fontSize: 12, background: 'transparent', border: 'none', color: 'var(--text2)',
-                  textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit',
-                }}>
+                <button onClick={() => setForcarCriacao(true)} className="btn btn-ghost btn-sm" style={{ textDecoration: 'underline' }}>
                   Não, é pessoa diferente — criar mesmo assim
                 </button>
               </div>
@@ -299,16 +276,16 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
           )}
         </Campo>
         <Campo label="Data de nascimento">
-          <input type="date" value={dataNascimento} onChange={e => setDataNascimento(e.target.value)} style={inputStyle} />
+          <input className="campo" type="date" value={dataNascimento} onChange={e => setDataNascimento(e.target.value)} />
         </Campo>
         <Campo label="Plano">
-          <select value={planoId} onChange={e => setPlanoId(e.target.value)} style={inputStyle}>
+          <select className="campo" value={planoId} onChange={e => setPlanoId(e.target.value)}>
             <option value="">Sem plano</option>
             {planos.map(p => <option key={p.id} value={p.id}>{p.nome} — R$ {p.valor.toFixed(2)}</option>)}
           </select>
         </Campo>
         <Campo label="Status">
-          <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
+          <select className="campo" value={status} onChange={e => setStatus(e.target.value)}>
             {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </Campo>
@@ -328,17 +305,12 @@ function NovoAlunoModal({ planos, onClose, onSaved }: { planos: Plano[]; onClose
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>{label}</label>
+      <label className="rotulo">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-  fontFamily: 'inherit',
-}
 
 export default function AlunosPage() {
   return <Suspense><AlunosContent /></Suspense>
