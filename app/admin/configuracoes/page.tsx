@@ -5,10 +5,6 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { CAMPOS_CONTRATO, MODELO_CONTRATO_PADRAO } from '@/lib/contrato'
 import { Cabecalho } from '@/components/ui/Cabecalho'
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '9px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
-}
 const card: React.CSSProperties = { padding: '16px 18px', marginBottom: 14 }
 const titulo: React.CSSProperties = { fontWeight: 700, fontSize: 14, marginBottom: 4 }
 const ajuda: React.CSSProperties = { fontSize: 12, color: 'var(--text3)', marginBottom: 10 }
@@ -53,8 +49,8 @@ function CampoConfig({ chave, rotulo, descricao, placeholder, multilinha, normal
       <p style={ajuda}>{descricao}</p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {multilinha
-          ? <textarea value={valor} onChange={e => setValor(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, flex: '1 1 260px', minHeight: 70, resize: 'vertical' }} />
-          : <input value={valor} onChange={e => setValor(e.target.value)} placeholder={placeholder} style={{ ...inputStyle, flex: '1 1 260px', width: 'auto' }} />}
+          ? <textarea className="campo" value={valor} onChange={e => setValor(e.target.value)} placeholder={placeholder} style={{ flex: '1 1 260px', minHeight: 70, resize: 'vertical' }} />
+          : <input className="campo" value={valor} onChange={e => setValor(e.target.value)} placeholder={placeholder} style={{ flex: '1 1 260px', width: 'auto' }} />}
         <button onClick={salvar} disabled={salvando || valor === salvo} className="btn btn-primary btn-sm">{salvando ? 'Salvando...' : 'Salvar'}</button>
       </div>
     </div>
@@ -108,7 +104,7 @@ function ModeloContrato() {
               <button key={c.chave} onClick={() => inserirCampo(c.chave)} title={`{{${c.chave}}}`} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>+ {c.descricao}</button>
             ))}
           </div>
-          <textarea id="editor-contrato" value={modelo} onChange={e => setModelo(e.target.value)} style={{ ...inputStyle, minHeight: 360, fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.5 }} />
+          <textarea className="campo" id="editor-contrato" value={modelo} onChange={e => setModelo(e.target.value)} style={{ minHeight: 360 }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
             <span style={{ fontSize: 11, color: 'var(--text3)' }}>Folha nova na impressão: uma linha com <code>==== QUEBRA DE PÁGINA ====</code></span>
             <div style={{ display: 'flex', gap: 6 }}>
@@ -178,7 +174,7 @@ function CategoriasServicos() {
       <div style={titulo}>Categorias de serviços</div>
       <p style={ajuda}>Organizam os serviços e ajudam a Elen a entender o que cada um é. A categoria de cada serviço se escolhe em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <input value={nova} onChange={e => setNova(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} style={{ ...inputStyle, flex: 1, width: 'auto' }} placeholder="Nova categoria (ex: Pilates)" />
+        <input className="campo" value={nova} onChange={e => setNova(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} style={{ flex: 1, width: 'auto' }} placeholder="Nova categoria (ex: Pilates)" />
         <button onClick={criar} disabled={!nova.trim()} className="btn btn-primary btn-sm">+ Adicionar</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 8 }}>
@@ -188,7 +184,7 @@ function CategoriasServicos() {
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${n ? 'var(--border2, var(--border))' : 'var(--border)'}`, opacity: c.ativo ? 1 : 0.45 }}>
               {editandoId === c.id ? (
                 <>
-                  <input autoFocus value={editNome} onChange={e => setEditNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvar(c.id); if (e.key === 'Escape') setEditandoId(null) }} style={{ ...inputStyle, padding: '5px 8px', flex: 1, width: 'auto' }} />
+                  <input className="campo" autoFocus value={editNome} onChange={e => setEditNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvar(c.id); if (e.key === 'Escape') setEditandoId(null) }} style={{ flex: 1, width: 'auto' }} />
                   <button onClick={() => salvar(c.id)} style={iconBtn} title="Salvar">✅</button>
                   <button onClick={() => setEditandoId(null)} style={iconBtn} title="Cancelar">✕</button>
                 </>
@@ -270,7 +266,7 @@ function Limpeza() {
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontSize: 13, color: 'var(--text2)' }}>Apagar mensagens com mais de</span>
-          <input type="number" value={dias} min={7} onChange={e => setDias(Math.max(7, Number(e.target.value) || 60))} style={{ ...inputStyle, width: 70 }} />
+          <input className="campo" type="number" value={dias} min={7} onChange={e => setDias(Math.max(7, Number(e.target.value) || 60))} style={{ width: 70 }} />
           <span style={{ fontSize: 13, color: 'var(--text2)' }}>dias</span>
         </div>
         <button onClick={limparConversasAntigas} disabled={carregando} className="btn btn-outline-danger btn-sm">Limpar histórico antigo</button>
@@ -314,13 +310,13 @@ function NumerosBloqueados() {
         {lista.map(n => (
           <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 6px 5px 10px', borderRadius: 999, background: 'var(--bg)', border: '1px solid var(--border)', fontSize: 12 }}>
             🚫 {fmt(n)}
-            <button onClick={() => remover(n)} title="Desbloquear" style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+            <button onClick={() => remover(n)} title="Desbloquear" className="btn btn-ghost btn-sm">✕</button>
           </span>
         ))}
         {!lista.length && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum número bloqueado.</span>}
       </div>
       <div style={{ display: 'flex', gap: 8, maxWidth: 420 }}>
-        <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') adicionar() }} placeholder="Ex: 21 99999-8888" style={{ ...inputStyle, flex: 1, width: 'auto' }} />
+        <input className="campo" value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') adicionar() }} placeholder="Ex: 21 99999-8888" style={{ flex: 1, width: 'auto' }} />
         <button onClick={adicionar} disabled={!novo.trim()} className="btn btn-primary btn-sm">+ Bloquear</button>
       </div>
     </div>
