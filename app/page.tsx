@@ -7,6 +7,7 @@ import Metodologia from '@/components/Metodologia'
 import AvaliacaoFisica from '@/components/AvaliacaoFisica'
 import { waLink, WA_MESSAGES } from '@/lib/whatsapp'
 import { supabase, Post } from '@/lib/supabase'
+import { carregarConteudoSite } from '@/lib/siteConteudo'
 
 export const revalidate = 0
 
@@ -21,16 +22,20 @@ async function getPosts(): Promise<Post[]> {
 }
 
 export default async function Home() {
-  const posts = await getPosts()
+  const [posts, c] = await Promise.all([getPosts(), carregarConteudoSite()])
+  // Cores escolhidas no admin (Site → Personalização) — só vale pra página pública.
+  const hex = (v: string, padrao: string) => (/^#[0-9a-fA-F]{3,8}$/.test(v) ? v : padrao)
+  const cores = `:root{--accent:${hex(c.cores.destaque, '#cfd8dc')};--accent2:${hex(c.cores.botao, '#2F6FED')}}`
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: cores }} />
       <Navbar />
 
       {/* HERO */}
       <section id="topo" style={{
         position: 'relative', minHeight: 480, display: 'flex', alignItems: 'center',
-        backgroundImage: 'url(/banner.png)', backgroundSize: 'cover', backgroundPosition: 'center 30%',
+        backgroundImage: `url(${JSON.stringify(c.topo.imagemFundo)})`, backgroundSize: 'cover', backgroundPosition: 'center 30%',
       }}>
         <div style={{
           position: 'absolute', inset: 0,
@@ -41,14 +46,13 @@ export default async function Home() {
             display: 'inline-block', color: 'var(--accent)', fontSize: 13, fontWeight: 800,
             letterSpacing: '2px', marginBottom: 12,
           }}>
-            CHATUBA / CAJU · RIO DE JANEIRO
+            {c.topo.local}
           </span>
           <h1 style={{ fontSize: 'clamp(2.4rem, 6vw, 4rem)', color: 'var(--text)', marginBottom: 12, maxWidth: 620 }}>
-            Onde o seu resultado é nossa missão
+            {c.topo.titulo}
           </h1>
           <p style={{ fontSize: 16, color: 'var(--text2)', maxWidth: 480, marginBottom: 28 }}>
-            Aulas de personal training de 1 hora, segunda a domingo. Planos mensais ou
-            avulso no Pix — você escolhe o ritmo. Primeira aula é por nossa conta.
+            {c.topo.subtitulo}
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href={waLink(WA_MESSAGES.experimental)} target="_blank" rel="noopener noreferrer"
@@ -56,7 +60,7 @@ export default async function Home() {
                 background: 'var(--accent2)', color: '#fff', fontWeight: 800, fontSize: 14,
                 padding: '14px 26px', borderRadius: 4, textDecoration: 'none', letterSpacing: '0.5px',
               }}>
-              Marcar Aula Experimental Gratuita
+              {c.topo.botao1}
             </a>
             <a href={waLink(WA_MESSAGES.endereco)} target="_blank" rel="noopener noreferrer"
               style={{
@@ -64,7 +68,7 @@ export default async function Home() {
                 padding: '14px 26px', borderRadius: 4, textDecoration: 'none', letterSpacing: '0.5px',
                 background: 'rgba(10,14,16,0.4)',
               }}>
-              Onde fica o estúdio?
+              {c.topo.botao2}
             </a>
           </div>
         </div>
@@ -75,25 +79,19 @@ export default async function Home() {
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14,
         }}>
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 48, color: 'var(--accent)', lineHeight: 1 }}>1h</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, letterSpacing: '0.5px' }}>DE TREINO POR AULA</div>
-          </div>
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 48, color: 'var(--accent)', lineHeight: 1 }}>7</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, letterSpacing: '0.5px' }}>DIAS POR SEMANA COM AULA</div>
-          </div>
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 48, color: 'var(--accent)', lineHeight: 1 }}>1ª</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, letterSpacing: '0.5px' }}>AULA EXPERIMENTAL GRÁTIS</div>
-          </div>
+          {c.destaques.map((d, i) => (
+            <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 48, color: 'var(--accent)', lineHeight: 1 }}>{d.numero}</div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8, letterSpacing: '0.5px' }}>{d.texto}</div>
+            </div>
+          ))}
         </div>
       </section>
 
-      <Sobre />
+      <Sobre c={c.sobre} />
 
-      <Metodologia />
-      <AvaliacaoFisica />
+      <Metodologia c={c.metodo} />
+      <AvaliacaoFisica c={c.avaliacao} />
 
       {/* AULA EXPERIMENTAL */}
       <section id="experimental" style={{ maxWidth: 1100, margin: '0 auto', padding: '3rem 1.25rem 3rem' }}>
@@ -103,11 +101,10 @@ export default async function Home() {
         }}>
           <div>
             <h2 style={{ fontSize: 28, color: 'var(--text)', marginBottom: 6 }}>
-              Não conhece o MFCT ainda?
+              {c.experimental.titulo}
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text2)', maxWidth: 480 }}>
-              Marque uma aula experimental sem compromisso. Depois te chamamos
-              pra saber o que achou e indicar o melhor plano pra você.
+              {c.experimental.texto}
             </p>
           </div>
           <a href={waLink(WA_MESSAGES.experimental)} target="_blank" rel="noopener noreferrer"
@@ -116,25 +113,25 @@ export default async function Home() {
               padding: '14px 28px', borderRadius: 4, textDecoration: 'none', letterSpacing: '0.5px',
               whiteSpace: 'nowrap',
             }}>
-            Quero minha aula gratuita
+            {c.experimental.botao}
           </a>
         </div>
       </section>
 
       {/* PLANOS */}
       <section id="planos" style={{ maxWidth: 1100, margin: '0 auto', padding: '1rem 1.25rem 3rem' }}>
-        <h2 style={{ fontSize: 32, color: 'var(--text)', marginBottom: 6 }}>Planos</h2>
+        <h2 style={{ fontSize: 32, color: 'var(--text)', marginBottom: 6 }}>{c.planos.titulo}</h2>
         <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 24 }}>
-          Sem fidelidade, sem letra miúda. Escolha como prefere treinar.
+          {c.planos.texto}
         </p>
         <PlanCards />
       </section>
 
       {/* HORARIOS */}
       <section id="horarios" style={{ maxWidth: 1100, margin: '0 auto', padding: '1rem 1.25rem 3rem' }}>
-        <h2 style={{ fontSize: 32, color: 'var(--text)', marginBottom: 6 }}>Horários</h2>
+        <h2 style={{ fontSize: 32, color: 'var(--text)', marginBottom: 6 }}>{c.horarios.titulo}</h2>
         <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 24 }}>
-          Confira os horários disponíveis. Pra agendar, fala com a gente no WhatsApp.
+          {c.horarios.texto}
         </p>
         <ScheduleGrid />
       </section>
@@ -173,9 +170,9 @@ export default async function Home() {
           gap: 24, flexWrap: 'wrap',
         }}>
           <div>
-            <h2 style={{ fontSize: 28, color: 'var(--text)', marginBottom: 6 }}>Onde estamos</h2>
+            <h2 style={{ fontSize: 28, color: 'var(--text)', marginBottom: 6 }}>{c.local.titulo}</h2>
             <p style={{ fontSize: 14, color: 'var(--text2)' }}>
-              Rua Vila Nova Esperança, nº 58 — Chatuba/Caju, Rio de Janeiro
+              {c.local.endereco}
             </p>
           </div>
           <a href={waLink(WA_MESSAGES.endereco)} target="_blank" rel="noopener noreferrer"
@@ -184,12 +181,12 @@ export default async function Home() {
               padding: '14px 26px', borderRadius: 4, textDecoration: 'none', letterSpacing: '0.5px',
               whiteSpace: 'nowrap',
             }}>
-            Falar no WhatsApp
+            {c.local.botao}
           </a>
         </div>
       </section>
 
-      <Footer />
+      <Footer c={c.rodape} />
     </>
   )
 }
