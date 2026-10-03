@@ -148,22 +148,12 @@ export default function ServicoPage() {
       </div>
 
       {aba === 'dados' && (
-        <div className="card" style={{ padding: '18px 20px', maxWidth: 720 }}>
+        <div className="card bloco">
           <div className="secao-titulo">Dados do serviço</div>
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div className="form-grade">
             <div>
               <label className="rotulo">Nome</label>
               <input className="campo" value={nome} onChange={e => setNome(e.target.value)} />
-            </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 160px' }}>
-                <label className="rotulo">Valor (R$)</label>
-                <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} />
-              </div>
-              <div style={{ flex: '1 1 160px' }}>
-                <label className="rotulo">Quantidade de usos</label>
-                <input className="campo" type="number" min={1} value={usos} onChange={e => setUsos(e.target.value)} />
-              </div>
             </div>
             <div>
               <label className="rotulo">Categoria</label>
@@ -175,36 +165,46 @@ export default function ServicoPage() {
               </select>
               <p className="ajuda" style={{ marginTop: 6 }}>As categorias se criam em <Link href="/admin/configuracoes#categorias">Configurações → Categorias</Link>.</p>
             </div>
+            <div>
+              <label className="rotulo">Valor (R$)</label>
+              <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} />
+            </div>
+            <div>
+              <label className="rotulo">Quantidade de usos</label>
+              <input className="campo" type="number" min={1} value={usos} onChange={e => setUsos(e.target.value)} />
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          <div className="form-acoes">
             <button onClick={salvar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">{salvando ? 'Salvando...' : 'Salvar'}</button>
           </div>
         </div>
       )}
 
       {aba === 'pagamento' && (
-        <div style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
-          {pixAntigo && <div className="aviso aviso-atencao">⚠️ O preço mudou depois que a chave Pix foi cadastrada. Confira se o Pix ainda está com o valor certo.</div>}
-          <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="pilha">
+          {pixAntigo && <div className="aviso aviso-atencao" style={{ marginBottom: 0 }}>⚠️ O preço mudou depois que a chave Pix foi cadastrada. Confira se o Pix ainda está com o valor certo.</div>}
+          <div className="lado-a-lado">
+          <div className="card bloco">
             <div className="secao-titulo">🔑 Pagamento via Pix</div>
-            <textarea className="campo" value={chavePix} onChange={e => setChavePix(e.target.value)} style={{ minHeight: 70, marginBottom: 10 }}
+            <textarea className="campo" value={chavePix} onChange={e => setChavePix(e.target.value)} rows={2} style={{ marginBottom: 10 }}
               placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse serviço)" />
             <Segmento value={chaveFixa} onChange={setChaveFixa} trueLabel="Valor fixo (só copia e cola)" falseLabel="Chave aberta (aluno digita)" />
             <p className="ajuda" style={{ marginTop: 8 }}>Sem chave aqui, a Elen usa a chave Pix padrão de <Link href="/admin/configuracoes#pagamentos">Configurações</Link>.</p>
           </div>
-          <div className="card" style={{ padding: '18px 20px' }}>
+          <div className="card bloco">
             <div className="secao-titulo">💳 Pagamento no cartão</div>
             <input className="campo" value={linkCartao} onChange={e => setLinkCartao(e.target.value)} style={{ marginBottom: 10 }}
               placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
             <Segmento value={linkFixo} onChange={setLinkFixo} trueLabel="Valor fixo (só clica e paga)" falseLabel="Link aberto (aluno digita)" />
+          </div>
           </div>
           <div><button onClick={salvar} disabled={salvando} className="btn btn-primary">{salvando ? 'Salvando...' : 'Salvar'}</button></div>
         </div>
       )}
 
       {aba === 'agenda' && (
-        <div style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
-          <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="lado-a-lado" style={!proprios ? { gridTemplateColumns: '1fr' } : undefined}>
+          <div className="card bloco">
             <div className="secao-titulo">Como funciona a agenda desse serviço</div>
             <div className="segmento" style={{ marginBottom: 12 }}>
               <button type="button" className={!temAgenda ? 'ativo' : ''} onClick={() => setTemAgenda(false)}>Sem agenda</button>
@@ -228,7 +228,7 @@ export default function ServicoPage() {
           </div>
 
           {proprios && (
-            <div className="card" style={{ padding: '18px 20px' }}>
+            <div className="card bloco">
               <div className="secao-titulo">Horários do serviço</div>
               <HorariosServico servicoId={s.id} />
             </div>
