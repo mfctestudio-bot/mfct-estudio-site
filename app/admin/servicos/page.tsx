@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { idDoEndereco, rolarAteCard } from '@/components/ui/focarCard'
 
 type Servico = {
   id: string
@@ -134,6 +135,7 @@ function ServicosContent() {
     setLoading(true)
     const { data } = await supabase.from('servicos').select('*').order('nome')
     setServicos((data as Servico[]) || [])
+    focarDoEndereco((data as Servico[]) || [])
     const { data: horariosData } = await supabase.from('servicos_horarios').select('*').order('dia_semana').order('horario')
     setHorarios((horariosData as ServicoHorario[]) || [])
     const { data: categoriasData } = await supabase.from('servicos_categorias').select('*').order('nome')
@@ -148,6 +150,7 @@ function ServicosContent() {
   }
 
   useEffect(() => { carregar() }, [])
+
 
   async function criar() {
     if (!nome.trim() || !valor) return
@@ -180,6 +183,20 @@ function ServicosContent() {
     setEditCategoriaId(s.categoria_id || '')
     setEditAgendaTipoId(s.agenda_tipo_id || '')
   }
+  // Clicou no item pelo menu (#id no endereço): abre a edição dele e rola até o card.
+  function focarDoEndereco(lista: Servico[]) {
+    const id = idDoEndereco()
+    const alvo = lista.find(x => x.id === id)
+    if (!alvo) return
+    abrirEdicao(alvo)
+    rolarAteCard(id)
+  }
+  useEffect(() => {
+    const ouvir = () => focarDoEndereco(servicos)
+    window.addEventListener('hashchange', ouvir)
+    return () => window.removeEventListener('hashchange', ouvir)
+  })
+
 
   async function salvarEdicao(id: string) {
     const servicoAtual = servicos.find(s => s.id === id)
@@ -300,7 +317,8 @@ function ServicosContent() {
           {servicos.map(s => {
             const desatualizado = !!s.chave_pix && pixDesatualizado(s)
             return (
-            <div key={s.id} className="card card-hover" style={{
+            <div key={s.id} id={`item-${s.id}`} className="card card-hover" style={{
+              scrollMarginTop: 80,
               borderColor: !s.ativo ? 'var(--danger)' : (desatualizado ? '#e0a020' : 'var(--border)'),
               padding: '16px 18px', opacity: s.ativo ? 1 : 0.55,
             }}>

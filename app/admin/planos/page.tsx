@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { idDoEndereco, rolarAteCard } from '@/components/ui/focarCard'
 
 type Plano = {
   id: string
@@ -110,12 +111,14 @@ function PlanosContent() {
     setLoading(true)
     const { data } = await supabase.from('planos').select('*').order('valor')
     setPlanos((data as Plano[]) || [])
+    focarDoEndereco((data as Plano[]) || [])
     const { data: descData } = await supabase.from('descontos_planos').select('*').order('valor', { ascending: false })
     setDescontos((descData as Desconto[]) || [])
     setLoading(false)
   }
 
   useEffect(() => { carregar() }, [])
+
 
   async function criarDesconto(planoId: string) {
     if (!novoDescNome.trim() || !novoDescValor) return
@@ -158,6 +161,20 @@ function PlanosContent() {
     setEditLinkCartao(p.link_cartao || '')
     setEditLinkValorFixo(p.link_cartao_valor_fixo)
   }
+  // Clicou no item pelo menu (#id no endereço): abre a edição dele e rola até o card.
+  function focarDoEndereco(lista: Plano[]) {
+    const id = idDoEndereco()
+    const alvo = lista.find(x => x.id === id)
+    if (!alvo) return
+    abrirEdicao(alvo)
+    rolarAteCard(id)
+  }
+  useEffect(() => {
+    const ouvir = () => focarDoEndereco(planos)
+    window.addEventListener('hashchange', ouvir)
+    return () => window.removeEventListener('hashchange', ouvir)
+  })
+
 
   async function salvarEdicao(id: string) {
     const planoAtual = planos.find(p => p.id === id)
@@ -204,7 +221,8 @@ function PlanosContent() {
           {planos.map(p => {
             const desatualizado = !!p.chave_pix && pixDesatualizado(p)
             return (
-            <div key={p.id} className="card card-hover" style={{
+            <div key={p.id} id={`item-${p.id}`} className="card card-hover" style={{
+              scrollMarginTop: 80,
               borderColor: !p.ativo ? 'var(--danger)' : (desatualizado ? '#e0a020' : 'var(--border)'),
               padding: '16px 18px', opacity: p.ativo ? 1 : 0.55,
             }}>
