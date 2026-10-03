@@ -1,379 +1,123 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Cabecalho } from '@/components/ui/Cabecalho'
-import { idDoEndereco, rolarAteCard } from '@/components/ui/focarCard'
+
+// Lista de planos (02/10/2026): cada plano é uma linha fechada que leva pra página dele
+// (/admin/planos/<id>), com Dados, Pagamento e Descontos. Nada expande aqui.
 
 type Plano = {
-  id: string
-  nome: string
-  vezes_semana: number
-  valor: number
-  ativo: boolean
-  created_at: string
-  chave_pix: string | null
-  chave_pix_valor_fixo: boolean
-  link_cartao: string | null
-  link_cartao_valor_fixo: boolean
-  valor_atualizado_em: string
-  pix_atualizado_em: string | null
+  id: string; nome: string; vezes_semana: number; valor: number; ativo: boolean
+  chave_pix: string | null; valor_atualizado_em: string; pix_atualizado_em: string | null
 }
+type Desconto = { plano_id: string; ativo: boolean }
 
-type Desconto = {
-  id: string
-  plano_id: string
-  nome: string
-  motivo: string
-  valor: number
-  ativo: boolean
-}
-
+const brl = (v: number) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',')
 
 function pixDesatualizado(p: Plano) {
+  if (!p.chave_pix) return false
   if (!p.pix_atualizado_em) return true
   return new Date(p.valor_atualizado_em).getTime() > new Date(p.pix_atualizado_em).getTime()
 }
 
-const sectionBox: React.CSSProperties = {
-  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10,
-}
-const sectionTitle: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6,
-}
-
-function badgeStyle(tone: 'ok' | 'warn' | 'bad' | 'neutral'): React.CSSProperties {
-  const colors = {
-    ok: { bg: 'rgba(34,197,94,0.15)', fg: '#22c55e' },
-    warn: { bg: 'rgba(224,160,32,0.18)', fg: '#e0a020' },
-    bad: { bg: 'rgba(239,68,68,0.15)', fg: '#ef4444' },
-    neutral: { bg: 'rgba(148,163,184,0.15)', fg: 'var(--text2)' },
-  }[tone]
-  return {
-    display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600,
-    padding: '3px 9px', borderRadius: 999, background: colors.bg, color: colors.fg,
-  }
-}
-
-function SegmentedToggle({ value, onChange, trueLabel, falseLabel }: {
-  value: boolean; onChange: (v: boolean) => void; trueLabel: string; falseLabel: string
-}) {
-  const btnBase: React.CSSProperties = {
-    flex: 1, padding: '8px 10px', fontSize: 12, textAlign: 'center', cursor: 'pointer',
-    border: '1px solid var(--border)', fontFamily: 'inherit', userSelect: 'none',
-  }
-  return (
-    <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden' }}>
-      <div onClick={() => onChange(true)} style={{
-        ...btnBase, borderRadius: '6px 0 0 6px',
-        background: value ? 'var(--accent2)' : 'var(--bg)',
-        color: value ? '#fff' : 'var(--text2)', fontWeight: value ? 700 : 400,
-      }}>{trueLabel}</div>
-      <div onClick={() => onChange(false)} style={{
-        ...btnBase, borderRadius: '0 6px 6px 0', borderLeft: 'none',
-        background: !value ? 'var(--accent2)' : 'var(--bg)',
-        color: !value ? '#fff' : 'var(--text2)', fontWeight: !value ? 700 : 400,
-      }}>{falseLabel}</div>
-    </div>
-  )
-}
-
-function PlanosContent() {
+export default function PlanosPage() {
+  const router = useRouter()
   const [planos, setPlanos] = useState<Plano[]>([])
   const [descontos, setDescontos] = useState<Desconto[]>([])
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [planoExpandido, setPlanoExpandido] = useState<string | null>(null)
-  const [nomeExpandidoId, setNomeExpandidoId] = useState<string | null>(null)
-  const [novoDescNome, setNovoDescNome] = useState('')
-  const [novoDescValor, setNovoDescValor] = useState('')
-
+  const [salvando, setSalvando] = useState(false)
   const [nome, setNome] = useState('')
   const [vezes, setVezes] = useState('3')
   const [valor, setValor] = useState('')
-  const [salvando, setSalvando] = useState(false)
 
-  const [editandoId, setEditandoId] = useState<string | null>(null)
-  const [editNome, setEditNome] = useState('')
-  const [editVezes, setEditVezes] = useState('')
-  const [editValor, setEditValor] = useState('')
-  const [editChavePix, setEditChavePix] = useState('')
-  const [editChaveValorFixo, setEditChaveValorFixo] = useState(true)
-  const [editLinkCartao, setEditLinkCartao] = useState('')
-  const [editLinkValorFixo, setEditLinkValorFixo] = useState(true)
-
-
-  async function carregar() {
-    setLoading(true)
-    const { data } = await supabase.from('planos').select('*').order('valor')
-    setPlanos((data as Plano[]) || [])
-    focarDoEndereco((data as Plano[]) || [])
-    const { data: descData } = await supabase.from('descontos_planos').select('*').order('valor', { ascending: false })
-    setDescontos((descData as Desconto[]) || [])
-    setLoading(false)
-  }
-
-  useEffect(() => { carregar() }, [])
-
-
-  async function criarDesconto(planoId: string) {
-    if (!novoDescNome.trim() || !novoDescValor) return
-    await supabase.from('descontos_planos').insert({
-      plano_id: planoId, nome: novoDescNome.trim(), motivo: novoDescNome.trim().toLowerCase(), valor: Number(novoDescValor), ativo: true,
+  useEffect(() => {
+    // Link antigo "/admin/planos#<id>" → página do plano
+    const doLink = window.location.hash.slice(1)
+    if (/^[0-9a-f-]{36}$/.test(doLink)) { router.replace(`/admin/planos/${doLink}`); return }
+    Promise.all([
+      supabase.from('planos').select('*').order('valor'),
+      supabase.from('descontos_planos').select('plano_id, ativo'),
+    ]).then(([{ data }, { data: desc }]) => {
+      setPlanos((data as Plano[]) || [])
+      setDescontos((desc as Desconto[]) || [])
+      setLoading(false)
     })
-    setNovoDescNome(''); setNovoDescValor('')
-    carregar()
-  }
-
-  async function toggleDescontoAtivo(d: Desconto) {
-    await supabase.from('descontos_planos').update({ ativo: !d.ativo }).eq('id', d.id)
-    setDescontos(prev => prev.map(x => x.id === d.id ? { ...x, ativo: !x.ativo } : x))
-  }
-
-  async function excluirDesconto(id: string) {
-    if (!confirm('Apagar esse desconto? A Elen não vai mais poder oferecer ele.')) return
-    await supabase.from('descontos_planos').delete().eq('id', id)
-    carregar()
-  }
+  }, [router])
 
   async function criar() {
     if (!nome.trim() || !valor) return
     setSalvando(true)
-    await supabase.from('planos').insert({
+    const { data, error } = await supabase.from('planos').insert({
       nome: nome.trim(), vezes_semana: Number(vezes) || 1, valor: Number(valor), ativo: true,
-    })
+    }).select('id').single()
     setSalvando(false)
-    setNome(''); setVezes('3'); setValor(''); setMostrarForm(false)
-    carregar()
-  }
-
-  function abrirEdicao(p: Plano) {
-    setEditandoId(p.id)
-    setEditNome(p.nome)
-    setEditVezes(String(p.vezes_semana))
-    setEditValor(String(p.valor))
-    setEditChavePix(p.chave_pix || '')
-    setEditChaveValorFixo(p.chave_pix_valor_fixo)
-    setEditLinkCartao(p.link_cartao || '')
-    setEditLinkValorFixo(p.link_cartao_valor_fixo)
-  }
-  // Clicou no item pelo menu (#id no endereço): abre a edição dele e rola até o card.
-  function focarDoEndereco(lista: Plano[]) {
-    const id = idDoEndereco()
-    const alvo = lista.find(x => x.id === id)
-    if (!alvo) return
-    abrirEdicao(alvo)
-    rolarAteCard(id)
-  }
-  useEffect(() => {
-    const ouvir = () => focarDoEndereco(planos)
-    window.addEventListener('hashchange', ouvir)
-    return () => window.removeEventListener('hashchange', ouvir)
-  })
-
-
-  async function salvarEdicao(id: string) {
-    const planoAtual = planos.find(p => p.id === id)
-    const corpo: Record<string, unknown> = {
-      nome: editNome.trim(), vezes_semana: Number(editVezes) || 1, valor: Number(editValor),
-      chave_pix_valor_fixo: editChaveValorFixo,
-      link_cartao_valor_fixo: editLinkValorFixo,
-    }
-    // Só marca a chave Pix como "atualizada agora" se o texto dela realmente mudou.
-    if (planoAtual && editChavePix.trim() !== (planoAtual.chave_pix || '')) {
-      corpo.chave_pix = editChavePix.trim() || null
-    }
-    corpo.link_cartao = editLinkCartao.trim() || null
-    await supabase.from('planos').update(corpo).eq('id', id)
-    setEditandoId(null)
-    setNomeExpandidoId(null)
-    carregar()
-  }
-
-  async function toggleAtivo(p: Plano) {
-    await supabase.from('planos').update({ ativo: !p.ativo }).eq('id', p.id)
-    setPlanos(prev => prev.map(x => x.id === p.id ? { ...x, ativo: !x.ativo } : x))
+    if (error || !data) { alert('Não consegui criar o plano: ' + (error?.message || '')); return }
+    router.push(`/admin/planos/${(data as { id: string }).id}`)
   }
 
   return (
     <div>
       <Cabecalho
         titulo="Planos"
-        subtitulo={<>
-          Crie, edite ou desative os tipos de plano oferecidos pelo estúdio. Cadastre aqui a chave Pix (já com o
-          valor certo) e o link de pagamento no cartão de cada plano — é isso que a Elen vai mandar pro aluno.
-          Isso não mexe em nenhum aluno já cadastrado — só afeta quais opções aparecem pra escolher daqui pra frente.
-        </>}
+        subtitulo={<>Os planos mensais do estúdio. Clique num plano pra mudar valor, Pix, cartão e descontos. A chave Pix padrão fica em <Link href="/admin/configuracoes#pagamentos">Configurações</Link>.</>}
+        acoes={!mostrarForm && <button onClick={() => setMostrarForm(true)} className="btn btn-primary">+ Novo plano</button>}
       />
 
-      <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
-        A chave Pix padrão e a chave Pix de desconto agora ficam em <Link href="/admin/configuracoes#pagamentos" style={{ color: '#4a90d9' }}>Configurações</Link>.
-      </p>
-
-      {loading ? (
-        <p className="vazio">Carregando...</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
-          {planos.map(p => {
-            const desatualizado = !!p.chave_pix && pixDesatualizado(p)
-            return (
-            <div key={p.id} id={`item-${p.id}`} className="card card-hover" style={{
-              scrollMarginTop: 80,
-              borderColor: !p.ativo ? 'var(--danger)' : (desatualizado ? '#e0a020' : 'var(--border)'),
-              padding: '16px 18px', opacity: p.ativo ? 1 : 0.55,
-            }}>
-              {editandoId === p.id ? (
-                <div>
-                  <div style={sectionBox}>
-                    <div style={sectionTitle}>📋 Dados do plano</div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <input className="campo" value={editNome} onChange={e => setEditNome(e.target.value)} style={{ flex: '2 1 160px' }} placeholder="Nome do plano" />
-                      <input className="campo" type="number" min={1} value={editVezes} onChange={e => setEditVezes(e.target.value)} style={{ flex: '1 1 80px' }} placeholder="Vezes/semana" />
-                      <input className="campo" type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ flex: '1 1 100px' }} placeholder="Valor (R$)" />
-                    </div>
-                  </div>
-
-                  <div style={sectionBox}>
-                    <div style={sectionTitle}>🔑 Pagamento via Pix</div>
-                    <textarea className="campo" value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ minHeight: 60, resize: 'vertical', marginBottom: 10 }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse plano)" />
-                    <SegmentedToggle value={editChaveValorFixo} onChange={setEditChaveValorFixo} trueLabel="Valor fixo (só copia e cola)" falseLabel="Chave aberta (aluno digita)" />
-                  </div>
-
-                  <div style={sectionBox}>
-                    <div style={sectionTitle}>💳 Pagamento no cartão</div>
-                    <input className="campo" value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={{ marginBottom: 10 }} placeholder="Cole aqui o link de pagamento no cartão deste plano" />
-                    <SegmentedToggle value={editLinkValorFixo} onChange={setEditLinkValorFixo} trueLabel="Valor fixo (só clica e paga)" falseLabel="Link aberto (aluno digita)" />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => salvarEdicao(p.id)} className="btn btn-primary btn-sm">Salvar</button>
-                    <button onClick={() => setEditandoId(null)} className="btn btn-neutral btn-sm">Cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div
-                    onClick={() => setNomeExpandidoId(nomeExpandidoId === p.id ? null : p.id)}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-                  >
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>
-                      {p.nome}
-                      {!p.ativo && <span style={{ fontSize: 11, color: 'var(--danger)', marginLeft: 8, fontWeight: 400 }}>(desativado)</span>}
-                    </span>
-                    <span style={{
-                      fontSize: 12, color: 'var(--text3)', display: 'inline-block',
-                      transform: nomeExpandidoId === p.id ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease',
-                    }}>▸</span>
-                  </div>
-
-                  {nomeExpandidoId === p.id && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
-                        {p.vezes_semana}x/semana · R$ {Number(p.valor).toFixed(2)}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                        {p.chave_pix
-                          ? <span style={badgeStyle('ok')}>✅ Pix · {p.chave_pix_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
-                          : <span style={badgeStyle('warn')}>⚠️ Sem Pix</span>}
-                        {p.link_cartao
-                          ? <span style={badgeStyle('ok')}>✅ Cartão · {p.link_cartao_valor_fixo ? 'valor fixo' : 'aluno digita'}</span>
-                          : <span style={badgeStyle('neutral')}>Sem link de cartão</span>}
-                        {desatualizado && <span style={badgeStyle('warn')}>⚠️ preço mudou depois do Pix</span>}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button onClick={() => setPlanoExpandido(planoExpandido === p.id ? null : p.id)} className="btn btn-ghost btn-sm">
-                          🏷️ Descontos ({descontos.filter(d => d.plano_id === p.id && d.ativo).length})
-                        </button>
-                        <button onClick={() => abrirEdicao(p)} className="btn btn-ghost btn-sm">
-                          ✏️ Editar
-                        </button>
-                        <button onClick={() => toggleAtivo(p)} className={`btn btn-sm ${p.ativo ? 'btn-ghost' : 'btn-outline-success'}`}>
-                          {p.ativo ? 'Desativar' : 'Ativar'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {planoExpandido === p.id && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                  <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-                    A Elen só pode oferecer os descontos que estiverem aqui — ela nunca inventa um valor.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                    {descontos.filter(d => d.plano_id === p.id).map(d => (
-                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: d.ativo ? 1 : 0.5 }}>
-                        <span style={{ fontSize: 12 }}>{d.nome} — R$ {Number(d.valor).toFixed(2)} de desconto{!d.ativo && ' (desativado)'}</span>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => toggleDescontoAtivo(d)} className="btn btn-ghost btn-sm">
-                            {d.ativo ? 'Desativar' : 'Ativar'}
-                          </button>
-                          <button onClick={() => excluirDesconto(d.id)} className="btn btn-outline-danger btn-sm">
-                            Apagar
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {!descontos.filter(d => d.plano_id === p.id).length && (
-                      <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum desconto configurado ainda pra esse plano.</p>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input className="campo" value={novoDescNome} onChange={e => setNovoDescNome(e.target.value)} placeholder="Ex: Falta de dinheiro" style={{ flex: 2 }} />
-                    <input className="campo" type="number" step="0.01" value={novoDescValor} onChange={e => setNovoDescValor(e.target.value)} placeholder="Valor R$" style={{ flex: 1 }} />
-                    <button onClick={() => criarDesconto(p.id)} disabled={!novoDescNome.trim() || !novoDescValor} className="btn btn-primary btn-sm">
-                      + Add
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            )
-          })}
-        </div>
-      )}
-
-      {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} className="btn btn-primary">
-          + Criar novo plano
-        </button>
-      ) : (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 12 }}>Novo plano</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 12 }}>
+      {mostrarForm && (
+        <div className="card" style={{ padding: '18px 20px', marginBottom: 16, maxWidth: 720 }}>
+          <div className="secao-titulo">Novo plano</div>
+          <div style={{ display: 'grid', gap: 12 }}>
             <div>
               <label className="rotulo">Nome</label>
-              <input className="campo" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Plano 5x semana" />
+              <input className="campo" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Plano 5x semana" autoFocus />
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 140px' }}>
                 <label className="rotulo">Vezes por semana</label>
                 <input className="campo" type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: '1 1 140px' }}>
                 <label className="rotulo">Valor mensal (R$)</label>
                 <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 199.90" />
               </div>
             </div>
-            <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-              Depois de criar, edite o plano pra cadastrar a chave Pix e o link de cartão.
-            </p>
+            <p className="ajuda">Depois de criar, abre a página do plano pra você cadastrar Pix, cartão e descontos.</p>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">
-              {salvando ? 'Criando...' : '✅ Criar plano'}
-            </button>
-            <button onClick={() => setMostrarForm(false)} disabled={salvando} className="btn btn-neutral">
-              Cancelar
-            </button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">{salvando ? 'Criando...' : 'Criar plano'}</button>
+            <button onClick={() => setMostrarForm(false)} disabled={salvando} className="btn btn-neutral">Cancelar</button>
           </div>
+        </div>
+      )}
+
+      {loading ? <p className="vazio">Carregando...</p> : !planos.length ? (
+        <p className="vazio">Nenhum plano cadastrado ainda.</p>
+      ) : (
+        <div className="lista">
+          {planos.map(p => {
+            const nDesc = descontos.filter(d => d.plano_id === p.id && d.ativo).length
+            return (
+              <Link key={p.id} href={`/admin/planos/${p.id}`} className="card card-hover item-lista"
+                style={{ opacity: p.ativo ? 1 : 0.6, borderColor: p.ativo ? undefined : 'var(--danger)' }}>
+                <div>
+                  <div className="item-titulo">{p.nome}</div>
+                  <div className="item-sub">{p.vezes_semana}x por semana · {brl(p.valor)}/mês</div>
+                </div>
+                <div className="item-acoes">
+                  {nDesc > 0 && <span className="etiqueta">🏷️ {nDesc} desconto{nDesc > 1 ? 's' : ''}</span>}
+                  {!p.chave_pix && <span className="etiqueta" style={{ color: '#e0a020' }}>Pix padrão</span>}
+                  {pixDesatualizado(p) && <span className="etiqueta" style={{ color: '#e0a020' }}>⚠️ preço mudou depois do Pix</span>}
+                  {!p.ativo && <span className="etiqueta" style={{ color: 'var(--danger)' }}>Desativado</span>}
+                  <span style={{ color: 'var(--text3)', fontSize: 16 }}>›</span>
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>
   )
-}
-
-export default function PlanosPage() {
-  return <Suspense><PlanosContent /></Suspense>
 }
