@@ -38,10 +38,6 @@ const STATUS_COLOR: Record<string, string> = {
   cancelado: 'var(--text3)',
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
-}
 
 export default function AvulsasPage() {
   const [rows, setRows] = useState<CreditoRow[]>([])
@@ -143,26 +139,21 @@ export default function AvulsasPage() {
       />
 
       {pendentes > 0 && (
-        <div style={{ background: '#f0a50022', border: '1px solid #f0a500', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#f0a500', fontWeight: 700 }}>
+        <div className="aviso aviso-atencao">
           ⚠️ {pendentes} crédito{pendentes > 1 ? 's' : ''} aguardando sua confirmação
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="chips">
         {['aguardando_confirmacao', 'disponivel', 'agendado', 'usado', 'expirado', 'todos'].map(s => (
-          <button key={s} onClick={() => setFiltro(s)} style={{
-            background: filtro === s ? '#3fb95022' : 'var(--card)',
-            border: `1.5px solid ${filtro === s ? '#3fb950' : 'var(--border)'}`, color: filtro === s ? '#3fb950' : 'var(--text2)',
-            borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}>
+          <button key={s} onClick={() => setFiltro(s)} className={`chip${filtro === s ? ' ativo' : ''}`}>
             {s === 'todos' ? 'Todos' : STATUS_LABEL[s]}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : rows.length === 0 ? (
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13 }}>
           Nenhum crédito encontrado.
@@ -200,16 +191,13 @@ export default function AvulsasPage() {
               {c.status === 'aguardando_confirmacao' && (
                 <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   {c.comprovante_url && (
-                    <button onClick={() => setImgModal(c.comprovante_url!)} style={{
-                      background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)',
-                      borderRadius: 6, padding: '8px 14px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
+                    <button onClick={() => setImgModal(c.comprovante_url!)} className="btn btn-ghost btn-sm">
                       🖼️ Ver comprovante
                     </button>
                   )}
                   <div style={{ minWidth: 110 }}>
                     <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Como pagou</div>
-                    <select value={metodoConfirm[c.id] || 'pix'} onChange={e => setMetodoConfirm(prev => ({ ...prev, [c.id]: e.target.value }))} style={inputStyle}>
+                    <select className="campo" value={metodoConfirm[c.id] || 'pix'} onChange={e => setMetodoConfirm(prev => ({ ...prev, [c.id]: e.target.value }))}>
                       <option value="pix">Pix</option>
                       <option value="dinheiro">Dinheiro</option>
                       <option value="cartao">Cartão</option>
@@ -243,15 +231,15 @@ export default function AvulsasPage() {
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: '100%', maxWidth: 380 }}>
             <h3 style={{ fontSize: 16, marginBottom: 16 }}>Registrar crédito de aula avulsa</h3>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
-              <select value={novoAlunoId} onChange={e => setNovoAlunoId(e.target.value)} style={inputStyle}>
+              <label className="rotulo">Aluno</label>
+              <select className="campo" value={novoAlunoId} onChange={e => setNovoAlunoId(e.target.value)}>
                 <option value="">-- selecionar --</option>
                 {alunosOpt.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
               </select>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor (R$)</label>
-              <input type="number" step="0.01" value={novoValor} onChange={e => setNovoValor(e.target.value)} style={inputStyle} />
+              <label className="rotulo">Valor (R$)</label>
+              <input className="campo" type="number" step="0.01" value={novoValor} onChange={e => setNovoValor(e.target.value)} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={salvarNovo} disabled={salvandoNovo || !novoAlunoId} className="btn btn-success" style={{ flex: 1 }}>
