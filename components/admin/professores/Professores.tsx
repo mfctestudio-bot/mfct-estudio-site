@@ -2,11 +2,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Professor, Horario } from '@/lib/supabase'
-import { Cabecalho } from '@/components/ui/Cabecalho'
+import Link from 'next/link'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-export default function ProfessoresPage() {
+// Cadastro de professores (nome, valor por aula, ativar/desativar) + regras de pagamento.
+// Fica em Configurações → Professores. A grade de cada professor fica em Agenda → Grade dos professores.
+// Movido de app/admin/professores/page.tsx sem mudar a lógica (02/10/2026).
+export function CadastroProfessores() {
   const [professores, setProfessores] = useState<Professor[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
@@ -19,8 +22,6 @@ export default function ProfessoresPage() {
 
   const [editandoValor, setEditandoValor] = useState<string | null>(null)
   const [valorTemp, setValorTemp] = useState('')
-
-  const [expandidoId, setExpandidoId] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -91,12 +92,11 @@ export default function ProfessoresPage() {
 
   return (
     <div>
-      <Cabecalho
-        titulo="Professores"
-        subtitulo={<>
-          Cadastre os professores e o valor pago por aula de cada um. Depois, atribua cada professor aos horários da grade em Agenda → Grade de horários. O valor por aula é usado no cálculo de horas trabalhadas, na aba Horas trabalhadas do Financeiro.
-        </>}
-      />
+      <p className="ajuda" style={{ marginBottom: 16 }}>
+        Cadastre os professores e o valor pago por aula de cada um. Os horários de cada professor ficam em
+        {' '}<Link href="/admin/agenda-professores">Agenda → Grade dos professores</Link>. O valor por aula é usado no
+        {' '}<Link href="/admin/pagamento-professores">Pagamento de professores</Link>.
+      </p>
 
       <RegrasPagamentoCancelamento />
 
@@ -144,17 +144,7 @@ export default function ProfessoresPage() {
                     </span>
                   )}
 
-                  <button
-                    onClick={() => setExpandidoId(expandidoId === p.id ? null : p.id)}
-                    style={{
-                      background: expandidoId === p.id ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'transparent',
-                      border: `1px solid ${expandidoId === p.id ? 'var(--accent2)' : 'var(--border)'}`,
-                      color: expandidoId === p.id ? 'var(--accent2)' : 'var(--text2)', borderRadius: 4, padding: '6px 12px',
-                      fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
-                    📅 {expandidoId === p.id ? 'Fechar agenda' : 'Ver agenda'}
-                  </button>
+                  <Link href={`/admin/agenda-professores#${p.id}`} className="btn btn-ghost btn-sm">📅 Ver grade</Link>
 
                   <button
                     onClick={() => toggleAtivo(p)}
@@ -178,14 +168,13 @@ export default function ProfessoresPage() {
                 </div>
               </div>
 
-              {expandidoId === p.id && <AgendaDoProfessor professorId={p.id} />}
             </div>
           ))}
         </div>
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} className="btn btn-outline-success">
+        <button onClick={() => setMostrarForm(true)} className="btn btn-primary">
           + Cadastrar professor
         </button>
       ) : (
@@ -227,7 +216,7 @@ export default function ProfessoresPage() {
 
 const DIAS_ABREV_PROF = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-function AgendaDoProfessor({ professorId }: { professorId: string }) {
+export function AgendaDoProfessor({ professorId }: { professorId: string }) {
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [tiposAgendaOpt, setTiposAgendaOpt] = useState<{ id: string; nome: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -546,7 +535,7 @@ function RegrasPagamentoCancelamento() {
         Regras de pagamento em cancelamento
       </h3>
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
-        Quando uma aula é cancelada, o professor recebe por ela mesmo assim? Depende de quem cancelou. Isso é usado no cálculo de Horas trabalhadas e no Controle de caixa.
+        Quando uma aula é cancelada, o professor recebe por ela mesmo assim? Depende de quem cancelou. Isso é usado no cálculo de Pagamento de professores e nas Despesas fixas do Caixa.
       </p>
 
       <div style={{ display: 'grid', gap: 12 }}>

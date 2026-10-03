@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { CAMPOS_CONTRATO, MODELO_CONTRATO_PADRAO } from '@/lib/contrato'
+import { CadastroProfessores } from '@/components/admin/professores/Professores'
 import { Cabecalho } from '@/components/ui/Cabecalho'
 
 const card: React.CSSProperties = { padding: '16px 18px', marginBottom: 14 }
@@ -11,6 +12,7 @@ const ajuda: React.CSSProperties = { fontSize: 12, color: 'var(--text3)', margin
 
 const SECOES = [
   { id: 'pagamentos', label: '💳 Pagamentos', desc: 'Chaves Pix gerais' },
+  { id: 'professores', label: '👥 Professores', desc: 'Cadastro e valor da aula' },
   { id: 'contrato', label: '📄 Contrato', desc: 'Texto do contrato + termo' },
   { id: 'categorias', label: '🏷️ Categorias', desc: 'Tipos de serviço' },
   { id: 'elen', label: '🤖 Elen', desc: 'Números bloqueados' },
@@ -380,6 +382,7 @@ function ConfiguracoesContent() {
               <p style={ajuda}>A chave Pix e o link de cartão de cada plano ficam em <Link href="/admin/planos" style={{ color: '#4a90d9' }}>Planos</Link>; os de cada serviço, em <Link href="/admin/servicos" style={{ color: '#4a90d9' }}>Serviços</Link>.</p>
             </>
           )}
+          {aba === 'professores' && <CadastroProfessores />}
           {aba === 'contrato' && <ModeloContrato />}
           {aba === 'categorias' && <CategoriasServicos />}
           {aba === 'elen' && <NumerosBloqueados />}
