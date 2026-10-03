@@ -476,7 +476,7 @@ function GradeSemanal() {
       </div>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', background: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -665,10 +665,10 @@ function GradeSemanal() {
 
                     {movendoId === a.id && (
                       <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: 10, marginTop: 8 }}>
-                        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Nova data</label>
-                        <input type="date" value={novaDataMover} onChange={e => setNovaDataMover(e.target.value)} style={{ ...inputStyleGrade, marginBottom: 8 }} />
-                        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 4, display: 'block' }}>Novo horário</label>
-                        <select value={novoHorarioMover} onChange={e => setNovoHorarioMover(e.target.value)} style={{ ...inputStyleGrade, marginBottom: 10 }}>
+                        <label className="rotulo">Nova data</label>
+                        <input className="campo" type="date" value={novaDataMover} onChange={e => setNovaDataMover(e.target.value)} style={{ marginBottom: 8 }} />
+                        <label className="rotulo">Novo horário</label>
+                        <select className="campo" value={novoHorarioMover} onChange={e => setNovoHorarioMover(e.target.value)} style={{ marginBottom: 10 }}>
                           {horarios.map(h => <option key={h.id} value={h.id}>{h.horario.slice(0, 5)}</option>)}
                         </select>
                         <div style={{ display: 'flex', gap: 8 }}>
@@ -692,15 +692,15 @@ function GradeSemanal() {
               </button>
             ) : (
               <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: 12, marginBottom: 8 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Aluno</label>
-                <select value={alunoEscolhido} onChange={e => setAlunoEscolhido(e.target.value)} style={{ ...inputStyleGrade }}>
+                <label className="rotulo">Aluno</label>
+                <select className="campo" value={alunoEscolhido} onChange={e => setAlunoEscolhido(e.target.value)}>
                   <option value="">-- selecionar --</option>
                   {alunosOpt.map(a => (
                     <option key={a.id} value={a.id}>{a.nome}{a.status_plano !== 'ativo' ? ` (${a.status_plano})` : ''}</option>
                   ))}
                 </select>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo</label>
-                <select value={tipoAula} onChange={e => setTipoAula(e.target.value as 'aula' | 'experimental')} style={{ ...inputStyleGrade, marginBottom: 10 }}>
+                <label className="rotulo">Tipo</label>
+                <select className="campo" value={tipoAula} onChange={e => setTipoAula(e.target.value as 'aula' | 'experimental')} style={{ marginBottom: 10 }}>
                   <option value="aula">Aula normal</option>
                   <option value="experimental">Aula experimental</option>
                 </select>
@@ -790,10 +790,6 @@ const navBtnStyle: React.CSSProperties = {
   borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
 }
 
-const inputStyleGrade: React.CSSProperties = {
-  width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '8px 10px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit',
-}
 
 const thStyle: React.CSSProperties = {
   border: '1px solid var(--border)', padding: '8px 6px', textAlign: 'center',
@@ -868,7 +864,7 @@ function ProximasAulas() {
     setCancelando(null)
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   if (grupos.size === 0) {
     return <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13 }}>
@@ -1152,7 +1148,7 @@ function GradeHorarios() {
     setNovaCapacidade('5')
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   const horariosDoDia = horarios.filter(h => h.dia_semana === diaAtivo)
 
@@ -1236,7 +1232,7 @@ function GradeHorarios() {
                     <input
                       type="number" min={1} value={capacidadeTemp}
                       onChange={e => setCapacidadeTemp(e.target.value)}
-                      style={{ width: 55, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                      style={{ width: 55 }}
                     />
                     <button onClick={() => salvarCapacidade(h)} className="btn btn-success btn-sm">OK</button>
                   </>
@@ -1258,11 +1254,7 @@ function GradeHorarios() {
                   onChange={e => mudarProfessor(h, e.target.value)}
                   disabled={updating === h.id}
                   title="Professor responsável por este horário"
-                  style={{
-                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
-                    padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit',
-                    maxWidth: 130,
-                  }}
+                  style={{ maxWidth: 130 }}
                 >
                   <option value="">— sem professor —</option>
                   {professoresOpt.map(p => (
@@ -1275,11 +1267,7 @@ function GradeHorarios() {
                   onChange={e => mudarTipoAgenda(h, e.target.value)}
                   disabled={updating === h.id}
                   title="Tipo de agenda — quem pode marcar nesse horário"
-                  style={{
-                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
-                    padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit',
-                    maxWidth: 160,
-                  }}
+                  style={{ maxWidth: 160 }}
                 >
                   <option value="">— sem tipo —</option>
                   {tiposAgendaOpt.map(t => (
@@ -1296,10 +1284,6 @@ function GradeHorarios() {
                   }}
                   disabled={updating === h.id}
                   title="Mover esse horário pra outro dia da semana"
-                  style={{
-                    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
-                    padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit',
-                  }}
                 >
                   <option value="">Mover pra dia...</option>
                   {DIAS.map((nome, i) => i === h.dia_semana ? null : (
@@ -1322,10 +1306,7 @@ function GradeHorarios() {
                 <button
                   onClick={() => encerrarComAviso(h)}
                   disabled={updating === h.id}
-                  style={{
-                    background: 'transparent', border: '1px solid var(--accent2)', color: 'var(--accent2)',
-                    borderRadius: 4, padding: '6px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
-                  }}
+                  className="btn btn-outline-primary btn-sm" style={{ opacity: updating === h.id ? 0.6 : 1 }}
                 >
                   🔔 Encerrar c/ aviso
                 </button>
@@ -1344,17 +1325,14 @@ function GradeHorarios() {
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} style={{
-          background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
-          borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setMostrarForm(true)} className="btn btn-outline-success">
           + Criar novo horário
         </button>
       ) : (
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
           <h4 style={{ fontSize: 14, marginBottom: 12 }}>Criar novo horário</h4>
 
-          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Em quais dias?</label>
+          <label className="rotulo">Em quais dias?</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
             {DIAS.map((nome, i) => (
               <button
@@ -1373,18 +1351,14 @@ function GradeHorarios() {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>
+            <label className="rotulo">
               Horários (pode adicionar vários)
             </label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
               <input
                 type="time" value={novoHorario} onChange={e => setNovoHorario(e.target.value)}
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
               />
-              <button type="button" onClick={adicionarHorarioEscolhido} style={{
-                background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
-                borderRadius: 6, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              <button type="button" onClick={adicionarHorarioEscolhido} className="btn btn-outline-success btn-sm">
                 + Adicionar horário
               </button>
             </div>
@@ -1406,17 +1380,16 @@ function GradeHorarios() {
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
+              <label className="rotulo">Vagas</label>
               <input
                 type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)}
-                style={{ width: 70, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                style={{ width: 70 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Professor</label>
+              <label className="rotulo">Professor</label>
               <select
                 value={novoProfessorId} onChange={e => setNovoProfessorId(e.target.value)}
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
               >
                 <option value="">— sem professor —</option>
                 {professoresOpt.map(p => (
@@ -1425,10 +1398,9 @@ function GradeHorarios() {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo de agenda</label>
+              <label className="rotulo">Tipo de agenda</label>
               <select
                 value={novoTipoAgendaId} onChange={e => setNovoTipoAgendaId(e.target.value)}
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
               >
                 <option value="">— sem tipo —</option>
                 {tiposAgendaOpt.map(t => (
