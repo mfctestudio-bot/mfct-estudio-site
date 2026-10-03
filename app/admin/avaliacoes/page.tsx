@@ -112,7 +112,12 @@ export default function AvaliacoesPage() {
   const [fotos, setFotos] = useState<Foto[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingAluno, setLoadingAluno] = useState(false)
-  const [mostrarForm, setMostrarForm] = useState(false)
+  // Abas da página (03/10/2026): 'nova' = formulário aberto; mostrarForm continua existindo pro resto da lógica.
+  const [abaAval, setAbaAval] = useState<'nova' | 'evolucao' | 'historico'>('historico')
+  const mostrarForm = abaAval === 'nova'
+  const setMostrarForm = (v: boolean) => setAbaAval(v ? 'nova' : 'historico')
+  const [erroMeta, setErroMeta] = useState('')
+  const [metaSalva, setMetaSalva] = useState('')
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [metaPesoInput, setMetaPesoInput] = useState('')
   const [metaGorduraInput, setMetaGorduraInput] = useState('')
@@ -347,10 +352,19 @@ export default function AvaliacoesPage() {
 
   async function salvarMetas(metaPeso: string, metaGordura: string) {
     if (!alunoId) return
+    // Trava (03/10/2026): não grava meta absurda por erro de digitação.
+    const p = metaPeso ? Number(metaPeso.replace(',', '.')) : null
+    const g = metaGordura ? Number(metaGordura.replace(',', '.')) : null
+    if (p != null && (isNaN(p) || p < 30 || p > 250)) { setErroMeta('Meta de peso precisa ficar entre 30 e 250 kg. Não salvei.'); return }
+    if (g != null && (isNaN(g) || g < 3 || g > 50)) { setErroMeta('Meta de gordura precisa ficar entre 3% e 50%. Não salvei.'); return }
+    setErroMeta('')
+    metaPeso = p != null ? String(p) : ''
+    metaGordura = g != null ? String(g) : ''
     await supabase.from('alunos').update({
       meta_peso: metaPeso ? Number(metaPeso) : null,
       meta_gordura_pct: metaGordura ? Number(metaGordura) : null,
     }).eq('id', alunoId)
+    setMetaSalva('✅ Metas salvas'); setTimeout(() => setMetaSalva(''), 2500)
     carregarAlunos()
   }
 
@@ -368,20 +382,15 @@ export default function AvaliacoesPage() {
         </>}
       />
 
-      <div style={{ marginBottom: 20 }}>
-        <label className="rotulo">Aluno</label>
+      <div className="barra-filtros">
         <input
+          className="busca"
           placeholder="Buscar aluno..."
           value={buscaAluno}
           onChange={e => setBuscaAluno(e.target.value)}
-          style={{ width: '100%', maxWidth: 320, marginBottom: 8 }}
         />
-        <select
-          value={alunoId}
-          onChange={e => setAlunoId(e.target.value)}
-          style={{ width: '100%', maxWidth: 320 }}
-        >
-          <option value="">— selecione —</option>
+        <select value={alunoId} onChange={e => setAlunoId(e.target.value)} style={{ flex: '1 1 240px' }}>
+          <option value="">— escolha o aluno —</option>
           {alunosFiltrados.map(a => (
             <option key={a.id} value={a.id}>{a.nome}</option>
           ))}
@@ -389,57 +398,67 @@ export default function AvaliacoesPage() {
       </div>
 
       {!alunoId ? (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13 }}>
-          Selecione um aluno pra ver o histórico ou registrar uma nova avaliação.
+        <div className="card bloco vazio">
+          Escolha um aluno pra ver a evolução, o histórico ou registrar uma nova avaliação. Só aparecem alunos com o plano em dia.
         </div>
       ) : loadingAluno ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando histórico...</p>
+        <p className="vazio">Carregando histórico...</p>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-            <h2 style={{ fontSize: 18 }}>{alunoAtual?.nome}</h2>
-            <button onClick={() => mostrarForm ? fecharForm() : setMostrarForm(true)} className={mostrarForm ? 'btn btn-neutral' : 'btn btn-success'}>
-              {mostrarForm ? 'Cancelar' : '+ Registrar avaliação'}
-            </button>
+          <div className="lado-a-lado" style={{ marginBottom: 24 }}>
+            <div className="card bloco">
+              <div className="secao-titulo">Aluno</div>
+              <div style={{ fontFamily: 'Anton, sans-serif', fontSize: 22, textTransform: 'uppercase', lineHeight: 1.1 }}>{alunoAtual?.nome}</div>
+              <div className="item-sub" style={{ marginTop: 6 }}>
+                {avaliacoes.length
+                  ? `${avaliacoes.length} avaliação${avaliacoes.length > 1 ? 'ões' : ''} · última em ${new Date(avaliacoes[avaliacoes.length - 1].data + 'T12:00:00').toLocaleDateString('pt-BR')}`
+                  : 'Nenhuma avaliação ainda'}
+              </div>
+              <div className="form-acoes">
+                <button
+                  onClick={() => {
+                    const url = `https://mfct-estudio-site.vercel.app/avaliacao/${alunoAtual?.token_avaliacao}`
+                    navigator.clipboard.writeText(url)
+                    alert('Link copiado! ' + url)
+                  }}
+                  className="btn btn-ghost btn-sm"
+                >
+                  🔗 Copiar link de evolução
+                </button>
+              </div>
+              <p className="ajuda" style={{ marginTop: 8 }}>O link só mostra os dados enquanto o plano do aluno estiver ativo.</p>
+            </div>
+
+            <div className="card bloco">
+              <div className="secao-titulo">Metas do aluno</div>
+              <div className="form-grade">
+                <div>
+                  <label className="rotulo">Meta de peso (kg)</label>
+                  <input
+                    className="campo" type="number" step="0.1" placeholder="Ex: 70" value={metaPesoInput}
+                    onChange={e => setMetaPesoInput(e.target.value)}
+                    onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
+                  />
+                </div>
+                <div>
+                  <label className="rotulo">Meta de gordura corporal (%)</label>
+                  <input
+                    className="campo" type="number" step="0.1" placeholder="Ex: 18" value={metaGorduraInput}
+                    onChange={e => setMetaGorduraInput(e.target.value)}
+                    onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
+                  />
+                </div>
+              </div>
+              {erroMeta && <div className="aviso aviso-erro" style={{ marginTop: 12, marginBottom: 0 }}>{erroMeta}</div>}
+              {metaSalva && <p className="ajuda" style={{ marginTop: 8, color: '#3fb950' }}>{metaSalva}</p>}
+              {!erroMeta && !metaSalva && <p className="ajuda" style={{ marginTop: 8 }}>Salva sozinho quando você sai do campo.</p>}
+            </div>
           </div>
 
-          <div className="card bloco" style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 10 }}>
-              <h3 style={{ fontSize: 12, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase' }}>Meta e link de acesso do aluno</h3>
-              <button
-                onClick={() => {
-                  const url = `https://mfct-estudio-site.vercel.app/avaliacao/${alunoAtual?.token_avaliacao}`
-                  navigator.clipboard.writeText(url)
-                  alert('Link copiado! ' + url)
-                }}
-                className="btn btn-outline-primary btn-sm"
-              >
-                🔗 Copiar link de evolução do aluno
-              </button>
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-              Esse link só mostra dados se o aluno estiver com o plano ativo. Manda pra ele quando quiser.
-            </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div>
-                <label className="rotulo">Meta de peso (kg)</label>
-                <input
-                  type="number" step="0.1" placeholder="—" value={metaPesoInput}
-                  onChange={e => setMetaPesoInput(e.target.value)}
-                  onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
-                  style={{ width: 110 }}
-                />
-              </div>
-              <div>
-                <label className="rotulo">Meta de gordura corporal (%)</label>
-                <input
-                  type="number" step="0.1" placeholder="—" value={metaGorduraInput}
-                  onChange={e => setMetaGorduraInput(e.target.value)}
-                  onBlur={() => salvarMetas(metaPesoInput, metaGorduraInput)}
-                  style={{ width: 110 }}
-                />
-              </div>
-            </div>
+          <div className="abas">
+            <button onClick={() => setAbaAval('evolucao')} className={`aba${abaAval === 'evolucao' ? ' ativa' : ''}`}>📈 Evolução</button>
+            <button onClick={() => setAbaAval('historico')} className={`aba${abaAval === 'historico' ? ' ativa' : ''}`}>🗂️ Histórico ({avaliacoes.length})</button>
+            <button onClick={() => { if (abaAval !== 'nova') fecharForm(); setAbaAval('nova') }} className={`aba${abaAval === 'nova' ? ' ativa' : ''}`}>{editandoId ? '✏️ Editando avaliação' : '➕ Nova avaliação'}</button>
           </div>
 
           {mostrarForm && (
@@ -643,22 +662,24 @@ export default function AvaliacoesPage() {
                 />
               </div>
 
-              <button onClick={salvarAvaliacao} disabled={salvando} className="btn btn-success">
-                {salvando ? 'Salvando...' : editandoId ? '✅ Atualizar avaliação' : '✅ Salvar avaliação'}
-              </button>
+              <div className="form-acoes">
+                <button onClick={salvarAvaliacao} disabled={salvando} className="btn btn-primary">
+                  {salvando ? 'Salvando...' : editandoId ? 'Atualizar avaliação' : 'Salvar avaliação'}
+                </button>
+                <button onClick={fecharForm} disabled={salvando} className="btn btn-neutral">Cancelar</button>
+              </div>
             </div>
           )}
 
-          {avaliacoes.length === 0 ? (
-            <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhuma avaliação registrada ainda pra esse aluno.</p>
-          ) : (
+          {abaAval !== 'nova' && avaliacoes.length === 0 && (
+            <div className="card bloco vazio">
+              Nenhuma avaliação registrada ainda pra esse aluno. <button onClick={() => setAbaAval('nova')} className="btn btn-primary btn-sm" style={{ marginLeft: 8 }}>➕ Registrar a primeira</button>
+            </div>
+          )}
+          {abaAval === 'evolucao' && avaliacoes.length > 0 && <EvolucaoCharts avaliacoes={avaliacoes} />}
+          {abaAval === 'historico' && avaliacoes.length > 0 && (
             <>
-              <EvolucaoCharts avaliacoes={avaliacoes} />
-
-              <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', margin: '24px 0 12px' }}>
-                Histórico
-              </h3>
-              <div style={{ display: 'grid', gap: 10 }}>
+              <div className="lista">
                 {[...avaliacoes].reverse().map(a => {
                   const fotosAval = fotos.filter(f => f.avaliacao_id === a.id)
                   const dataFmt = new Date(a.data + 'T12:00:00').toLocaleDateString('pt-BR')
