@@ -53,8 +53,8 @@ type ItemAccordion = { id: string; nome: string; ativo: boolean }
 // Só organiza links para as telas que já existem; "#aba" abre direto a aba certa da página.
 const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
   {
-    titulo: 'Dashboard',
-    itens: [{ href: '/admin', label: 'Visão geral do estúdio', icon: 'home' }],
+    titulo: null,
+    itens: [{ href: '/admin', label: 'Dashboard', icon: 'home' }],
   },
   {
     titulo: 'Alunos',
@@ -336,11 +336,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             {listaDinamica && listaDinamica.map(row => (
                               <Link
                                 key={row.id}
-                                href={`${item.href}#${row.id}`}
-                                onClick={e => irPara(e, `${item.href}#${row.id}`)}
+                                href={`${item.href}/${row.id}`}
+                                onClick={() => setMenuAberto(false)}
                                 style={{
                                   padding: '7px 10px', borderRadius: 6, textDecoration: 'none', fontSize: 12,
-                                  color: row.ativo ? 'var(--text2)' : 'var(--text3)',
+                                  color: pathname === `${item.href}/${row.id}` ? 'var(--text)' : (row.ativo ? 'var(--text2)' : 'var(--text3)'),
+                                  background: pathname === `${item.href}/${row.id}` ? 'var(--card)' : 'transparent',
                                 }}
                               >
                                 {row.nome}{!row.ativo && ' (desativado)'}

@@ -230,7 +230,7 @@ export default function AdminHome() {
   return (
     <div>
       <Cabecalho
-        titulo="Início"
+        titulo="Dashboard"
         subtitulo={<>
           {diaSemana[hoje.getDay()]}, {hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
         </>}
