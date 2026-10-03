@@ -86,15 +86,15 @@ export default function PostsPage() {
           {editId ? 'Editar post' : 'Novo post'}
         </h3>
         <div style={{ marginBottom: 12 }}>
-          <label style={labelStyle}>Título</label>
-          <input value={titulo} onChange={e => setTitulo(e.target.value)} style={inputStyle} placeholder="Ex: 3 dicas pra não perder o treino no fim de semana" />
+          <label className="rotulo">Título</label>
+          <input className="campo" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: 3 dicas pra não perder o treino no fim de semana" />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label style={labelStyle}>Conteúdo</label>
-          <textarea value={conteudo} onChange={e => setConteudo(e.target.value)} style={{ ...inputStyle, minHeight: 140, resize: 'vertical' }} placeholder="Escreva o texto aqui. Você pode revisar antes de publicar." />
+          <label className="rotulo">Conteúdo</label>
+          <textarea className="campo" value={conteudo} onChange={e => setConteudo(e.target.value)} style={{ minHeight: 140 }} placeholder="Escreva o texto aqui. Você pode revisar antes de publicar." />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label style={labelStyle}>Imagem (opcional)</label>
+          <label className="rotulo">Imagem (opcional)</label>
           {imagemUrl ? (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <img src={imagemUrl} alt="Preview" style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
@@ -108,7 +108,7 @@ export default function PostsPage() {
               accept="image/*"
               disabled={uploading}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadImagem(f) }}
-              style={{ ...inputStyle, padding: '8px 12px' }}
+              className="campo"
             />
           )}
           {uploading && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>Enviando imagem...</p>}
@@ -126,9 +126,9 @@ export default function PostsPage() {
       </div>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : posts.length === 0 ? (
-        <p style={{ color: 'var(--text2)' }}>Nenhum post ainda.</p>
+        <p className="vazio">Nenhum post ainda.</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
           {posts.map(p => (
@@ -157,16 +157,6 @@ export default function PostsPage() {
       )}
     </div>
   )
-}
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 11, color: 'var(--text2)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 6, display: 'block',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-  fontFamily: 'inherit',
 }
 
 function smallBtn(color: string): React.CSSProperties {
