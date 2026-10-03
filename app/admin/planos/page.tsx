@@ -67,26 +67,24 @@ export default function PlanosPage() {
       />
 
       {mostrarForm && (
-        <div className="card" style={{ padding: '18px 20px', marginBottom: 16, maxWidth: 720 }}>
+        <div className="card bloco" style={{ marginBottom: 16 }}>
           <div className="secao-titulo">Novo plano</div>
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div>
+          <div className="form-grade">
+            <div className="inteiro">
               <label className="rotulo">Nome</label>
               <input className="campo" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Plano 5x semana" autoFocus />
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 140px' }}>
-                <label className="rotulo">Vezes por semana</label>
-                <input className="campo" type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} />
-              </div>
-              <div style={{ flex: '1 1 140px' }}>
-                <label className="rotulo">Valor mensal (R$)</label>
-                <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 199.90" />
-              </div>
+            <div>
+              <label className="rotulo">Vezes por semana</label>
+              <input className="campo" type="number" min={1} value={vezes} onChange={e => setVezes(e.target.value)} />
             </div>
-            <p className="ajuda">Depois de criar, abre a página do plano pra você cadastrar Pix, cartão e descontos.</p>
+            <div>
+              <label className="rotulo">Valor mensal (R$)</label>
+              <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 199.90" />
+            </div>
+            <p className="ajuda inteiro">Depois de criar, abre a página do plano pra você cadastrar Pix, cartão e descontos.</p>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <div className="form-acoes">
             <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">{salvando ? 'Criando...' : 'Criar plano'}</button>
             <button onClick={() => setMostrarForm(false)} disabled={salvando} className="btn btn-neutral">Cancelar</button>
           </div>
