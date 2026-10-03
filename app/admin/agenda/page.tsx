@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Horario } from '@/lib/supabase'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { useAbaDaUrl } from '@/components/ui/useAbaDaUrl'
 
 type AgendamentoRow = {
   id: string
@@ -20,6 +21,7 @@ const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
 
 export default function AgendaPage() {
   const [tab, setTab] = useState<'semana' | 'aulas' | 'grade'>('semana')
+  useAbaDaUrl(['semana', 'aulas', 'grade'] as const, setTab)
 
   return (
     <div>

@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { periodoAtualHoje } from '@/lib/periodos'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { useAbaDaUrl } from '@/components/ui/useAbaDaUrl'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const MESES_LONGOS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -47,6 +48,7 @@ type MesHistorico = {
 
 export default function FinanceiroPage() {
   const [aba, setAba] = useState<'visao' | 'historico' | 'caixa' | 'horas'>('visao')
+  useAbaDaUrl(['visao', 'historico', 'caixa', 'horas'] as const, setAba)
   const [loading, setLoading] = useState(true)
   const [totalMes, setTotalMes] = useState(0)
   const [qtdMes, setQtdMes] = useState(0)

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { useAbaDaUrl } from '@/components/ui/useAbaDaUrl'
 
 // Relatórios financeiros (01/10/2026).
 // Entradas = pagamentos com status 'pago' (valor - desconto, pela data_pagamento)
@@ -590,6 +591,7 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
 function RelatoriosContent() {
   const hoje = new Date(Date.now() - 3 * 3600 * 1000)
   const [aba, setAba] = useState<'mes' | 'ano'>('mes')
+  useAbaDaUrl(['mes', 'ano'] as const, setAba)
   const [ano, setAno] = useState(hoje.getUTCFullYear())
   const [mes, setMes] = useState(hoje.getUTCMonth() + 1)
 
