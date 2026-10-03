@@ -152,7 +152,7 @@ export default function AlunoPage() {
         </div>
       </div>
 
-      <Secao titulo="Dados pessoais">
+      <Secao titulo="Dados pessoais" grade>
         <Campo label="Nome">
           <input className="campo" value={aluno.nome} onChange={e => update('nome', e.target.value)} />
         </Campo>
@@ -254,11 +254,11 @@ export default function AlunoPage() {
   )
 }
 
-function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Secao({ titulo, children, grade }: { titulo: string; children: React.ReactNode; grade?: boolean }) {
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 14 }}>
-      <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14 }}>{titulo}</h3>
-      {children}
+    <div className="card bloco" style={{ marginBottom: 16 }}>
+      <div className="secao-titulo">{titulo}</div>
+      {grade ? <div className="form-grade">{children}</div> : children}
     </div>
   )
 }
