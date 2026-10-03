@@ -109,7 +109,7 @@ function AlunosContent() {
   return (
     <div>
       <Cabecalho
-        titulo="Alunos"
+        titulo="Matrículas"
         acoes={
           <button onClick={() => setNovoOpen(true)} className="btn btn-primary">
             + Novo aluno
