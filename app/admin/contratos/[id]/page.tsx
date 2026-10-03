@@ -47,7 +47,7 @@ function ContratoAlunoContent() {
   }, [id])
 
   if (erro) return <p style={{ color: 'var(--danger)' }}>{erro}</p>
-  if (texto == null) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (texto == null) return <p className="vazio">Carregando...</p>
 
   const paginas = texto.split(/^\s*=+\s*QUEBRA DE PÁGINA\s*=+\s*$/m)
   const faltando = (texto.match(/_{10,}/g) || []).length
