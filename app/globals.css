@@ -85,8 +85,18 @@ img { max-width: 100%; height: auto; }
 
 .btn-sm { padding: 7px 13px; font-size: 12px; border-radius: 5px; }
 
-.btn-primary { background: var(--accent2); color: #fff; border: none; }
-.btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
+.btn-primary {
+  /* Azul padrão do admin (02/10/2026, pedido do Matheus): contorno azul "fluorescente" +
+     fundo azul clarinho, igual ao filtro selecionado. Nada de azulão chapado. */
+  background: color-mix(in srgb, var(--accent2) 16%, transparent);
+  border: 1.5px solid var(--accent2);
+  color: #9cbcff;
+  box-shadow: 0 0 14px -6px color-mix(in srgb, var(--accent2) 70%, transparent);
+}
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent2) 26%, transparent);
+  color: #c4d6ff;
+}
 
 .btn-success { background: #3fb950; color: #fff; border: none; }
 .btn-success:hover:not(:disabled) { filter: brightness(1.1); }
@@ -228,7 +238,7 @@ img { max-width: 100%; height: auto; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 13px; border-radius: 999px;
+  padding: 7px 13px; border-radius: 6px;
   font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1;
   border: 1px solid var(--border); background: var(--card); color: var(--text2);
   cursor: pointer; white-space: nowrap;
@@ -238,7 +248,24 @@ img { max-width: 100%; height: auto; }
 .chip.ativo {
   border-color: var(--accent2);
   background: color-mix(in srgb, var(--accent2) 16%, transparent);
-  color: #8fb3ff;
+  color: #9cbcff;
+  box-shadow: 0 0 14px -6px color-mix(in srgb, var(--accent2) 70%, transparent);
+}
+
+/* Botões de escolha lado a lado (ex.: "Valor fixo" | "Chave aberta"). */
+.segmento { display: flex; gap: 6px; flex-wrap: wrap; }
+.segmento > button {
+  flex: 1 1 160px;
+  font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1.2;
+  padding: 9px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text2);
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.segmento > button:hover { border-color: var(--border2); color: var(--text); }
+.segmento > button.ativo {
+  border-color: var(--accent2);
+  background: color-mix(in srgb, var(--accent2) 16%, transparent);
+  color: #9cbcff;
 }
 
 /* Abas de uma página (ex.: Agenda: Semana / Próximas aulas / Grade). */
@@ -255,7 +282,7 @@ img { max-width: 100%; height: auto; }
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .aba:hover { color: var(--text); }
-.aba.ativa { color: var(--text); border-bottom-color: var(--accent2); }
+.aba.ativa { color: #9cbcff; border-bottom-color: var(--accent2); }
 
 /* Etiqueta de status (Ativo, Vencido, Pendente...). Só passar a cor (style={{ color }}):
    o fundo é a mesma cor, clarinha. */
