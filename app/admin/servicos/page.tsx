@@ -77,33 +77,31 @@ export default function ServicosPage() {
       />
 
       {mostrarForm && (
-        <div className="card" style={{ padding: '18px 20px', marginBottom: 16, maxWidth: 720 }}>
+        <div className="card bloco" style={{ marginBottom: 16 }}>
           <div className="secao-titulo">Novo serviço</div>
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div className="form-grade">
             <div>
               <label className="rotulo">Nome</label>
               <input className="campo" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Massagem, Pacote 5 Avaliações..." autoFocus />
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 140px' }}>
-                <label className="rotulo">Valor (R$)</label>
-                <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 50.00" />
-              </div>
-              <div style={{ flex: '1 1 140px' }}>
-                <label className="rotulo">Quantidade de usos</label>
-                <input className="campo" type="number" min={1} value={usos} onChange={e => setUsos(e.target.value)} />
-              </div>
-              <div style={{ flex: '2 1 200px' }}>
-                <label className="rotulo">Categoria</label>
-                <select className="campo" value={categoriaId} onChange={e => setCategoriaId(e.target.value)}>
-                  <option value="">Sem categoria</option>
-                  {categorias.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className="rotulo">Categoria</label>
+              <select className="campo" value={categoriaId} onChange={e => setCategoriaId(e.target.value)}>
+                <option value="">Sem categoria</option>
+                {categorias.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
             </div>
-            <p className="ajuda">Depois de criar, abre a página do serviço pra você cadastrar Pix, cartão e agenda.</p>
+            <div>
+              <label className="rotulo">Valor (R$)</label>
+              <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 50.00" />
+            </div>
+            <div>
+              <label className="rotulo">Quantidade de usos</label>
+              <input className="campo" type="number" min={1} value={usos} onChange={e => setUsos(e.target.value)} />
+            </div>
+            <p className="ajuda inteiro">Depois de criar, abre a página do serviço pra você cadastrar Pix, cartão e agenda.</p>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <div className="form-acoes">
             <button onClick={criar} disabled={salvando || !nome.trim() || !valor} className="btn btn-primary">{salvando ? 'Criando...' : 'Criar serviço'}</button>
             <button onClick={() => setMostrarForm(false)} disabled={salvando} className="btn btn-neutral">Cancelar</button>
           </div>
