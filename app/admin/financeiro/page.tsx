@@ -267,7 +267,7 @@ export default function FinanceiroPage() {
 
   const mesAtualLabel = MESES[new Date().getMonth()]
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   return (
     <div>
@@ -536,7 +536,7 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
   }
   const diaSugerido = melhorDia ? Math.min(28, melhorDia + 3) : null
 
-  if (loadingCat) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loadingCat) return <p className="vazio">Carregando...</p>
 
   return (
     <div>
@@ -592,9 +592,9 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
                     <input
                       type="number" min={0} step="0.01" value={c.valor}
                       onChange={e => atualizarValor(c.id, Number(e.target.value))}
-                      style={{ width: 90, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                      style={{ width: 90 }}
                     />
-                    <button onClick={() => removerCategoria(c.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
+                    <button onClick={() => removerCategoria(c.id)} className="btn btn-ghost">🗑️</button>
                   </div>
                 </div>
                 <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
@@ -614,13 +614,13 @@ function ControleDeCaixa({ totalMes, vencimentos }: { totalMes: number; vencimen
             placeholder="Nova categoria (ex: Aluguel)"
             value={novaCategoria}
             onChange={e => setNovaCategoria(e.target.value)}
-            style={{ flex: 1, minWidth: 160, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ flex: 1, minWidth: 160 }}
           />
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>R$</span>
           <input
             type="number" min={0} step="0.01" placeholder="0,00" value={novoValor}
             onChange={e => setNovoValor(e.target.value)}
-            style={{ width: 90, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ width: 90 }}
           />
           <button onClick={adicionarCategoria} className="btn btn-primary btn-sm">
             + Adicionar
@@ -918,7 +918,7 @@ function HorasTrabalhadas() {
     setMarcando(null)
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   const totalValorMes = linhas.reduce((s, l) => s + l.sessoesMes.length * l.valorPorAula, 0)
   const totalValorSemana = linhas.reduce((s, l) => s + l.sessoesSemana.length * l.valorPorAula, 0)
