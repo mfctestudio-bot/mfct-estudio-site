@@ -45,6 +45,7 @@ type ItemMenu = {
   icon: string
   accordion?: 'planos' | 'servicos' // sanfona dinâmica: subitens vêm do banco
   subitens?: SubItemFixo[] // sanfona fixa: subitens são sempre os mesmos
+  atalho?: boolean // mostra o ícone ⚙ que leva pra página principal (só quando existe uma página "do objeto")
 }
 type ItemAccordion = { id: string; nome: string; ativo: boolean }
 
@@ -67,7 +68,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
     titulo: 'Agenda e grade de horários',
     itens: [
       {
-        href: '/admin/agenda', label: 'Agenda', icon: 'calendar',
+        href: '/admin/agenda', label: 'Agenda', icon: 'calendar', atalho: true,
         subitens: [
           { href: '/admin/agenda#semana', label: 'Semana', icon: 'calendar' },
           { href: '/admin/agenda#aulas', label: 'Próximas aulas', icon: 'calendar' },
@@ -81,8 +82,8 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
   {
     titulo: 'Serviços e planos',
     itens: [
-      { href: '/admin/servicos', label: 'Serviços', icon: 'sliders', accordion: 'servicos' },
-      { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos' },
+      { href: '/admin/servicos', label: 'Serviços', icon: 'sliders', accordion: 'servicos', atalho: true },
+      { href: '/admin/planos', label: 'Planos', icon: 'tag', accordion: 'planos', atalho: true },
     ],
   },
   {
@@ -92,7 +93,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
         href: '/admin/pagamentos', label: 'Pagamentos gerais', icon: 'card',
         subitens: [
           { href: '/admin/pagamentos', label: 'Registro geral de pagamentos', icon: 'card' },
-          { href: '/admin/avulsas', label: 'Créditos avulsos', icon: 'tag' },
+          { href: '/admin/avulsas', label: 'Pagamentos de serviços', icon: 'tag' },
         ],
       },
       {
@@ -332,7 +333,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <Icon name={item.icon} />
                             {item.label}
                           </button>
-                          <Link
+                          {item.atalho && <Link
                             href={item.href}
                             onClick={() => setMenuAberto(false)}
                             title="Configuração geral"
@@ -340,15 +341,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             style={{ display: 'flex', alignItems: 'center', padding: '9px 10px', borderRadius: 6, color: 'var(--text2)' }}
                           >
                             <Icon name="sliders" />
-                          </Link>
+                          </Link>}
                         </div>
                         {aberto && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginLeft: 30, borderLeft: '1px solid var(--border)', paddingLeft: 10 }}>
                             {listaDinamica && listaDinamica.map(row => (
                               <Link
                                 key={row.id}
-                                href={item.href}
-                                onClick={() => setMenuAberto(false)}
+                                href={`${item.href}#${row.id}`}
+                                onClick={e => irPara(e, `${item.href}#${row.id}`)}
                                 style={{
                                   padding: '7px 10px', borderRadius: 6, textDecoration: 'none', fontSize: 12,
                                   color: row.ativo ? 'var(--text2)' : 'var(--text3)',
