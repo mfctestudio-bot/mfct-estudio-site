@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Usuário e senha do admin vêm SÓ das variáveis da Vercel (ADMIN_USER / ADMIN_PASSWORD).
+// Nada de senha escrita no código — o repositório é público.
+export function credenciaisAdmin(): { usuario: string; senha: string } | null {
+  const usuario = process.env.ADMIN_USER
+  const senha = process.env.ADMIN_PASSWORD
+  if (!usuario || !senha) return null
+  return { usuario, senha }
+}
+
+export function tokenAdmin(usuario: string, senha: string) {
+  return Buffer.from(`${usuario}:${senha}`).toString('base64')
+}
+
 function expectedToken() {
-  const adminUser = process.env.ADMIN_USER || 'ronynsc5'
-  const adminPass = process.env.ADMIN_PASSWORD || '@Miudinho123'
-  return Buffer.from(`${adminUser}:${adminPass}`).toString('base64')
+  const c = credenciaisAdmin()
+  return c ? tokenAdmin(c.usuario, c.senha) : null
 }
 
 export function isAdminSession(req: NextRequest) {
-  return req.cookies.get('admin_auth')?.value === expectedToken()
+  const esperado = expectedToken()
+  if (!esperado) return false // sem senha configurada, ninguém entra
+  return req.cookies.get('admin_auth')?.value === esperado
 }
 
 export function requireAdmin(req: NextRequest): NextResponse | null {

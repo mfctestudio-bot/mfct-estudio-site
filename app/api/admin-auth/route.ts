@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { credenciaisAdmin, tokenAdmin } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   const { usuario, senha } = await req.json()
-  const adminUser = process.env.ADMIN_USER || 'ronynsc5'
-  const adminPass = process.env.ADMIN_PASSWORD || '@Miudinho123'
+  const cred = credenciaisAdmin()
 
-  if (usuario !== adminUser || senha !== adminPass) {
+  if (!cred || usuario !== cred.usuario || senha !== cred.senha) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const res = NextResponse.json({ ok: true })
 
   // Token simples derivado das credenciais (cookie httpOnly)
-  const token = Buffer.from(`${adminUser}:${adminPass}`).toString('base64')
+  const token = tokenAdmin(cred.usuario, cred.senha)
 
   res.cookies.set('admin_auth', token, {
     httpOnly: true,
