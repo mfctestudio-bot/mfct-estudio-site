@@ -1310,7 +1310,7 @@ function GradeHorarios() {
           + Criar novo horário
         </button>
       ) : (
-        <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="card bloco">
           <div className="secao-titulo">Criar novo horário</div>
 
           <label className="rotulo">Em quais dias?</label>
