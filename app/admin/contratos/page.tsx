@@ -14,10 +14,6 @@ function ContratosContent() {
     supabase.from('alunos').select('id, nome, status_plano').not('nome', 'is', null).order('nome').then(({ data }) => setAlunos((data as AlunoOpt[]) || []))
   }, [])
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-    padding: '9px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
-  }
   const filtrados = alunos.filter(a => a.nome.toLowerCase().includes(busca.toLowerCase()))
 
   return (
@@ -32,7 +28,7 @@ function ContratosContent() {
 
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>📄 Gerar contrato de um aluno</div>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar aluno..." style={{ ...inputStyle, marginBottom: 10 }} />
+        <input className="campo" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar aluno..." style={{ marginBottom: 10 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 280, overflowY: 'auto' }}>
           {filtrados.map(a => (
             <Link key={a.id} href={`/admin/contratos/${a.id}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', textDecoration: 'none', fontSize: 13 }}>
