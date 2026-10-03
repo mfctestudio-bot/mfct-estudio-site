@@ -402,7 +402,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <main style={{ maxWidth: 1100, width: '100%', margin: '0 auto', padding: '1.5rem 1.25rem', boxSizing: 'border-box' }}>
+      <main className="admin-main" style={{ maxWidth: 1100, width: '100%', margin: '0 auto', padding: '1.5rem 1.25rem', boxSizing: 'border-box' }}>
         {children}
       </main>
     </div>
