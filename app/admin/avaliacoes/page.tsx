@@ -364,7 +364,7 @@ export default function AvaliacoesPage() {
       <Cabecalho
         titulo="Avaliações Físicas"
         subtitulo={<>
-          Registre os dados da balança Omron HBF-514C e, se quiser, as dobras cutâneas. O valor vem do serviço {servicoAval ? `“${servicoAval.nome}” (R$ ${servicoAval.valor.toFixed(2).replace('.', ',')})` : '“Avaliação Física”'} — avaliação marcada como paga entra automaticamente nos Relatórios como venda desse serviço. As fotos que o aluno manda pelo WhatsApp mencionando &quot;avaliação&quot; entram aqui automaticamente.
+          Registre os dados da balança Omron HBF-514C e, se quiser, as dobras cutâneas. O valor vem do serviço {servicoAval ? `“${servicoAval.nome}” (R$ ${servicoAval.valor.toFixed(2).replace('.', ',')})` : '“Avaliação Física”'} — avaliação marcada como paga entra automaticamente nos Caixa como venda desse serviço. As fotos que o aluno manda pelo WhatsApp mencionando &quot;avaliação&quot; entram aqui automaticamente.
         </>}
       />
 

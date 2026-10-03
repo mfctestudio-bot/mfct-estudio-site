@@ -366,7 +366,7 @@ export default function AdminHome() {
       <SectionTitle>Desempenho</SectionTitle>
       <div style={gridAuto(320)}>
         <div className="card card-hover" style={cardBase}>
-          <CardHeader title="💰 Faturamento por mês" action="Ver financeiro" href="/admin/financeiro" />
+          <CardHeader title="💰 Faturamento por mês" action="Ver caixa" href="/admin/caixa" />
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={faturamentoGrafico}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -402,7 +402,7 @@ export default function AdminHome() {
           { label: '👥 Alunos', href: '/admin/alunos' },
           { label: '📅 Agenda', href: '/admin/agenda' },
           { label: '💰 Pagamentos', href: '/admin/pagamentos' },
-          { label: '📊 Financeiro', href: '/admin/financeiro' },
+          { label: '📊 Caixa', href: '/admin/caixa' },
           { label: '📝 Posts', href: '/admin/posts' },
         ].map(l => (
           <Link key={l.href} href={l.href} className="card card-hover" style={{
