@@ -133,8 +133,8 @@ export default function AvulsasPage() {
   return (
     <div>
       <Cabecalho
-        titulo="Créditos de aula avulsa"
-        subtitulo="Quem comprou aula avulsa — a pessoa paga, você confirma, e ela pode marcar o dia que quiser em até 7 dias. (O preço e o Pix da aula avulsa se ajustam em Serviços → Aula Avulsa.) Vale tanto pra quem não tem plano fixo quanto pra aluno com plano mensal que quer uma aula extra."
+        titulo="Pagamentos de serviços"
+        subtitulo="Aula avulsa: quem comprou aula avulsa — a pessoa paga, você confirma, e ela pode marcar o dia que quiser em até 7 dias. (O preço e o Pix da aula avulsa se ajustam em Serviços → Aula Avulsa.) Vale tanto pra quem não tem plano fixo quanto pra aluno com plano mensal que quer uma aula extra."
         acoes={
           <button onClick={() => setNovoModal(true)} className="btn btn-primary">
             + Registrar crédito
