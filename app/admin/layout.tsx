@@ -110,7 +110,10 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
   },
   {
     titulo: 'Site',
-    itens: [{ href: '/admin/posts', label: 'Publicações', icon: 'globe' }],
+    itens: [
+      { href: '/admin/posts', label: 'Publicações', icon: 'globe' },
+      { href: '/admin/site', label: 'Personalização', icon: 'sliders' },
+    ],
   },
   {
     titulo: 'Configurações',
