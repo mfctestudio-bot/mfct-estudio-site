@@ -120,7 +120,6 @@ function ArrecadacaoContent() {
     return <span style={{ fontSize: 11, color: c }}>{p > 0 ? '▲' : p < 0 ? '▼' : '='} {Math.abs(p).toFixed(0)}% vs {rotuloAnterior}</span>
   }
 
-  const sel: React.CSSProperties = { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }
 
   return (
     <div>
@@ -128,17 +127,17 @@ function ArrecadacaoContent() {
         titulo="Arrecadação por serviço"
         subtitulo={<>Quanto entrou em cada categoria e em cada serviço. Mesmas regras dos <Link href="/admin/relatorios">Relatórios</Link>.</>}
         acoes={<>
-              <select value={mes ?? 0} onChange={e => setMes(Number(e.target.value) || null)} style={sel}>
+              <select value={mes ?? 0} onChange={e => setMes(Number(e.target.value) || null)}>
                 <option value={0}>Ano inteiro</option>
                 {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
               </select>
-              <select value={ano} onChange={e => setAno(Number(e.target.value))} style={sel}>
+              <select value={ano} onChange={e => setAno(Number(e.target.value))}>
                 {[hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1].map(a => <option key={a} value={a}>{a}</option>)}
               </select>
         </>}
       />
 
-      {grupos == null ? <p style={{ color: 'var(--text2)' }}>Carregando...</p> : (
+      {grupos == null ? <p className="vazio">Carregando...</p> : (
         <>
           <div className="card" style={{ padding: '16px 18px', marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 }}>
@@ -176,7 +175,7 @@ function ArrecadacaoContent() {
               return (
                 <div key={g.categoria} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${cor(i)}` }}>
                   <button onClick={() => setAberto(a => ({ ...a, [g.categoria]: !abertoG }))}
-                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '14px 16px', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                    className="btn btn-ghost" style={{ width: '100%', textAlign: 'left' }}>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 700 }}>{g.categoria}</div>
                       <div style={{ fontSize: 11, color: 'var(--text3)' }}>{g.qtd} lançamento{g.qtd > 1 ? 's' : ''} · {g.itens.length} {g.categoria === CAT_PLANOS ? 'plano' : 'serviço'}{g.itens.length > 1 ? 's' : ''} · {total ? ((g.total / total) * 100).toFixed(1) : 0}% do total</div>
