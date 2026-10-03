@@ -87,7 +87,7 @@ export default function ProfessoresPage() {
     setNovoValor('')
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   return (
     <div>
@@ -126,7 +126,7 @@ export default function ProfessoresPage() {
                       <input
                         type="number" min={0} step="0.01" value={valorTemp}
                         onChange={e => setValorTemp(e.target.value)}
-                        style={{ width: 80, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', color: 'var(--text)', fontSize: 12, fontFamily: 'inherit' }}
+                        style={{ width: 80 }}
                       />
                       <span style={{ fontSize: 11, color: 'var(--text3)' }}>/aula</span>
                       <button onClick={() => salvarValor(p)} className="btn btn-success btn-sm">OK</button>
@@ -185,10 +185,7 @@ export default function ProfessoresPage() {
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} style={{
-          background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
-          borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setMostrarForm(true)} className="btn btn-outline-success">
           + Cadastrar professor
         </button>
       ) : (
@@ -197,17 +194,17 @@ export default function ProfessoresPage() {
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 160 }}>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nome</label>
+              <label className="rotulo">Nome</label>
               <input
                 value={novoNome} onChange={e => setNovoNome(e.target.value)}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                style={{ width: '100%' }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor por aula (R$)</label>
+              <label className="rotulo">Valor por aula (R$)</label>
               <input
                 type="number" min={0} step="0.01" placeholder="0,00" value={novoValor} onChange={e => setNovoValor(e.target.value)}
-                style={{ width: 100, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }}
+                style={{ width: 100 }}
               />
             </div>
           </div>
@@ -414,15 +411,12 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
       )}
 
       {!mostrarNovoHorario ? (
-        <button onClick={() => setMostrarNovoHorario(true)} style={{
-          background: 'transparent', border: '1px solid #3fb950', color: '#3fb950',
-          borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setMostrarNovoHorario(true)} className="btn btn-outline-success btn-sm">
           + Adicionar horário à grade desse professor
         </button>
       ) : (
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
-          <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Em quais dias?</label>
+          <label className="rotulo">Em quais dias?</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
             {DIAS.map((nome, i) => (
               <button key={i} onClick={() => toggleDiaEscolhido(i)} style={{
@@ -437,16 +431,16 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
           </div>
           <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Horário</label>
-              <input type="time" value={novoHorarioValor} onChange={e => setNovoHorarioValor(e.target.value)} style={inputStyleProf} />
+              <label className="rotulo">Horário</label>
+              <input type="time" value={novoHorarioValor} onChange={e => setNovoHorarioValor(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
-              <input type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)} style={{ ...inputStyleProf, width: 70 }} />
+              <label className="rotulo">Vagas</label>
+              <input type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)} style={{ width: 70 }} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo de agenda</label>
-              <select value={novoTipoAgendaId} onChange={e => setNovoTipoAgendaId(e.target.value)} style={inputStyleProf}>
+              <label className="rotulo">Tipo de agenda</label>
+              <select value={novoTipoAgendaId} onChange={e => setNovoTipoAgendaId(e.target.value)}>
                 <option value="">— sem tipo —</option>
                 {tiposAgendaOpt.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
               </select>
@@ -474,11 +468,11 @@ function AgendaDoProfessor({ professorId }: { professorId: string }) {
               {célula.existente ? 'Editar esse horário.' : 'Criar horário novo pra esse professor aqui.'}
             </p>
 
-            <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Vagas</label>
-            <input type="number" min={1} value={capacidadeTemp} onChange={e => setCapacidadeTemp(e.target.value)} style={{ ...inputStyleProf, width: '100%', marginBottom: 10 }} />
+            <label className="rotulo">Vagas</label>
+            <input type="number" min={1} value={capacidadeTemp} onChange={e => setCapacidadeTemp(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
 
-            <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Tipo de agenda</label>
-            <select value={tipoAgendaTemp} onChange={e => setTipoAgendaTemp(e.target.value)} style={{ ...inputStyleProf, width: '100%', marginBottom: 10 }}>
+            <label className="rotulo">Tipo de agenda</label>
+            <select value={tipoAgendaTemp} onChange={e => setTipoAgendaTemp(e.target.value)} style={{ width: '100%', marginBottom: 10 }}>
               <option value="">— sem tipo —</option>
               {tiposAgendaOpt.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
@@ -519,10 +513,6 @@ const tdStyleProf: React.CSSProperties = {
   border: '1px solid var(--border)', padding: '8px 4px', textAlign: 'center', fontSize: 12,
 }
 
-const inputStyleProf: React.CSSProperties = {
-  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '7px 9px', fontSize: 13, color: 'var(--text)', fontFamily: 'inherit',
-}
 
 type ConfigPagamento = {
   pagar_quando_aluno_cancela: boolean
