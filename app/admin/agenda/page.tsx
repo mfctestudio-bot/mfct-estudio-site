@@ -1153,17 +1153,18 @@ function GradeHorarios() {
 
   return (
     <div>
-      {toast && <p style={{ fontSize: 12, color: '#3fb950', marginBottom: 10 }}>{toast}</p>}
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>
+      {toast && <div className="aviso aviso-info">{toast}</div>}
+      <p className="ajuda" style={{ marginBottom: 14 }}>
         Configure os horários de cada dia da semana: crie novos (em vários dias de uma vez), ajuste vagas, desative temporariamente ou apague de vez. Pra mudar um horário de dia, use o menu &quot;Mover pra dia...&quot; no card dele.
       </p>
 
       {/* Abas de dia da semana -- também servem de zona pra soltar um horário arrastado */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="chips">
         {DIAS.map((nome, i) => (
           <button
             key={i}
             onClick={() => setDiaAtivo(i)}
+            className={`chip${diaAtivo === i ? ' ativo' : ''}`}
             onDragOver={e => { if (arrastandoHorarioId) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (diaSobrevoado !== i) setDiaSobrevoado(i) } }}
             onDragLeave={() => setDiaSobrevoado(prev => (prev === i ? null : prev))}
             onDrop={e => {
@@ -1174,21 +1175,16 @@ function GradeHorarios() {
               const h = horarios.find(x => x.id === id)
               if (h) moverHorarioParaDia(h, i)
             }}
-            style={{
-              background: diaSobrevoado === i ? 'color-mix(in srgb, var(--accent2) 30%, transparent)' : diaAtivo === i ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'transparent',
-              color: diaAtivo === i || diaSobrevoado === i ? 'var(--accent2)' : 'var(--text2)',
-              border: `1.5px ${diaSobrevoado === i ? 'dashed' : 'solid'} ${diaAtivo === i || diaSobrevoado === i ? 'var(--accent2)' : 'var(--border)'}`,
-              borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.1s ease, border-color 0.1s ease',
-            }}
+            style={diaSobrevoado === i ? { borderStyle: 'dashed', borderColor: 'var(--accent2)', background: 'color-mix(in srgb, var(--accent2) 30%, transparent)' } : undefined}
           >
             {nome}
+            <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.7 }}>{horarios.filter(x => x.dia_semana === i).length}</span>
           </button>
         ))}
       </div>
 
       {horariosDoDia.length === 0 ? (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.5rem', color: 'var(--text2)', fontSize: 13, marginBottom: 16 }}>
+        <div className="card vazio" style={{ padding: '1.25rem', marginBottom: 16 }}>
           Nenhum horário cadastrado para {DIAS[diaAtivo]}.
         </div>
       ) : (
@@ -1203,29 +1199,26 @@ function GradeHorarios() {
               title="Arraste até uma aba de dia pra mover esse horário"
               style={{
                 borderColor: h.ativo ? 'var(--border)' : 'var(--danger)',
-                padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', gap: 12, flexWrap: 'wrap', cursor: 'grab',
+                padding: '14px 16px', display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: 'grab',
                 opacity: arrastandoHorarioId === h.id ? 0.4 : h.ativo ? 1 : 0.55,
                 transition: 'opacity 0.12s ease',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontWeight: 700, fontSize: 14, textDecoration: h.ativo ? 'none' : 'line-through' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 220 }}>
+                <span style={{ color: 'var(--text3)', fontSize: 14, cursor: 'grab' }} title="Arraste até um dia pra mover">⋮⋮</span>
+                <span style={{ fontFamily: 'Anton, sans-serif', fontSize: 24, lineHeight: 1, letterSpacing: 0.5, textDecoration: h.ativo ? 'none' : 'line-through' }}>
                   {h.horario.slice(0, 5)}
                 </span>
-                {!h.ativo && <span style={{ fontSize: 11, color: 'var(--danger)' }}>(desativado)</span>}
-                {h.tipos_agenda && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                    color: 'var(--text2)', background: 'var(--bg2)',
-                    border: '1px solid var(--border2)',
-                  }}>
-                    {h.tipos_agenda.nome}
-                  </span>
-                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {h.tipos_agenda
+                    ? <span className="etiqueta" style={{ color: 'var(--text2)' }}>{h.tipos_agenda.nome}</span>
+                    : <span className="etiqueta" style={{ color: '#e0a020' }}>sem tipo</span>}
+                  {!h.ativo && <span className="etiqueta" style={{ color: 'var(--danger)' }}>Desativado</span>}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {editandoCapacidade === h.id ? (
                   <>
                     <input
@@ -1236,16 +1229,9 @@ function GradeHorarios() {
                     <button onClick={() => salvarCapacidade(h)} className="btn btn-success btn-sm">OK</button>
                   </>
                 ) : (
-                  <span
-                    onClick={() => abrirEdicaoCapacidade(h)}
-                    title="Clique pra editar"
-                    style={{
-                      fontSize: 12, fontWeight: 700, color: 'var(--text2)', background: 'var(--bg)',
-                      border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
-                    }}
-                  >
+                  <button onClick={() => abrirEdicaoCapacidade(h)} title="Clique pra editar" className="btn btn-ghost btn-sm">
                     {h.capacidade} vaga{h.capacidade === 1 ? '' : 's'} ✏️
-                  </span>
+                  </button>
                 )}
 
                 <select
@@ -1293,11 +1279,7 @@ function GradeHorarios() {
                 <button
                   onClick={() => toggle(h)}
                   disabled={updating === h.id}
-                  style={{
-                    background: 'transparent', border: `1px solid ${h.ativo ? 'var(--border)' : 'var(--danger)'}`,
-                    color: h.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px',
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: updating === h.id ? 0.6 : 1,
-                  }}
+                  className={`btn btn-sm ${h.ativo ? 'btn-ghost' : 'btn-outline-success'}`}
                 >
                   {h.ativo ? 'Desativar' : 'Ativar'}
                 </button>
@@ -1324,12 +1306,12 @@ function GradeHorarios() {
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} className="btn btn-outline-success">
+        <button onClick={() => setMostrarForm(true)} className="btn btn-primary">
           + Criar novo horário
         </button>
       ) : (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
-          <h4 style={{ fontSize: 14, marginBottom: 12 }}>Criar novo horário</h4>
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div className="secao-titulo">Criar novo horário</div>
 
           <label className="rotulo">Em quais dias?</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -1337,12 +1319,7 @@ function GradeHorarios() {
               <button
                 key={i}
                 onClick={() => toggleDiaEscolhido(i)}
-                style={{
-                  background: diasEscolhidos.includes(i) ? '#3fb95022' : 'transparent',
-                  color: diasEscolhidos.includes(i) ? '#3fb950' : 'var(--text2)',
-                  border: `1.5px solid ${diasEscolhidos.includes(i) ? '#3fb950' : 'var(--border)'}`,
-                  borderRadius: 6, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
+                className={`chip${diasEscolhidos.includes(i) ? ' ativo' : ''}`}
               >
                 {nome}
               </button>
