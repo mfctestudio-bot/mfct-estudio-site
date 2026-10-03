@@ -134,7 +134,7 @@ export function Arrecadacao() {
 
       {grupos == null ? <p className="vazio">Carregando...</p> : (
         <>
-          <div className="card" style={{ padding: '16px 18px', marginBottom: 16 }}>
+          <div className="card bloco" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 }}>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1 }}>Total arrecadado · {rotuloPeriodo}</div>
