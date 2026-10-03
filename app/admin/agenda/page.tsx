@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Horario } from '@/lib/supabase'
@@ -22,14 +23,21 @@ const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
 export default function AgendaPage() {
   const [tab, setTab] = useState<'semana' | 'aulas' | 'grade'>('semana')
   useAbaDaUrl(['semana', 'aulas', 'grade'] as const, setTab)
+  function escolher(t: 'semana' | 'aulas' | 'grade') {
+    setTab(t)
+    history.replaceState(null, '', `#${t}`)
+  }
 
   return (
     <div>
-      <Cabecalho titulo="Agenda" />
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <TabButton active={tab === 'semana'} onClick={() => setTab('semana')}>Semana</TabButton>
-        <TabButton active={tab === 'aulas'} onClick={() => setTab('aulas')}>Próximas aulas</TabButton>
-        <TabButton active={tab === 'grade'} onClick={() => setTab('grade')}>Grade de horários</TabButton>
+      <Cabecalho
+        titulo="Agenda"
+        subtitulo={<>Aulas da semana, próximas aulas e a grade geral de horários do estúdio. A grade de cada professor fica em <Link href="/admin/agenda-professores">Grade dos professores</Link>; os horários dos serviços, em <Link href="/admin/agenda-servicos">Agenda dos serviços</Link>.</>}
+      />
+      <div className="abas">
+        <TabButton active={tab === 'semana'} onClick={() => escolher('semana')}>Semana</TabButton>
+        <TabButton active={tab === 'aulas'} onClick={() => escolher('aulas')}>Próximas aulas</TabButton>
+        <TabButton active={tab === 'grade'} onClick={() => escolher('grade')}>Grade de horário geral</TabButton>
       </div>
       {tab === 'semana' ? <GradeSemanal /> : tab === 'aulas' ? <ProximasAulas /> : <GradeHorarios />}
     </div>
@@ -37,16 +45,7 @@ export default function AgendaPage() {
 }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick} style={{
-      background: active ? 'var(--accent2)' : 'transparent',
-      color: active ? '#fff' : 'var(--text2)',
-      border: `1px solid ${active ? 'var(--accent2)' : 'var(--border)'}`,
-      borderRadius: 6, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-    }}>
-      {children}
-    </button>
-  )
+  return <button onClick={onClick} className={`aba${active ? ' ativa' : ''}`}>{children}</button>
 }
 
 function hojeSP() {
