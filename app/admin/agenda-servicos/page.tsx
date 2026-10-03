@@ -1,144 +1,133 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Cabecalho } from '@/components/ui/Cabecalho'
-import { idDoEndereco, rolarAteCard } from '@/components/ui/focarCard'
+import { HorariosServico } from '@/components/admin/servicos/HorariosServico'
 
-// Agenda dos serviços (02/10/2026): os horários de cada serviço que tem agenda própria.
-// Saiu de dentro do card do serviço (tela Serviços) pra ficar junto das outras agendas.
-// Mesma tabela (servicos_horarios) e mesmas operações de antes — só mudou de lugar.
+// Agenda dos serviços (02/10/2026): os dias e horários de cada serviço que tem agenda.
+// Separado em: com horários próprios / igual à agenda do estúdio / marcado "tem agenda" mas sem horário.
+// Usa as mesmas tabelas de antes (servicos.tem_agenda/agenda_tipo_id e servicos_horarios).
 
 type Servico = { id: string; nome: string; tem_agenda: boolean; ativo: boolean; agenda_tipo_id: string | null }
-type ServicoHorario = { id: string; servico_id: string; dia_semana: number; horario: string; capacidade: number; ativo: boolean }
 type TipoAgenda = { id: string; nome: string }
 
-const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-
 export default function AgendaServicosPage() {
+  const router = useRouter()
   const [servicos, setServicos] = useState<Servico[]>([])
-  const [horarios, setHorarios] = useState<ServicoHorario[]>([])
+  const [contagem, setContagem] = useState<Record<string, number>>({})
   const [tipos, setTipos] = useState<TipoAgenda[]>([])
   const [loading, setLoading] = useState(true)
-  const [novo, setNovo] = useState<Record<string, { dia: string; horario: string; vagas: string }>>({})
+  const [aberto, setAberto] = useState<string | null>(null)
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     const [{ data: s }, { data: h }, { data: t }] = await Promise.all([
-      supabase.from('servicos').select('id, nome, tem_agenda, ativo, agenda_tipo_id').eq('tem_agenda', true).order('nome'),
-      supabase.from('servicos_horarios').select('*').order('dia_semana').order('horario'),
+      supabase.from('servicos').select('id, nome, tem_agenda, ativo, agenda_tipo_id').order('nome'),
+      supabase.from('servicos_horarios').select('servico_id, ativo'),
       supabase.from('tipos_agenda').select('id, nome'),
     ])
+    const c: Record<string, number> = {}
+    for (const x of (h as { servico_id: string; ativo: boolean }[]) || []) if (x.ativo) c[x.servico_id] = (c[x.servico_id] || 0) + 1
     setServicos((s as Servico[]) || [])
-    setHorarios((h as ServicoHorario[]) || [])
+    setContagem(c)
     setTipos((t as TipoAgenda[]) || [])
     setLoading(false)
-    const id = idDoEndereco()
-    if (id && ((s as Servico[]) || []).some(x => x.id === id)) rolarAteCard(id)
-  }
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { carregar() }, [])
-  useEffect(() => {
-    const ouvir = () => { const id = idDoEndereco(); if (id) rolarAteCard(id) }
-    window.addEventListener('hashchange', ouvir)
-    return () => window.removeEventListener('hashchange', ouvir)
   }, [])
 
-  const form = (id: string) => novo[id] || { dia: '1', horario: '', vagas: '1' }
-  const mudar = (id: string, campo: 'dia' | 'horario' | 'vagas', valor: string) =>
-    setNovo(prev => ({ ...prev, [id]: { ...form(id), [campo]: valor } }))
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { carregar() }, [carregar])
+  useEffect(() => {
+    const ler = () => { const id = window.location.hash.slice(1); if (id) setAberto(id) }
+    ler()
+    window.addEventListener('hashchange', ler)
+    return () => window.removeEventListener('hashchange', ler)
+  }, [])
 
-  async function criarHorario(servicoId: string) {
-    const f = form(servicoId)
-    if (!f.horario) return
-    await supabase.from('servicos_horarios').insert({
-      servico_id: servicoId,
-      dia_semana: Number(f.dia),
-      horario: f.horario,
-      capacidade: Number(f.vagas) || 1,
-      ativo: true,
-    })
-    setNovo(prev => ({ ...prev, [servicoId]: { dia: f.dia, horario: '', vagas: '1' } }))
+  async function tirarDaAgenda(s: Servico) {
+    if (!confirm(`Tirar "${s.nome}" da agenda? O serviço continua existindo e sendo vendido, só deixa de ter dia e horário pra marcar. Dá pra voltar na página do serviço → Agenda.`)) return
+    await supabase.from('servicos').update({ tem_agenda: false, agenda_tipo_id: null }).eq('id', s.id)
     carregar()
   }
 
-  async function toggleHorarioAtivo(h: ServicoHorario) {
-    await supabase.from('servicos_horarios').update({ ativo: !h.ativo }).eq('id', h.id)
-    setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, ativo: !x.ativo } : x))
-  }
+  const comAgenda = servicos.filter(s => s.tem_agenda)
+  const proprios = comAgenda.filter(s => !s.agenda_tipo_id && (contagem[s.id] || 0) > 0)
+  const iguais = comAgenda.filter(s => !!s.agenda_tipo_id)
+  const semHorario = comAgenda.filter(s => !s.agenda_tipo_id && !(contagem[s.id] || 0))
+  const semAgenda = servicos.filter(s => !s.tem_agenda && s.ativo)
 
-  async function excluirHorario(id: string) {
-    if (!confirm('Apagar esse horário de agenda do serviço?')) return
-    await supabase.from('servicos_horarios').delete().eq('id', id)
-    carregar()
+  function linha(s: Servico, sub: React.ReactNode, extra?: React.ReactNode) {
+    const estaAberto = aberto === s.id
+    return (
+      <div key={s.id} className="card" style={{ opacity: s.ativo ? 1 : 0.6 }}>
+        <div className="item-lista clicavel" onClick={() => setAberto(estaAberto ? null : s.id)}>
+          <div>
+            <div className="item-titulo">{s.nome}</div>
+            <div className="item-sub">{sub}</div>
+          </div>
+          <div className="item-acoes" onClick={e => e.stopPropagation()}>
+            {!s.ativo && <span className="etiqueta" style={{ color: 'var(--danger)' }}>Serviço desativado</span>}
+            {extra}
+            <button onClick={() => setAberto(estaAberto ? null : s.id)} className="btn btn-ghost btn-sm">{estaAberto ? 'Fechar' : 'Ver horários'}</button>
+          </div>
+        </div>
+        {estaAberto && (
+          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            {s.agenda_tipo_id ? (
+              <p className="ajuda">
+                Usa os mesmos dias e horários da aula “{tipos.find(t => t.id === s.agenda_tipo_id)?.nome || 'tipo de aula'}”. Pra abrir ou fechar horário,
+                use a <Link href="/admin/agenda#grade">Grade de horário geral</Link> ou a <Link href="/admin/agenda-professores">Grade dos professores</Link>.
+              </p>
+            ) : (
+              <HorariosServico servicoId={s.id} onMudou={() => { /* contagem atualiza ao reabrir */ }} />
+            )}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
     <div>
       <Cabecalho
         titulo="Agenda dos serviços"
-        subtitulo={<>
-          Dias e horários de cada serviço que tem agenda própria (ex.: Personal, Aula avulsa em dia isolado). Esses horários
-          não usam nem afetam a agenda de aula. Pra criar um serviço ou mudar preço, vá em <Link href="/admin/servicos">Serviços</Link>.
-        </>}
+        subtitulo={<>Dias e horários dos serviços que precisam ser marcados (ex.: Personal). Não mexe na agenda de aula. Preço, Pix e cartão ficam na página de cada serviço, em <Link href="/admin/servicos">Serviços</Link>.</>}
+        acoes={semAgenda.length > 0 && (
+          <select className="campo" style={{ width: 'auto' }} value="" onChange={e => e.target.value && router.push(`/admin/servicos/${e.target.value}#agenda`)}>
+            <option value="">+ Colocar serviço na agenda…</option>
+            {semAgenda.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+        )}
       />
 
-      {loading ? <p className="vazio">Carregando...</p> : !servicos.length ? (
-        <p className="vazio">Nenhum serviço com agenda. Em <Link href="/admin/servicos">Serviços</Link>, marque “Tem agenda” no serviço.</p>
-      ) : (
-        <div className="lista">
-          {servicos.map(s => {
-            const doServico = horarios.filter(h => h.servico_id === s.id)
-            const f = form(s.id)
-            const tipo = tipos.find(t => t.id === s.agenda_tipo_id)
-            return (
-              <div key={s.id} id={`item-${s.id}`} className="card" style={{ padding: '16px 18px', scrollMarginTop: 80, opacity: s.ativo ? 1 : 0.6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                  <div>
-                    <div className="item-titulo">{s.nome}</div>
-                    <div className="item-sub">
-                      {s.agenda_tipo_id
-                        ? <>Sincronizado com a agenda do estúdio: <b>{tipo?.nome || 'tipo de agenda'}</b></>
-                        : <>{doServico.filter(h => h.ativo).length} horário(s) ativo(s)</>}
-                    </div>
-                  </div>
-                  {!s.ativo && <span className="etiqueta" style={{ color: 'var(--danger)' }}>Serviço desativado</span>}
-                </div>
+      {loading ? <p className="vazio">Carregando...</p> : (
+        <div style={{ display: 'grid', gap: 22 }}>
+          <section>
+            <div className="secao-titulo">Com horários próprios</div>
+            {proprios.length ? <div className="lista">{proprios.map(s => linha(s, `${contagem[s.id]} horário(s) ativo(s)`))}</div>
+              : <p className="vazio">Nenhum serviço com horários próprios ainda.</p>}
+          </section>
 
-                {s.agenda_tipo_id ? (
-                  <p className="ajuda">
-                    Esse serviço usa os mesmos dias e horários da agenda do estúdio desse tipo. Pra abrir ou fechar horário,
-                    use a <Link href="/admin/agenda#grade">Grade de horário geral</Link> ou a <Link href="/admin/agenda-professores">grade de cada professor</Link>.
-                  </p>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                      {doServico.map(h => (
-                        <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: h.ativo ? 1 : 0.5 }}>
-                          <span style={{ fontSize: 13 }}>
-                            {DIAS[h.dia_semana]} às {h.horario.slice(0, 5)} — {h.capacidade} vaga{h.capacidade > 1 ? 's' : ''}{!h.ativo && ' (desativado)'}
-                          </span>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => toggleHorarioAtivo(h)} className="btn btn-ghost btn-sm">{h.ativo ? 'Desativar' : 'Ativar'}</button>
-                            <button onClick={() => excluirHorario(h.id)} className="btn btn-outline-danger btn-sm">Apagar</button>
-                          </div>
-                        </div>
-                      ))}
-                      {!doServico.length && <p className="ajuda">Nenhum horário configurado ainda pra esse serviço.</p>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <select value={f.dia} onChange={e => mudar(s.id, 'dia', e.target.value)} style={{ flex: '1 1 130px' }}>
-                        {DIAS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                      </select>
-                      <input type="time" value={f.horario} onChange={e => mudar(s.id, 'horario', e.target.value)} style={{ flex: '1 1 100px' }} />
-                      <input type="number" min={1} value={f.vagas} onChange={e => mudar(s.id, 'vagas', e.target.value)} placeholder="Vagas" style={{ flex: '1 1 80px' }} />
-                      <button onClick={() => criarHorario(s.id)} disabled={!f.horario} className="btn btn-primary btn-sm">+ Adicionar horário</button>
-                    </div>
-                  </>
-                )}
+          {iguais.length > 0 && (
+            <section>
+              <div className="secao-titulo">Iguais à agenda do estúdio</div>
+              <div className="lista">{iguais.map(s => linha(s, <>Mesmos horários da aula “{tipos.find(t => t.id === s.agenda_tipo_id)?.nome || '—'}”</>))}</div>
+            </section>
+          )}
+
+          {semHorario.length > 0 && (
+            <section>
+              <div className="secao-titulo">Marcados com agenda, mas sem nenhum horário</div>
+              <p className="ajuda" style={{ marginBottom: 10 }}>
+                Esses serviços estão marcados como “tem agenda”, mas ninguém cadastrou horário. Adicione horários ou tire da agenda.
+              </p>
+              <div className="lista">
+                {semHorario.map(s => linha(s, 'Nenhum horário cadastrado', (
+                  <button onClick={() => tirarDaAgenda(s)} className="btn btn-outline-danger btn-sm">Tirar da agenda</button>
+                )))}
               </div>
-            )
-          })}
+            </section>
+          )}
         </div>
       )}
     </div>
