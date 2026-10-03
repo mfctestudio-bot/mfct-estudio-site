@@ -570,13 +570,13 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
       onClick={() => onChange(!checked)}
       disabled={disabled}
       style={{
-        width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+        width: 42, height: 24, borderRadius: 6, border: 'none', cursor: 'pointer',
         background: checked ? '#3fb950' : 'var(--border2)', position: 'relative', flexShrink: 0,
         opacity: disabled ? 0.6 : 1, transition: 'background 0.15s',
       }}
     >
       <span style={{
-        position: 'absolute', top: 3, left: checked ? 21 : 3, width: 18, height: 18, borderRadius: '50%',
+        position: 'absolute', top: 3, left: checked ? 21 : 3, width: 18, height: 18, borderRadius: 4,
         background: '#fff', transition: 'left 0.15s',
       }} />
     </button>

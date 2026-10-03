@@ -465,7 +465,7 @@ function GradeSemanal() {
           background: lixeiraSobrevoada ? 'var(--danger)' : 'var(--card)',
           color: lixeiraSobrevoada ? '#fff' : 'var(--danger)',
           border: `2px dashed ${lixeiraSobrevoada ? '#fff' : 'var(--danger)'}`,
-          borderRadius: 999, padding: '12px 22px', fontSize: 13, fontWeight: 700,
+          borderRadius: 8, padding: '12px 22px', fontSize: 13, fontWeight: 700,
           boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
           opacity: arrastandoId ? 1 : 0, pointerEvents: arrastandoId ? 'auto' : 'none',
           transition: 'opacity 0.15s ease, transform 0.15s ease, background 0.1s ease',

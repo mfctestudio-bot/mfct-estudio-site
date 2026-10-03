@@ -90,7 +90,7 @@ export default function NotificationBell() {
         {naoLidas > 0 && (
           <span style={{
             position: 'absolute', top: -2, right: -2, background: 'var(--accent2)', color: '#fff',
-            fontSize: 10, fontWeight: 800, borderRadius: 10, minWidth: 16, height: 16,
+            fontSize: 10, fontWeight: 800, borderRadius: 4, minWidth: 16, height: 16,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
             border: '2px solid var(--bg2)',
           }}>
@@ -120,7 +120,7 @@ export default function NotificationBell() {
                 background: n.lida ? 'transparent' : 'var(--accent2)0d',
               }}>
                 <span style={{
-                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 5,
+                  width: 8, height: 8, borderRadius: 3, flexShrink: 0, marginTop: 5,
                   background: COR_TIPO[n.tipo] || 'var(--text3)',
                 }} />
                 <div style={{ minWidth: 0 }}>

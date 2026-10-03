@@ -80,7 +80,7 @@ export function DespesasFixas({ totalMes }: { totalMes: number }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#4a90d9', display: 'inline-block' }} />
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: '#4a90d9', display: 'inline-block' }} />
                   <span style={{ fontSize: 13, fontWeight: 700 }}>Professores (folha do mês)</span>
                   <span style={{ fontSize: 10, color: 'var(--text3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px' }}>🔒 automático</span>
                 </div>
@@ -101,7 +101,7 @@ export function DespesasFixas({ totalMes }: { totalMes: number }) {
               <div key={c.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.cor, display: 'inline-block' }} />
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: c.cor, display: 'inline-block' }} />
                     <span style={{ fontSize: 13, fontWeight: 700 }}>{c.categoria}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

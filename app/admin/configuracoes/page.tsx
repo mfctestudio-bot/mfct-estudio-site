@@ -310,7 +310,7 @@ function NumerosBloqueados() {
       <p style={ajuda}>A Elen ignora mensagens desses números (robôs de operadora, propaganda, golpes).</p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {lista.map(n => (
-          <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 6px 5px 10px', borderRadius: 999, background: 'var(--bg)', border: '1px solid var(--border)', fontSize: 12 }}>
+          <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 6px 5px 10px', borderRadius: 6, background: 'var(--bg)', border: '1px solid var(--border)', fontSize: 12 }}>
             🚫 {fmt(n)}
             <button onClick={() => remover(n)} title="Desbloquear" className="btn btn-ghost btn-sm">✕</button>
           </span>

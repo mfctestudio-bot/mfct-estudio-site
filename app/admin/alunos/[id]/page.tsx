@@ -115,10 +115,10 @@ export default function AlunoPage() {
         <div style={{ position: 'relative', flexShrink: 0 }}>
           {aluno.foto_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
+            <img src={aluno.foto_url} alt={aluno.nome} style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', border: '2px solid var(--border)' }} />
           ) : (
             <div style={{
-              width: 80, height: 80, borderRadius: '50%', background: 'var(--card)', border: '2px solid var(--border)',
+              width: 80, height: 80, borderRadius: 10, background: 'var(--card)', border: '2px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: 'var(--text2)',
             }}>
               {aluno.nome.charAt(0).toUpperCase()}
@@ -126,7 +126,7 @@ export default function AlunoPage() {
           )}
           <label style={{
             position: 'absolute', bottom: 0, right: 0, background: 'var(--accent)', border: 'none',
-            borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 10, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', fontSize: 13,
           }} title="Trocar foto">
             📷
