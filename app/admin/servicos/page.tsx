@@ -42,10 +42,6 @@ type ServicoHorario = {
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '9px 12px', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
-}
 
 function pixDesatualizado(s: Servico) {
   if (!s.pix_atualizado_em) return true
@@ -241,8 +237,8 @@ function ServicosContent() {
   function selectSincronia(value: string, onChange: (v: string) => void) {
     return (
       <div style={{ marginTop: 8 }}>
-        <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Horários do serviço</label>
-        <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+        <label className="rotulo">Horários do serviço</label>
+        <select className="campo" value={value} onChange={e => onChange(e.target.value)}>
           <option value="">Horários próprios (cadastro aqui no serviço)</option>
           {tiposAgenda.map(t => (
             <option key={t.id} value={t.id}>Sincronizar com a agenda: {t.nome} ({horariosPorTipo[t.id] || 0} horários)</option>
@@ -262,7 +258,7 @@ function ServicosContent() {
 
   function selectCategoria(value: string, onChange: (v: string) => void, atualId?: string | null) {
     return (
-      <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+      <select className="campo" value={value} onChange={e => onChange(e.target.value)}>
         <option value="">Sem categoria</option>
         {categorias.filter(c => c.ativo || c.id === atualId).map(c => (
           <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? ' (desativada)' : ''}</option>
@@ -311,7 +307,7 @@ function ServicosContent() {
       </p>
 
       {loading ? (
-        <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+        <p className="vazio">Carregando...</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 20 }}>
           {servicos.map(s => {
@@ -327,12 +323,12 @@ function ServicosContent() {
                   <div style={sectionBox}>
                     <div style={sectionTitle}>📋 Dados do serviço</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                      <input value={editNome} onChange={e => setEditNome(e.target.value)} style={{ ...inputStyle, flex: '2 1 160px' }} placeholder="Nome do serviço" />
-                      <input type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Valor (R$)" />
-                      <input type="number" min={1} value={editQuantidadeUsos} onChange={e => setEditQuantidadeUsos(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} placeholder="Qtd. usos" />
+                      <input className="campo" value={editNome} onChange={e => setEditNome(e.target.value)} style={{ flex: '2 1 160px' }} placeholder="Nome do serviço" />
+                      <input className="campo" type="number" step="0.01" value={editValor} onChange={e => setEditValor(e.target.value)} style={{ flex: '1 1 100px' }} placeholder="Valor (R$)" />
+                      <input className="campo" type="number" min={1} value={editQuantidadeUsos} onChange={e => setEditQuantidadeUsos(e.target.value)} style={{ flex: '1 1 100px' }} placeholder="Qtd. usos" />
                     </div>
                     <div style={{ marginBottom: 10 }}>
-                      <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Categoria</label>
+                      <label className="rotulo">Categoria</label>
                       {selectCategoria(editCategoriaId, setEditCategoriaId, s.categoria_id)}
                     </div>
                     <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -344,13 +340,13 @@ function ServicosContent() {
 
                   <div style={sectionBox}>
                     <div style={sectionTitle}>🔑 Pagamento via Pix</div>
-                    <textarea value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: 'vertical', marginBottom: 10 }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse serviço)" />
+                    <textarea className="campo" value={editChavePix} onChange={e => setEditChavePix(e.target.value)} style={{ minHeight: 60, resize: 'vertical', marginBottom: 10 }} placeholder="Cole aqui o código Pix copia-e-cola, ou uma chave Pix simples (já com o valor certo desse serviço)" />
                     <SegmentedToggle value={editChaveValorFixo} onChange={setEditChaveValorFixo} trueLabel="Valor fixo (só copia e cola)" falseLabel="Chave aberta (aluno digita)" />
                   </div>
 
                   <div style={sectionBox}>
                     <div style={sectionTitle}>💳 Pagamento no cartão</div>
-                    <input value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={{ ...inputStyle, marginBottom: 10 }} placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
+                    <input className="campo" value={editLinkCartao} onChange={e => setEditLinkCartao(e.target.value)} style={{ marginBottom: 10 }} placeholder="Cole aqui o link de pagamento no cartão deste serviço" />
                     <SegmentedToggle value={editLinkValorFixo} onChange={setEditLinkValorFixo} trueLabel="Valor fixo (só clica e paga)" falseLabel="Link aberto (aluno digita)" />
                   </div>
 
@@ -399,10 +395,7 @@ function ServicosContent() {
                           </button>
                         )}
                         <button onClick={() => abrirEdicao(s)} className="btn btn-ghost btn-sm">✏️ Editar</button>
-                        <button onClick={() => toggleAtivo(s)} style={{
-                          background: 'transparent', border: `1px solid ${s.ativo ? 'var(--border)' : 'var(--danger)'}`,
-                          color: s.ativo ? 'var(--text2)' : 'var(--danger)', borderRadius: 4, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-                        }}>
+                        <button onClick={() => toggleAtivo(s)} className={`btn btn-sm ${s.ativo ? 'btn-ghost' : 'btn-outline-success'}`}>
                           {s.ativo ? 'Desativar' : 'Ativar'}
                         </button>
                         <button onClick={() => excluirServico(s)} className="btn btn-outline-danger btn-sm">Apagar</button>
@@ -436,11 +429,11 @@ function ServicosContent() {
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <select value={novoDia} onChange={e => setNovoDia(e.target.value)} style={{ ...inputStyle, flex: '1 1 130px' }}>
+                    <select className="campo" value={novoDia} onChange={e => setNovoDia(e.target.value)} style={{ flex: '1 1 130px' }}>
                       {DIAS.map((d, i) => <option key={i} value={i}>{d}</option>)}
                     </select>
-                    <input type="time" value={novoHorario} onChange={e => setNovoHorario(e.target.value)} style={{ ...inputStyle, flex: '1 1 100px' }} />
-                    <input type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)} placeholder="Vagas" style={{ ...inputStyle, flex: '1 1 80px' }} />
+                    <input className="campo" type="time" value={novoHorario} onChange={e => setNovoHorario(e.target.value)} style={{ flex: '1 1 100px' }} />
+                    <input className="campo" type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)} placeholder="Vagas" style={{ flex: '1 1 80px' }} />
                     <button onClick={() => criarHorario(s.id)} disabled={!novoHorario} className="btn btn-primary btn-sm">+ Add</button>
                   </div>
                 </div>
@@ -453,10 +446,7 @@ function ServicosContent() {
       )}
 
       {!mostrarForm ? (
-        <button onClick={() => setMostrarForm(true)} style={{
-          background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)',
-          borderRadius: 6, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
+        <button onClick={() => setMostrarForm(true)} className="btn btn-primary">
           + Criar novo serviço
         </button>
       ) : (
@@ -464,21 +454,21 @@ function ServicosContent() {
           <h3 style={{ fontSize: 14, marginBottom: 12 }}>Novo serviço</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Nome</label>
-              <input value={nome} onChange={e => setNome(e.target.value)} style={inputStyle} placeholder="Ex: Massagem, Pacote 5 Avaliações..." />
+              <label className="rotulo">Nome</label>
+              <input className="campo" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Massagem, Pacote 5 Avaliações..." />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Categoria</label>
+              <label className="rotulo">Categoria</label>
               {selectCategoria(categoriaId, setCategoriaId)}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Valor (R$)</label>
-                <input type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} style={inputStyle} placeholder="Ex: 50.00" />
+                <label className="rotulo">Valor (R$)</label>
+                <input className="campo" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="Ex: 50.00" />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, marginBottom: 6, display: 'block' }}>Quantidade de usos</label>
-                <input type="number" min={1} value={quantidadeUsos} onChange={e => setQuantidadeUsos(e.target.value)} style={inputStyle} />
+                <label className="rotulo">Quantidade de usos</label>
+                <input className="campo" type="number" min={1} value={quantidadeUsos} onChange={e => setQuantidadeUsos(e.target.value)} />
               </div>
             </div>
             <label style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
