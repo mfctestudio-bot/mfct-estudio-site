@@ -403,7 +403,7 @@ export default function AvaliacoesPage() {
             </button>
           </div>
 
-          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+          <div className="card bloco" style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 10 }}>
               <h3 style={{ fontSize: 12, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase' }}>Meta e link de acesso do aluno</h3>
               <button
@@ -443,7 +443,7 @@ export default function AvaliacoesPage() {
           </div>
 
           {mostrarForm && (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 24 }}>
+            <div className="card bloco" style={{ marginBottom: 24 }}>
               {editandoId && (
                 <p style={{ fontSize: 12, color: '#4a90d9', marginBottom: 10, fontWeight: 700 }}>✏️ Editando avaliação existente</p>
               )}              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
