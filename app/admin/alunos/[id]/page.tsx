@@ -105,12 +105,12 @@ export default function AlunoPage() {
     router.push('/admin/alunos')
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
   if (!aluno) return <p style={{ color: 'var(--text2)' }}>Aluno não encontrado.</p>
 
   return (
     <div>
-      <Link href="/admin/alunos" style={{ fontSize: 12, color: 'var(--text2)', textDecoration: 'none' }}>← Alunos</Link>
+      <Link href="/admin/alunos" className="page-back">← Matrículas</Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '8px 0 20px' }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
           {aluno.foto_url ? (
@@ -154,33 +154,33 @@ export default function AlunoPage() {
 
       <Secao titulo="Dados pessoais">
         <Campo label="Nome">
-          <input value={aluno.nome} onChange={e => update('nome', e.target.value)} style={inputStyle} />
+          <input className="campo" value={aluno.nome} onChange={e => update('nome', e.target.value)} />
         </Campo>
         <Campo label="CPF">
-          <input value={aluno.cpf || ''} onChange={e => update('cpf', e.target.value)} style={inputStyle} />
+          <input className="campo" value={aluno.cpf || ''} onChange={e => update('cpf', e.target.value)} />
         </Campo>
         <Campo label="Telefone">
-          <input value={aluno.telefone || ''} onChange={e => update('telefone', e.target.value)} style={inputStyle} placeholder="(21) 9XXXX-XXXX" />
+          <input className="campo" value={aluno.telefone || ''} onChange={e => update('telefone', e.target.value)} placeholder="(21) 9XXXX-XXXX" />
         </Campo>
         <Campo label="Data de nascimento">
-          <input type="date" value={aluno.data_nascimento || ''} onChange={e => update('data_nascimento', e.target.value)} style={inputStyle} />
+          <input className="campo" type="date" value={aluno.data_nascimento || ''} onChange={e => update('data_nascimento', e.target.value)} />
         </Campo>
       </Secao>
 
       <Secao titulo="Outras informações">
         <Campo label="Observações">
-          <textarea value={aluno.observacoes || ''} onChange={e => update('observacoes', e.target.value)} style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
+          <textarea className="campo" value={aluno.observacoes || ''} onChange={e => update('observacoes', e.target.value)} style={{ minHeight: 70, resize: 'vertical' }} />
         </Campo>
       </Secao>
 
       {aluno.telefone && (
         <Secao titulo="Mensagem via Eleniria (WhatsApp)">
           <Campo label="Mensagem">
-            <textarea
+            <textarea className="campo"
               value={msgTexto}
               onChange={e => setMsgTexto(e.target.value)}
               placeholder={`Olá ${aluno.nome.split(' ')[0]}, ...`}
-              style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }}
+              style={{ minHeight: 70, resize: 'vertical' }}
             />
           </Campo>
           <a
@@ -266,17 +266,12 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 6, display: 'block' }}>{label}</label>
+      <label className="rotulo">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-  fontFamily: 'inherit',
-}
 
 const btnStyle: React.CSSProperties = {
   border: 'none', borderRadius: 6, padding: '11px 18px', fontSize: 13, fontWeight: 700,
