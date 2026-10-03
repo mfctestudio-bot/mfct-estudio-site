@@ -178,7 +178,7 @@ export function CadastroProfessores() {
           + Cadastrar professor
         </button>
       ) : (
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+        <div className="card bloco">
           <h4 style={{ fontSize: 14, marginBottom: 12 }}>Cadastrar professor</h4>
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -530,10 +530,10 @@ function RegrasPagamentoCancelamento() {
   if (!config) return null
 
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, padding: '1.25rem', marginBottom: 20 }}>
-      <h3 style={{ fontSize: 13, color: 'var(--text2)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 6 }}>
+    <div className="card bloco" style={{ marginBottom: 20 }}>
+      <div className="secao-titulo">
         Regras de pagamento em cancelamento
-      </h3>
+      </div>
       <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
         Quando uma aula é cancelada, o professor recebe por ela mesmo assim? Depende de quem cancelou. Isso é usado no cálculo de Pagamento de professores e nas Despesas fixas do Caixa.
       </p>
