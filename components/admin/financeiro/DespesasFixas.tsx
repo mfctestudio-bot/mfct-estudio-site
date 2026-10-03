@@ -72,7 +72,7 @@ export function DespesasFixas({ totalMes }: { totalMes: number }) {
         <Card label={`Lucro estimado (${lucroPercentual.toFixed(0)}%)`} value={`R$ ${lucroValor.toFixed(2)}`} accent={lucroValor >= 0 ? '#3fb950' : 'var(--danger)'} />
       </div>
 
-      <div className="card" style={{ padding: '1.25rem', marginBottom: 20 }}>
+      <div className="card bloco" style={{ marginBottom: 20 }}>
         <div className="secao-titulo">Despesas fixas do mês</div>
 
         <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
