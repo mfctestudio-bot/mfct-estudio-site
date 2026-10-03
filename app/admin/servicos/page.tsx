@@ -40,7 +40,6 @@ type ServicoHorario = {
   ativo: boolean
 }
 
-const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 
 function pixDesatualizado(s: Servico) {
@@ -96,7 +95,6 @@ function ServicosContent() {
   const [horarios, setHorarios] = useState<ServicoHorario[]>([])
   const [loading, setLoading] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [servicoExpandido, setServicoExpandido] = useState<string | null>(null)
   const [nomeExpandidoId, setNomeExpandidoId] = useState<string | null>(null)
 
   const [nome, setNome] = useState('')
@@ -123,9 +121,6 @@ function ServicosContent() {
   const [editLinkCartao, setEditLinkCartao] = useState('')
   const [editLinkValorFixo, setEditLinkValorFixo] = useState(true)
 
-  const [novoDia, setNovoDia] = useState('1')
-  const [novoHorario, setNovoHorario] = useState('')
-  const [novaCapacidade, setNovaCapacidade] = useState('1')
 
   async function carregar() {
     setLoading(true)
@@ -245,7 +240,7 @@ function ServicosContent() {
           ))}
         </select>
         <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
-          Sincronizado: o serviço fica disponível nos mesmos dias e horários desse tipo de agenda do estúdio (tela Professores). Se abrir ou fechar horário lá, muda aqui sozinho.
+          Sincronizado: o serviço fica disponível nos mesmos dias e horários desse tipo de agenda do estúdio (Grade dos professores). Se abrir ou fechar horário lá, muda aqui sozinho.
         </p>
       </div>
     )
@@ -267,37 +262,13 @@ function ServicosContent() {
     )
   }
 
-  async function criarHorario(servicoId: string) {
-    if (!novoHorario) return
-    await supabase.from('servicos_horarios').insert({
-      servico_id: servicoId,
-      dia_semana: Number(novoDia),
-      horario: novoHorario,
-      capacidade: Number(novaCapacidade) || 1,
-      ativo: true,
-    })
-    setNovoHorario(''); setNovaCapacidade('1')
-    carregar()
-  }
-
-  async function toggleHorarioAtivo(h: ServicoHorario) {
-    await supabase.from('servicos_horarios').update({ ativo: !h.ativo }).eq('id', h.id)
-    setHorarios(prev => prev.map(x => x.id === h.id ? { ...x, ativo: !x.ativo } : x))
-  }
-
-  async function excluirHorario(id: string) {
-    if (!confirm('Apagar esse horário de agenda do serviço?')) return
-    await supabase.from('servicos_horarios').delete().eq('id', id)
-    carregar()
-  }
-
   return (
     <div>
       <Cabecalho
         titulo="Serviços"
         subtitulo={<>
           Crie, edite, ative/desative ou apague os serviços oferecidos (aula avulsa, avaliação física, ou qualquer serviço novo).
-          Cada serviço define seu próprio valor, quantidade de usos e se tem agenda própria — separada da agenda de aula.
+          Cada serviço define seu próprio valor, quantidade de usos e se tem agenda própria — os horários dela ficam em Agenda → Agenda dos serviços.
           Cadastre aqui também a chave Pix (já com o valor certo) e o link de cartão — é isso que a Elen vai mandar pro aluno.
         </>}
       />
@@ -390,9 +361,9 @@ function ServicosContent() {
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         {s.tem_agenda && !s.agenda_tipo_id && (
-                          <button onClick={() => setServicoExpandido(servicoExpandido === s.id ? null : s.id)} className="btn btn-ghost btn-sm">
+                          <Link href={`/admin/agenda-servicos#${s.id}`} className="btn btn-ghost btn-sm">
                             📅 Agenda ({horarios.filter(h => h.servico_id === s.id && h.ativo).length})
-                          </button>
+                          </Link>
                         )}
                         <button onClick={() => abrirEdicao(s)} className="btn btn-ghost btn-sm">✏️ Editar</button>
                         <button onClick={() => toggleAtivo(s)} className={`btn btn-sm ${s.ativo ? 'btn-ghost' : 'btn-outline-success'}`}>
@@ -405,39 +376,6 @@ function ServicosContent() {
                 </div>
               )}
 
-              {servicoExpandido === s.id && s.tem_agenda && !s.agenda_tipo_id && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                  <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-                    Horários liberados só pra esse serviço — não usam nem afetam a agenda de aula.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                    {horarios.filter(h => h.servico_id === s.id).map(h => (
-                      <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--bg)', opacity: h.ativo ? 1 : 0.5 }}>
-                        <span style={{ fontSize: 12 }}>
-                          {DIAS[h.dia_semana]} às {h.horario.slice(0, 5)} — {h.capacidade} vaga{h.capacidade > 1 ? 's' : ''}{!h.ativo && ' (desativado)'}
-                        </span>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => toggleHorarioAtivo(h)} className="btn btn-ghost btn-sm">
-                            {h.ativo ? 'Desativar' : 'Ativar'}
-                          </button>
-                          <button onClick={() => excluirHorario(h.id)} className="btn btn-outline-danger btn-sm">Apagar</button>
-                        </div>
-                      </div>
-                    ))}
-                    {!horarios.filter(h => h.servico_id === s.id).length && (
-                      <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhum horário configurado ainda pra esse serviço.</p>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <select className="campo" value={novoDia} onChange={e => setNovoDia(e.target.value)} style={{ flex: '1 1 130px' }}>
-                      {DIAS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                    </select>
-                    <input className="campo" type="time" value={novoHorario} onChange={e => setNovoHorario(e.target.value)} style={{ flex: '1 1 100px' }} />
-                    <input className="campo" type="number" min={1} value={novaCapacidade} onChange={e => setNovaCapacidade(e.target.value)} placeholder="Vagas" style={{ flex: '1 1 80px' }} />
-                    <button onClick={() => criarHorario(s.id)} disabled={!novoHorario} className="btn btn-primary btn-sm">+ Add</button>
-                  </div>
-                </div>
-              )}
             </div>
             )
           })}
