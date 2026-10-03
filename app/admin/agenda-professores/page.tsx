@@ -57,7 +57,7 @@ export default function AgendaProfessoresPage() {
             ))}
           </div>
           {selecionado && (
-            <div className="card" style={{ padding: '16px 18px' }}>
+            <div className="card bloco">
               <AgendaDoProfessor key={selecionado} professorId={selecionado} />
             </div>
           )}
