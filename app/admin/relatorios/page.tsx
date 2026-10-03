@@ -96,10 +96,6 @@ function baixarCSV(nome: string, linhas: (string | number)[][]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-const inputStyle: React.CSSProperties = {
-  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-  padding: '8px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
-}
 
 function Card({ label, value, sub, cor }: { label: string; value: string; sub?: string; cor?: string }) {
   return (
@@ -311,7 +307,7 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
     baixarCSV(`relatorio-${ano}-${pad(mes)}.csv`, linhas)
   }
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   return (
     <div>
@@ -386,8 +382,8 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
                       <td style={{ ...td, color: 'var(--text2)' }}>{d.observacao || ''}</td>
                       <td style={tdNum}>
                         <span className="print-only">{brl(d.valor)}</span>
-                        <input className="no-print" defaultValue={String(d.valor).replace('.', ',')} onBlur={e => editarValor(d, e.target.value)}
-                          style={{ ...inputStyle, width: 100, textAlign: 'right', padding: '5px 8px' }} />
+                        <input className="no-print campo" defaultValue={String(d.valor).replace('.', ',')} onBlur={e => editarValor(d, e.target.value)}
+                          style={{ width: 100, textAlign: 'right' }} />
                       </td>
                       <td style={{ ...td, width: 40 }} className="no-print">
                         <button onClick={() => removerDespesa(d)} className="btn btn-outline-danger btn-sm" title="Apagar">✕</button>
@@ -399,9 +395,9 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
         )}
         {!fechado && (
           <div className="no-print" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <input value={novaCat} onChange={e => setNovaCat(e.target.value)} placeholder="Despesa (ex: Aluguel)" style={{ ...inputStyle, flex: '2 1 140px' }} />
-            <input value={novaObs} onChange={e => setNovaObs(e.target.value)} placeholder="Observação (opcional)" style={{ ...inputStyle, flex: '2 1 140px' }} />
-            <input value={novoValor} onChange={e => setNovoValor(e.target.value)} placeholder="Valor" inputMode="decimal" style={{ ...inputStyle, flex: '1 1 80px' }}
+            <input className="campo" value={novaCat} onChange={e => setNovaCat(e.target.value)} placeholder="Despesa (ex: Aluguel)" style={{ flex: '2 1 140px' }} />
+            <input className="campo" value={novaObs} onChange={e => setNovaObs(e.target.value)} placeholder="Observação (opcional)" style={{ flex: '2 1 140px' }} />
+            <input className="campo" value={novoValor} onChange={e => setNovoValor(e.target.value)} placeholder="Valor" inputMode="decimal" style={{ flex: '1 1 80px' }}
               onKeyDown={e => { if (e.key === 'Enter') addDespesa() }} />
             <button onClick={addDespesa} disabled={salvando || !novaCat.trim() || !novoValor} className="btn btn-primary btn-sm">+ Adicionar</button>
           </div>
@@ -414,21 +410,21 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
       >
         {mostrarVenda && !fechado && (
           <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 12, padding: 12, background: 'var(--bg)', borderRadius: 8 }}>
-            <select value={vServico} onChange={e => { setVServico(e.target.value); const sv = servicosOpt.find(x => x.id === e.target.value); if (sv) setVValor(String(sv.valor).replace('.', ',')) }} style={inputStyle}>
+            <select className="campo" value={vServico} onChange={e => { setVServico(e.target.value); const sv = servicosOpt.find(x => x.id === e.target.value); if (sv) setVValor(String(sv.valor).replace('.', ',')) }}>
               <option value="">Serviço...</option>
               {servicosOpt.map(x => <option key={x.id} value={x.id}>{x.nome} — {brl(x.valor)}</option>)}
             </select>
-            <select value={vAluno} onChange={e => setVAluno(e.target.value)} style={inputStyle}>
+            <select className="campo" value={vAluno} onChange={e => setVAluno(e.target.value)}>
               <option value="">Cliente de fora (não é aluno)</option>
               {alunosOpt.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
             </select>
-            {!vAluno && <input value={vCliente} onChange={e => setVCliente(e.target.value)} placeholder="Nome do cliente" style={inputStyle} />}
-            <input value={vValor} onChange={e => setVValor(e.target.value)} placeholder="Valor" inputMode="decimal" style={inputStyle} />
-            <input type="date" value={vData} onChange={e => setVData(e.target.value)} style={inputStyle} />
-            <select value={vMetodo} onChange={e => setVMetodo(e.target.value)} style={inputStyle}>
+            {!vAluno && <input className="campo" value={vCliente} onChange={e => setVCliente(e.target.value)} placeholder="Nome do cliente" />}
+            <input className="campo" value={vValor} onChange={e => setVValor(e.target.value)} placeholder="Valor" inputMode="decimal" />
+            <input className="campo" type="date" value={vData} onChange={e => setVData(e.target.value)} />
+            <select className="campo" value={vMetodo} onChange={e => setVMetodo(e.target.value)}>
               <option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option>
             </select>
-            <input value={vObs} onChange={e => setVObs(e.target.value)} placeholder="Observação (opcional)" style={inputStyle} />
+            <input className="campo" value={vObs} onChange={e => setVObs(e.target.value)} placeholder="Observação (opcional)" />
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={salvarVenda} disabled={salvando || !vServico || !vValor || !vData} className="btn btn-primary btn-sm">{salvando ? 'Salvando...' : 'Salvar venda'}</button>
               <button onClick={() => setMostrarVenda(false)} className="btn btn-neutral btn-sm">Cancelar</button>
@@ -508,7 +504,7 @@ function RelatorioAno({ ano, abrirMes }: { ano: number; abrirMes: (m: number) =>
   }
   useEffect(() => { carregar() }, [ano])
 
-  if (loading) return <p style={{ color: 'var(--text2)' }}>Carregando...</p>
+  if (loading) return <p className="vazio">Carregando...</p>
 
   const hoje = new Date(Date.now() - 3 * 3600 * 1000)
   const ultimoMes = hoje.getUTCFullYear() === ano ? hoje.getUTCMonth() + 1 : hoje.getUTCFullYear() > ano ? 12 : 0
