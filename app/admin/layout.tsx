@@ -63,6 +63,7 @@ const GRUPOS: { titulo: string | null; itens: ItemMenu[] }[] = [
       { href: '/admin/mensalidades', label: 'Mensalidades', icon: 'card' },
       { href: '/admin/avaliacoes', label: 'Avaliações', icon: 'activity' },
       { href: '/admin/anamneses', label: 'Anamneses', icon: 'file' },
+      { href: '/admin/mensagens', label: 'Mensagens agendadas', icon: 'calendar' },
     ],
   },
   {
