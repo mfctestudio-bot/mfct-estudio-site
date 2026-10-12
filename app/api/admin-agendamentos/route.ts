@@ -16,6 +16,7 @@ async function validarAcessoECapacidade(
   horarioId: string,
   data: string,
   excluirAgendamentoId?: string,
+  tipo: string = 'aula',
 ) {
   const [alunoResp, periodosResp, horarioResp] = await Promise.all([
     supabase.from('alunos').select('id, status_plano').eq('id', alunoId).single(),
@@ -33,10 +34,14 @@ async function validarAcessoECapacidade(
   const horarioError = horarioResp.error
 
   if (alunoError || !aluno) return 'aluno não encontrado'
-  if (aluno.status_plano !== 'ativo') return 'a matrícula do aluno não está ativa'
-  if (periodosError) return periodosError.message
-  const periodoVigente = (periodos || []).some(periodo => periodo.data_inicio <= data && periodo.data_fim >= data)
-  if (!periodoVigente) return 'o aluno não possui período vigente na data da aula'
+  // Aula experimental (12/10/2026, aprovado pelo Matheus): quem vem experimentar ainda
+  // não tem plano, então não exige matrícula ativa nem período vigente -- só vaga.
+  if (tipo !== 'experimental') {
+    if (aluno.status_plano !== 'ativo') return 'a matrícula do aluno não está ativa'
+    if (periodosError) return periodosError.message
+    const periodoVigente = (periodos || []).some(periodo => periodo.data_inicio <= data && periodo.data_fim >= data)
+    if (!periodoVigente) return 'o aluno não possui período vigente na data da aula'
+  }
   if (horarioError || !horario) return 'horário não encontrado'
   if (!horario.ativo) return 'horário inativo'
   // Aluno de plano mensal só pode entrar em horários que aceitam plano mensal
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createClient(SUPA_URL, SERVICE_KEY)
-  const erroValidacao = await validarAcessoECapacidade(supabase, alunoId, horarioId, data)
+  const erroValidacao = await validarAcessoECapacidade(supabase, alunoId, horarioId, data, undefined, tipo)
   if (erroValidacao) return NextResponse.json({ error: erroValidacao }, { status: 409 })
 
   const { data: agendamento, error } = await supabase.from('agendamentos').insert({
@@ -114,7 +119,7 @@ export async function PATCH(req: NextRequest) {
   if (agendamentoError || !agendamento) return NextResponse.json({ error: 'agendamento não encontrado' }, { status: 404 })
   if (agendamento.status !== 'confirmado') return NextResponse.json({ error: 'somente agendamentos confirmados podem ser remarcados' }, { status: 409 })
 
-  const erroValidacao = await validarAcessoECapacidade(supabase, agendamento.aluno_id, horarioId, data, agendamentoId)
+  const erroValidacao = await validarAcessoECapacidade(supabase, agendamento.aluno_id, horarioId, data, agendamentoId, agendamento.tipo)
   if (erroValidacao) return NextResponse.json({ error: erroValidacao }, { status: 409 })
 
   const { error } = await supabase.from('agendamentos').update({ data, horario_id: horarioId }).eq('id', agendamentoId)
