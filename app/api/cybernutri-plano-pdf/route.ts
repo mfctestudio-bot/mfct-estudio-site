@@ -21,7 +21,13 @@ type Entrada = {
 
 const txt = (v: unknown, max = 200) => String(v ?? '').slice(0, max)
 
+// Protegido pelo mesmo segredo da rota /api/cybernutri-perfil (22/10/2026, auditoria): antes
+// qualquer pessoa com o endereço gerava PDFs com a marca do MFCT.
+const TOKEN = process.env.CYBERNUTRI_TOKEN || ''
+
 export async function POST(req: NextRequest) {
+  if (!TOKEN) return NextResponse.json({ error: 'integração CyberNutri não configurada no servidor' }, { status: 503 })
+  if (req.headers.get('x-cybernutri-token') !== TOKEN) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const raw = await req.text()
   if (raw.length > 80_000) return NextResponse.json({ error: 'conteúdo grande demais' }, { status: 413 })
   let b: Entrada
