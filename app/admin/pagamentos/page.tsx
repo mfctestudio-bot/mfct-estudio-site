@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseAdmin'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { hojeSP } from '@/lib/hoje'
 
 type PagamentoRow = {
   id: string
@@ -92,7 +93,7 @@ function PagamentosContent() {
   // uma nova (ver confirmarPagamentoPendente em lib/planos.ts).
   async function confirmarPendente(id: string) {
     setConfirmandoPendente(id)
-    const dataPag = dataConfirm[id] || new Date().toISOString().slice(0, 10)
+    const dataPag = dataConfirm[id] || hojeSP()
     const metodo = metodoConfirm[id] || 'pix'
     const resposta = await fetch('/api/admin-confirmar-pagamento-pendente', {
       method: 'POST',
@@ -133,7 +134,7 @@ function PagamentosContent() {
 
   async function confirmarPagamento(id: string) {
     setConfirmando(id)
-    const dataPag = dataConfirm[id] || new Date().toISOString().slice(0, 10)
+    const dataPag = dataConfirm[id] || hojeSP()
     const metodo = metodoConfirm[id] || 'pix'
     const pag = rows.find(r => r.id === id)
     if (!pag) {
@@ -303,7 +304,7 @@ function PagamentosContent() {
                     <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Data do pagamento</div>
                     <input className="campo"
                       type="date"
-                      value={dataConfirm[p.id] || new Date().toISOString().slice(0, 10)}
+                      value={dataConfirm[p.id] || hojeSP()}
                       onChange={e => setDataConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
                     />
                   </div>
@@ -359,7 +360,7 @@ function PagamentosContent() {
                       <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Data do pagamento</div>
                       <input className="campo"
                         type="date"
-                        value={dataConfirm[p.id] || new Date().toISOString().slice(0, 10)}
+                        value={dataConfirm[p.id] || hojeSP()}
                         onChange={e => setDataConfirm(prev => ({ ...prev, [p.id]: e.target.value }))}
                       />
                     </div>

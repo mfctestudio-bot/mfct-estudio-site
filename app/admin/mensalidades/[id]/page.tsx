@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { Aluno, Plano } from '@/lib/supabase'
 import { statusPeriodoHoje } from '@/lib/periodos'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { hojeSP } from '@/lib/hoje'
 
 const STATUS_LABEL: Record<string, { label: string; cor: string; bg: string }> = {
   ativo: { label: 'Em dia', cor: '#3fb950', bg: '#3fb95015' },
@@ -59,7 +60,7 @@ export default function MensalidadeAlunoPage() {
   const [modalValor, setModalValor] = useState('')
   const [modalDesconto, setModalDesconto] = useState('')
   const [modalDescontoTipo, setModalDescontoTipo] = useState<'valor' | 'percentual'>('valor')
-  const [modalData, setModalData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [modalData, setModalData] = useState(() => hojeSP())
   const [modalPago, setModalPago] = useState(true)
   const [modalSaving, setModalSaving] = useState(false)
   const [modalTrocaInfo, setModalTrocaInfo] = useState<{ planoAtualNome: string; planoAtualValor: number; diferenca: number } | null>(null)
@@ -125,7 +126,7 @@ export default function MensalidadeAlunoPage() {
         setModalPlano(plano)
         setModalValor(String(diferenca))
         setModalDesconto('0')
-        setModalData(new Date().toISOString().slice(0, 10))
+        setModalData(hojeSP())
         setModalTrocaInfo({ planoAtualNome: planoAtualObj.nome, planoAtualValor: Number(planoAtualObj.valor), diferenca })
         return
       }
@@ -135,7 +136,7 @@ export default function MensalidadeAlunoPage() {
     setModalPlano(plano)
     setModalValor(String(plano.valor))
     setModalDesconto('0')
-    setModalData(new Date().toISOString().slice(0, 10))
+    setModalData(hojeSP())
     setModalPago(true)
   }
 
@@ -247,7 +248,7 @@ export default function MensalidadeAlunoPage() {
     const resposta = await fetch('/api/admin-confirmar-pagamento-pendente', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pagamentoId: periodo.pagamento_id, dataPagamento: new Date().toISOString().slice(0, 10) }),
+      body: JSON.stringify({ pagamentoId: periodo.pagamento_id, dataPagamento: hojeSP() }),
     })
     setConfirmandoPendenteId(null)
     if (!resposta.ok) {

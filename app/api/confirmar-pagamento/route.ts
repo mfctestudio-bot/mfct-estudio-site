@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
 
   // Anamnese no nosso site (21/10/2026): troca o Formulário do Google pelo link do próprio
   // aluno -- as respostas caem direto na ficha dele (menu Alunos → Anamneses).
+  if (!aluno.token_avaliacao) return NextResponse.json({ ok: true, anamnese: 'sem_token' })
   const texto = `Antes de começar a treinar, preciso que você preencha nossa ficha de anamnese. É rápido e importante para personalizarmos seu treino! 📋\n\nhttps://mfct-estudio-site.vercel.app/anamnese/${aluno.token_avaliacao}`
   const envio = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
     method: 'POST',

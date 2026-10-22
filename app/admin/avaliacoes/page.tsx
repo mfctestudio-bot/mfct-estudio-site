@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje } from '@/lib/periodos'
 import { DOBRAS, dobrasDoProtocolo, calcularDobras, idadeEm, type Sexo, type Protocolo } from '@/lib/dobras'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { hojeSP } from '@/lib/hoje'
 
 type Aluno = { id: string; nome: string; status_plano: string; meta_peso: number | null; meta_gordura_pct: number | null; token_avaliacao: string; data_nascimento: string | null }
 
@@ -124,7 +125,7 @@ export default function AvaliacoesPage() {
   const [metaGorduraInput, setMetaGorduraInput] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  const [novaData, setNovaData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [novaData, setNovaData] = useState(() => hojeSP())
   const [novosValores, setNovosValores] = useState<Record<string, string>>({})
   const [novaObs, setNovaObs] = useState('')
   const [novoPago, setNovoPago] = useState(true)
@@ -310,7 +311,7 @@ export default function AvaliacoesPage() {
     setIdadeManual('')
     setNovoNivelAtividade('moderado')
     setNovoObjetivo('manutencao')
-    setNovaData(new Date().toISOString().slice(0, 10))
+    setNovaData(hojeSP())
     setMostrarForm(false)
     setEditandoId(null)
   }

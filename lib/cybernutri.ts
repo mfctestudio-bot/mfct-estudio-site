@@ -42,7 +42,8 @@ export async function enviarParaCyberNutri(evento: 'indicacao' | 'avaliacao_fina
   try {
     const resp = await fetch(CYBERNUTRI_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Mesmo segredo da rota /api/cybernutri-perfil: o CyberNutri pode conferir que veio do estúdio.
+      headers: { 'Content-Type': 'application/json', ...(process.env.CYBERNUTRI_TOKEN ? { 'x-cybernutri-token': process.env.CYBERNUTRI_TOKEN } : {}) },
       body: JSON.stringify({ evento, origem: 'mfct-estudio', enviado_em: new Date().toISOString(), ...pacote }),
     })
     return { ok: resp.ok, status: resp.status }

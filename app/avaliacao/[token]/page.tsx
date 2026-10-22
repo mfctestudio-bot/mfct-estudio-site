@@ -1,4 +1,5 @@
 import { evolucao } from '@/lib/evolucao'
+import { hojeSP } from '@/lib/hoje'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -78,7 +79,7 @@ async function getDados(token: string) {
     { headers, cache: 'no-store' }
   )
   const periodos: Periodo[] = await periodosResp.json().catch(() => [])
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = hojeSP()
   const temPeriodoAtivo = periodos.some(periodo => periodo.data_inicio <= hoje && periodo.data_fim >= hoje)
   if (!temPeriodoAtivo) return { erro: 'plano_inativo' as const, aluno }
 

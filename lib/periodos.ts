@@ -1,3 +1,4 @@
+import { hojeSP } from '@/lib/hoje'
 export type PeriodoAcesso = {
   data_inicio: string
   data_fim: string
@@ -14,7 +15,7 @@ export type StatusAcesso = 'ativo' | 'vencido' | 'agendado' | 'pendente' | 'sem_
 // mensalidades tratariam uma renovacao ainda nao paga como se já estivesse ativa.
 export function statusPeriodoHoje<T extends PeriodoAcesso>(periodo: T, hoje = new Date()): StatusAcesso {
   if (periodo.status === 'pendente') return 'pendente'
-  const hojeIso = hoje.toISOString().slice(0, 10)
+  const hojeIso = hojeSP(hoje)
   if (periodo.data_fim < hojeIso) return 'vencido'
   if (periodo.data_inicio > hojeIso) return 'agendado'
   return 'ativo'

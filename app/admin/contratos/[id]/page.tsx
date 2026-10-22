@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabaseAdmin'
 import { MODELO_CONTRATO_PADRAO, preencherContrato } from '@/lib/contrato'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { hojeSP } from '@/lib/hoje'
 
 const dataBR = (iso?: string | null) => (iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : '')
 const brl = (v?: number | null) => (v == null ? '' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
@@ -23,7 +24,7 @@ function ContratoAlunoContent() {
 
   useEffect(() => {
     (async () => {
-      const hoje = new Date().toISOString().slice(0, 10)
+      const hoje = hojeSP()
       const [{ data: aluno }, { data: cfg }, { data: periodos }] = await Promise.all([
         supabase.from('alunos').select('nome, cpf, data_nascimento, telefone, dia_vencimento, planos(nome, valor, vezes_semana)').eq('id', id).single(),
         supabase.from('configuracoes').select('valor').eq('chave', 'modelo_contrato').maybeSingle(),

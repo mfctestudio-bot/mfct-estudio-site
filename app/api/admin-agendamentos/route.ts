@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/lib/api-auth'
+import { hojeSP } from '@/lib/hoje'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 function hojeISO() {
-  return new Date().toISOString().slice(0, 10)
+  return hojeSP()
 }
 
 async function validarAcessoECapacidade(

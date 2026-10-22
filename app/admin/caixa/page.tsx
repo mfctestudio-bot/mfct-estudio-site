@@ -5,6 +5,7 @@ import { Cabecalho } from '@/components/ui/Cabecalho'
 import { useAbaDaUrl } from '@/components/ui/useAbaDaUrl'
 import { Arrecadacao } from '@/components/admin/financeiro/Arrecadacao'
 import { DespesasFixas } from '@/components/admin/financeiro/DespesasFixas'
+import { hojeSP } from '@/lib/hoje'
 
 // CAIXA (02/10/2026): junta o que antes era Relatórios + Arrecadação + Controle de caixa,
 // pra ter UM lugar só com o dinheiro do estúdio. As regras de cálculo são as mesmas de antes.
@@ -264,7 +265,7 @@ function RelatorioMes({ ano, mes }: { ano: number; mes: number }) {
   }
 
   function abrirVenda() {
-    const padraoData = mesAtual ? new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10) : `${ano}-${pad(mes)}-01`
+    const padraoData = mesAtual ? hojeSP() : `${ano}-${pad(mes)}-01`
     setVData(padraoData); setVServico(''); setVAluno(''); setVCliente(''); setVValor(''); setVMetodo('pix'); setVObs('')
     setMostrarVenda(true)
   }

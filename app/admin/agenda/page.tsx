@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { Horario } from '@/lib/supabase'
 import { Cabecalho } from '@/components/ui/Cabecalho'
 import { useAbaDaUrl } from '@/components/ui/useAbaDaUrl'
+import { diasAPartirDeHojeSP, hojeSP as hojeIsoSP } from '@/lib/hoje'
 
 type AgendamentoRow = {
   id: string
@@ -809,9 +810,7 @@ function ProximasAulas() {
   async function load() {
     setLoading(true)
     // Usa o fuso de São Paulo para "hoje", incluindo um dia antes como margem
-    const agoraSP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-    agoraSP.setDate(agoraSP.getDate() - 1)
-    const dataMin = agoraSP.toISOString().slice(0, 10)
+    const dataMin = diasAPartirDeHojeSP(-1)
 
     const { data } = await supabase
       .from('agendamentos')
@@ -992,7 +991,7 @@ function GradeHorarios() {
       .select('*', { count: 'exact', head: true })
       .eq('horario_id', h.id)
       .eq('status', 'confirmado')
-      .gte('data', new Date().toISOString().slice(0, 10))
+      .gte('data', hojeIsoSP())
     const { count: countFixos } = await supabase
       .from('horarios_fixos')
       .select('*', { count: 'exact', head: true })
@@ -1063,7 +1062,7 @@ function GradeHorarios() {
       setTimeout(() => setToast(''), 5000)
       return
     }
-    const hoje = new Date().toISOString().slice(0, 10)
+    const hoje = hojeIsoSP()
     const [{ count: countAgendamentos }, { count: countFixos }] = await Promise.all([
       supabase.from('agendamentos').select('*', { count: 'exact', head: true }).eq('horario_id', h.id).eq('status', 'confirmado').gte('data', hoje),
       supabase.from('horarios_fixos').select('*', { count: 'exact', head: true }).eq('horario_id', h.id).eq('ativo', true),

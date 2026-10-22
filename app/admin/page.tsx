@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseAdmin'
 import { periodoAtualHoje } from '@/lib/periodos'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Cabecalho } from '@/components/ui/Cabecalho'
+import { diasAPartirDeHojeSP, hojeSP } from '@/lib/hoje'
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -93,7 +94,7 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-      const hojeStr = hoje.toISOString().slice(0, 10)
+      const hojeStr = hojeSP()
 
       const anoAtual = hoje.getFullYear()
 
@@ -175,9 +176,7 @@ export default function AdminHome() {
       setAniversariantes(listaAniversariantes)
 
       // Vencendo em breve (proximos 7 dias) -- matricula ativa, periodo vigente terminando logo
-      const proxima7 = new Date(hoje)
-      proxima7.setDate(proxima7.getDate() + 7)
-      const proxima7Str = proxima7.toISOString().slice(0, 10)
+      const proxima7Str = diasAPartirDeHojeSP(7)
       const nomesPorAluno = new Map<string, string>()
       for (const a of alunosComPeriodos || []) nomesPorAluno.set(a.id, a.nome)
       const listaVencendo: VencendoEmBreve[] = []

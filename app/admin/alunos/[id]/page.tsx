@@ -7,6 +7,7 @@ import { Aluno, Plano } from '@/lib/supabase'
 import { waLink } from '@/lib/whatsapp'
 import { normalizarTelefone } from '@/lib/phone'
 import { periodoAtualHoje, periodoFuturoHoje } from '@/lib/periodos'
+import { hojeSP } from '@/lib/hoje'
 
 // A gestão de plano (ativar, renovar, pausar, cancelar, trocar, histórico de
 // mensalidades) mora só em /admin/mensalidades/[id] — aqui é só o resumo.
@@ -48,7 +49,7 @@ export default function AlunoPage() {
       ])
       setAluno(alunoData)
       setPlanos(planosData || [])
-      setPeriodoAtual(periodoAtualHoje(periodosData || []) || (periodosData || []).find(p => p.data_fim < new Date().toISOString().slice(0, 10)) || null)
+      setPeriodoAtual(periodoAtualHoje(periodosData || []) || (periodosData || []).find(p => p.data_fim < hojeSP()) || null)
       setPeriodoFuturo(periodoFuturoHoje(periodosData || []))
       setLoading(false)
     }
@@ -101,7 +102,10 @@ export default function AlunoPage() {
 
   async function excluir() {
     if (!confirm('Excluir este aluno? Essa ação não pode ser desfeita.')) return
-    await supabase.from('alunos').delete().eq('id', id)
+    // Antes não conferia o erro: se o banco recusasse (ex.: aluno com pagamentos/aulas ligados),
+    // a tela voltava pra lista como se tivesse apagado. (22/10/2026)
+    const { error } = await supabase.from('alunos').delete().eq('id', id)
+    if (error) { alert('Não consegui excluir: ' + error.message + '\n\nSe o aluno tem histórico, prefira cancelar o plano em vez de excluir.'); return }
     router.push('/admin/alunos')
   }
 
