@@ -56,6 +56,18 @@ export const ANAMNESE: Grupo[] = [
     ],
   },
   {
+    // Acrescentado em 21/10/2026 (pedido do Matheus): o que o CyberNutri precisa pra montar o plano alimentar.
+    titulo: 'Rotina e alimentação',
+    perguntas: [
+      { chave: 'data_nascimento', pergunta: 'Data de nascimento', tipo: 'texto', detalhe: 'Ex.: 25/03/1990' },
+      { chave: 'sexo', pergunta: 'Sexo', tipo: 'texto', detalhe: 'Feminino ou masculino' },
+      { chave: 'horario_treino', pergunta: 'Em que horário você costuma treinar?', tipo: 'texto' },
+      { chave: 'refeicoes_horarios', pergunta: 'Quantas refeições faz por dia e em que horários?', tipo: 'longo' },
+      { chave: 'alergias_intolerancias', pergunta: 'Tem alergia ou intolerância a algum alimento?', tipo: 'longo' },
+      { chave: 'alimentos_nao_come', pergunta: 'Tem algum alimento que você não come ou não gosta?', tipo: 'longo' },
+    ],
+  },
+  {
     titulo: 'Observações',
     perguntas: [
       { chave: 'observacoes', pergunta: 'Algo mais que o professor precisa saber?', tipo: 'longo' },
@@ -76,4 +88,17 @@ export function respondidas(r: Respostas) {
 
 export function alertasDe(r: Respostas) {
   return TODAS_PERGUNTAS.filter(p => ALERTAS.includes(p.chave) && /^s/i.test((r[p.chave] || '').trim()))
+}
+
+/** Perguntas que podem ficar em branco no formulário do aluno. */
+export const OPCIONAIS = ['observacoes', 'gestante']
+
+/** Perguntas que o aluno precisa responder (gestante só é pedida pra quem marcou sexo feminino). */
+export function obrigatoriasPendentes(r: Respostas) {
+  const feminino = /^f/i.test((r.sexo || '').trim())
+  return TODAS_PERGUNTAS.filter(p => {
+    if (p.chave === 'gestante') return feminino && (r.gestante || '').trim() === ''
+    if (OPCIONAIS.includes(p.chave)) return false
+    return (r[p.chave] || '').trim() === ''
+  })
 }

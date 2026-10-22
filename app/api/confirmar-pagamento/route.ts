@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const supabase = createClient(SUPA_URL, SUPA_SERVICE_KEY)
   const { data: aluno, error: alunoError } = await supabase
     .from('alunos')
-    .select('nome, telefone')
+    .select('nome, telefone, token_avaliacao')
     .eq('id', alunoId)
     .single()
   if (alunoError || !aluno?.telefone) return NextResponse.json({ error: 'aluno não encontrado ou sem telefone' }, { status: 404 })
@@ -52,14 +52,16 @@ export async function POST(req: NextRequest) {
   // Avisa a Eleniria que essa mensagem "fromMe" é automática, pra não pausar o bot por engano
   await supabase.from('mensagens_automaticas').insert({ telefone: phone, origem: 'confirmar-pagamento' })
 
-  await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+  // Anamnese no nosso site (21/10/2026): troca o Formulário do Google pelo link do próprio
+  // aluno -- as respostas caem direto na ficha dele (menu Alunos → Anamneses).
+  const texto = `Antes de começar a treinar, preciso que você preencha nossa ficha de anamnese. É rápido e importante para personalizarmos seu treino! 📋\n\nhttps://mfct-estudio-site.vercel.app/anamnese/${aluno.token_avaliacao}`
+  const envio = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
-    body: JSON.stringify({
-      number: phone,
-      text: `Antes de começar a treinar, preciso que você preencha nossa ficha de anamnese. É rápido e importante para personalizarmos seu treino! 📋\n\nhttps://docs.google.com/forms/d/e/1FAIpQLSeMXI_m6xNT-X147yyJaZhfzDpU0Cl_2efeOggjHz8CCrLKSw/viewform?usp=header`
-    }),
-  })
+    body: JSON.stringify({ number: phone, text: texto }),
+  }).catch(() => null)
+  // Fica no histórico da Elen pra ela saber que mandou o link.
+  if (envio?.ok) await supabase.from('bot_historico_conversas').insert({ phone, role: 'assistant', message: texto })
 
   return NextResponse.json({ ok: true })
 }
