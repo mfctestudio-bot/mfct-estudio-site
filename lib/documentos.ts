@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { ANAMNESE, ALERTAS, type Respostas } from '@/lib/anamnese'
 import { DOBRAS } from '@/lib/dobras'
 import type { Documento, Secao, Linha } from '@/lib/pdf'
+import { evolucao } from '@/lib/evolucao'
 
 export function servidor() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -111,6 +112,23 @@ export async function docAvaliacao(avaliacaoId: string): Promise<{ doc: Document
     { rotulo: 'Idade corporal', valor: a.idade_metabolica != null ? `${num(a.idade_metabolica, 0)} anos` : '-' },
   ]
   const secoes: Secao[] = [{ titulo: 'Medições (balança Omron HBF-514C)', linhas: medicoes }]
+
+  // Evolução (22/10/2026): 1ª, penúltima e última avaliação até esta (inclusive).
+  const { data: historico } = await sb.from('avaliacoes')
+    .select('data, peso, imc, gordura_corporal_pct, gordura_visceral, massa_muscular_pct, idade_metabolica, objetivo')
+    .eq('aluno_id', a.aluno_id).eq('status', 'realizada').lte('data', a.data).order('data', { ascending: true })
+  const evo = evolucao((historico || []) as Parameters<typeof evolucao>[0])
+  if (evo) {
+    secoes.push({
+      titulo: `Sua evolução: ${evo.cabecalho.map(c => c.rotulo).join(' > ')}`,
+      linhas: evo.linhas.map(l => ({
+        rotulo: `${l.label}${l.situacao === 'melhorou' ? ' (melhorou)' : ''}`,
+        valor: l.texto.replace(/→/g, '>').replace(/−/g, '-'),
+        destaque: l.situacao === 'melhorou' ? 'ok' as const : undefined,
+      })),
+      texto: evo.resumo,
+    })
+  }
 
   const extra = a.medidas?.omron || {}
   const linhasExtra = OMRON_EXTRA.filter(c => extra[c.chave] != null).map(c => ({ rotulo: c.label, valor: `${num(extra[c.chave])} ${c.un}` }))

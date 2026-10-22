@@ -1,3 +1,5 @@
+import { evolucao } from '@/lib/evolucao'
+
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tgpestsfhjrdahtzwodk.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
@@ -140,6 +142,8 @@ export default async function AvaliacaoPublica({ params }: { params: Promise<{ t
           {avaliacoes.length} avaliaç{avaliacoes.length === 1 ? 'ão registrada' : 'ões registradas'} · última em {fmtData(ultima.data)}
         </p>
 
+        <EvolucaoCard avaliacoes={avaliacoes} />
+
         <MetaCard aluno={aluno!} ultima={ultima} primeira={primeira} />
 
         <PlanoNutricionalCard ultima={ultima} />
@@ -177,6 +181,49 @@ export default async function AvaliacaoPublica({ params }: { params: Promise<{ t
         </div>
 
         <p style={{ fontSize: 11, color: '#5e676c', marginTop: 28, textAlign: 'center' }}>MFCT Estúdio</p>
+      </div>
+    </div>
+  )
+}
+
+// Destaque de evolução (22/10/2026): 1ª, penúltima e última avaliação lado a lado.
+function EvolucaoCard({ avaliacoes }: { avaliacoes: Avaliacao[] }) {
+  const evo = evolucao(avaliacoes)
+  if (!evo) return null
+  const cor = (s: string) => (s === 'melhorou' ? '#3fb950' : s === 'piorou' ? '#f0a500' : '#9aa3a8')
+  const seta = (s: string) => (s === 'melhorou' ? '▲ melhorou' : s === 'piorou' ? 'atenção' : s === 'igual' ? 'manteve' : '')
+  return (
+    <div style={{ background: '#161c20', border: '1px solid #353e43', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: '#9aa3a8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '1px' }}>Sua evolução</div>
+      <p style={{ fontSize: 15, fontWeight: 700, color: '#3fb950', margin: '0 0 12px' }}>{evo.resumo}</p>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', color: '#5e676c', fontWeight: 400, fontSize: 11, padding: '4px 6px 8px 0' }}></th>
+              {evo.cabecalho.map(c => (
+                <th key={c.data} style={{ textAlign: 'right', color: '#5e676c', fontWeight: 400, fontSize: 11, padding: '4px 6px 8px', whiteSpace: 'nowrap' }}>{c.rotulo}</th>
+              ))}
+              <th style={{ textAlign: 'right', color: '#5e676c', fontWeight: 400, fontSize: 11, padding: '4px 0 8px 6px' }}>Diferença</th>
+            </tr>
+          </thead>
+          <tbody>
+            {evo.linhas.map(l => (
+              <tr key={l.label} style={{ borderTop: '1px solid #262e33' }}>
+                <td style={{ padding: '8px 6px 8px 0', color: '#9aa3a8' }}>{l.label}</td>
+                {l.valores.map((v, i) => (
+                  <td key={i} style={{ padding: '8px 6px', textAlign: 'right', fontWeight: i === l.valores.length - 1 ? 700 : 400 }}>
+                    {v == null ? '–' : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{v != null && l.un === '%' ? '%' : ''}
+                  </td>
+                ))}
+                <td style={{ padding: '8px 0 8px 6px', textAlign: 'right', color: cor(l.situacao), fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  {l.diferenca != null && l.diferenca > 0 ? '+' : ''}{l.diferenca?.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{l.un === '%' ? ' pts' : l.un ? ` ${l.un}` : ''}
+                  <div style={{ fontSize: 10, fontWeight: 400 }}>{seta(l.situacao)}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
