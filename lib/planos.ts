@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { hojeSP } from '@/lib/hoje'
 
 type AtivarPlanoInput = {
   alunoId: string
@@ -91,7 +92,7 @@ export async function ativarPlano(input: AtivarPlanoInput): Promise<AtivarPlanoR
   const dataFimDate = new Date(`${dataInicio}T00:00:00`)
   dataFimDate.setDate(dataFimDate.getDate() + 30)
   const dataFim = isoDate(dataFimDate)
-  const hoje = isoDate(new Date())
+  const hoje = hojeSP() // fuso de São Paulo (22/10/2026)
   const statusPeriodo = dataInicio <= hoje ? 'ativo' : 'agendado'
   const dataVencimento = new Date(dataPagamento)
   dataVencimento.setMonth(dataVencimento.getMonth() + 1)
