@@ -24,7 +24,8 @@ function variantes(tel: string): string[] {
 }
 
 export async function POST(req: NextRequest) {
-  if (!TOKEN || !SERVICE_KEY) return NextResponse.json({ error: 'integração CyberNutri não configurada no servidor' }, { status: 503 })
+  if (!TOKEN) return NextResponse.json({ error: 'falta a variável CYBERNUTRI_TOKEN no servidor (Vercel)' }, { status: 503 })
+  if (!SERVICE_KEY) return NextResponse.json({ error: 'falta a variável SUPABASE_SERVICE_ROLE_KEY no servidor (Vercel)' }, { status: 503 })
   if (req.headers.get('x-cybernutri-token') !== TOKEN) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const b = await req.json().catch(() => null)
