@@ -359,6 +359,16 @@ export default function AvaliacoesPage() {
     alert(resp.ok ? 'PDF enviado no WhatsApp ✅' : 'Não consegui mandar: ' + (j.error || resp.status))
   }
 
+  // Finalizar → CyberNutri (21/10/2026): manda avaliação + anamnese pro CyberNutri, que chama
+  // o aluno pra oferecer o plano alimentar.
+  async function finalizarCyberNutri(avaliacaoId: string) {
+    const nome = alunos.find(x => x.id === alunoId)?.nome || 'o aluno'
+    if (!confirm(`Finalizar essa avaliação e mandar pro CyberNutri?\n\nEle vai chamar ${nome} no WhatsApp pra oferecer o plano alimentar.`)) return
+    const resp = await fetch('/api/admin-cybernutri', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avaliacaoId }) })
+    const j = await resp.json().catch(() => ({}))
+    alert(resp.ok ? `Enviado pro CyberNutri ✅${j.temAnamnese ? '' : '\n\n(Esse aluno ainda não tem anamnese no sistema.)'}` : 'Não consegui mandar: ' + (j.error || resp.status))
+  }
+
   async function salvarMetas(metaPeso: string, metaGordura: string) {
     if (!alunoId) return
     // Trava (03/10/2026): não grava meta absurda por erro de digitação.
@@ -703,6 +713,7 @@ export default function AvaliacoesPage() {
                           </span>
                           <a href={`/api/pdf?tipo=avaliacao&id=${a.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">📄 PDF</a>
                           <button onClick={() => enviarPdfAvaliacao(a.id)} className="btn btn-outline-whatsapp btn-sm">📲 Mandar</button>
+                          <button onClick={() => finalizarCyberNutri(a.id)} className="btn btn-ghost btn-sm" title="Manda avaliação + anamnese pro CyberNutri">🥗 Finalizar → CyberNutri</button>
                           <button onClick={() => abrirEdicao(a)} className="btn btn-ghost btn-sm">
                             ✏️ Editar
                           </button>
