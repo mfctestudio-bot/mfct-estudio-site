@@ -24,6 +24,6 @@ export async function POST(req: NextRequest) {
   if (!pacote.aluno.telefone) return NextResponse.json({ error: 'aluno sem telefone' }, { status: 400 })
 
   const r = await enviarParaCyberNutri('avaliacao_finalizada', pacote)
-  if (!r.ok) return NextResponse.json({ error: `CyberNutri não recebeu (${r.status || 'sem resposta'})` }, { status: 502 })
+  if (!r.ok) return NextResponse.json({ error: `CyberNutri não recebeu (${r.erro || r.status || 'sem resposta'})` }, { status: 502 })
   return NextResponse.json({ ok: true, temAnamnese: !!pacote.anamnese })
 }

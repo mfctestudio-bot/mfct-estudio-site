@@ -46,7 +46,10 @@ export async function enviarParaCyberNutri(evento: 'indicacao' | 'avaliacao_fina
       headers: { 'Content-Type': 'application/json', ...(process.env.CYBERNUTRI_TOKEN ? { 'x-cybernutri-token': process.env.CYBERNUTRI_TOKEN } : {}) },
       body: JSON.stringify({ evento, origem: 'mfct-estudio', enviado_em: new Date().toISOString(), ...pacote }),
     })
-    return { ok: resp.ok, status: resp.status }
+    // O CyberNutri responde 200 mesmo quando recusa (ex.: {"ok":false,"error":"unauthorized"}).
+    const corpo = await resp.json().catch(() => null) as { ok?: boolean; error?: string } | null
+    const ok = resp.ok && !(corpo && corpo.ok === false)
+    return { ok, status: resp.status, erro: corpo?.error }
   } catch (e) {
     return { ok: false, status: 0, erro: e instanceof Error ? e.message : 'falha' }
   }
