@@ -18,10 +18,13 @@ const INTERESSES = ['plano_direto', 'duvida_alimentacao', 'avaliacao']
 
 export async function POST(req: NextRequest) {
   if (!SERVICE_KEY) return NextResponse.json({ error: 'servidor sem SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
-  const b = await req.json().catch(() => null) as { telefone?: string; interesse?: string; nome?: string } | null
-  const tel = normalizarTelefone(String(b?.telefone || ''))
+  // Aceita {telefone, interesse, nome} ou o mesmo formato que a Elen já montava pro CyberNutri
+  // ({aluno: {telefone, nome}, interesse, avaliacao_agendada}).
+  const b = await req.json().catch(() => null) as { telefone?: string; interesse?: string; nome?: string; aluno?: { telefone?: string; nome?: string }; avaliacao_agendada?: unknown } | null
+  const tel = normalizarTelefone(String(b?.telefone || b?.aluno?.telefone || ''))
   if (!tel) return NextResponse.json({ error: 'telefone obrigatório' }, { status: 400 })
-  const interesse = INTERESSES.includes(String(b?.interesse)) ? String(b?.interesse) : 'plano_direto'
+  const nomeInformado = String(b?.nome || b?.aluno?.nome || '')
+  const interesse = INTERESSES.includes(String(b?.interesse)) ? String(b?.interesse) : (b?.avaliacao_agendada ? 'avaliacao' : 'plano_direto')
 
   const sb = createClient(SUPA_URL, SERVICE_KEY)
   const desde = new Date(Date.now() - 30 * 60 * 1000).toISOString()
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
   let pacote: Record<string, unknown> | null = aluno ? await montarPacote(sb, aluno.id) : null
   if (!pacote) {
     pacote = {
-      aluno: { studio_student_id: null, nome: String(b?.nome || '').slice(0, 120) || null, telefone: tel, data_nascimento: null },
+      aluno: { studio_student_id: null, nome: nomeInformado.slice(0, 120) || null, telefone: tel, data_nascimento: null },
       anamnese: null,
       avaliacao: null,
     }
