@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { ativarPlano, enviarWhatsAppAluno } from '@/lib/planos'
 import { hojeSP } from '@/lib/hoje'
+import { normalizarTelefone } from '@/lib/phone'
 
 // Mensalidade confirmada pela Elen (22/10/2026, auditoria — porta lateral fechada).
 // Antes, quando o Matheus respondia "ok" no WhatsApp pro comprovante de mensalidade, a própria
@@ -26,11 +27,21 @@ export async function POST(req: NextRequest) {
 
   const sb = createClient(SUPA_URL, SERVICE_KEY)
   const { data: comp } = await sb.from('comprovante_pendente_autorizacao')
-    .select('id, aluno_id, foto_url, status, tipo, created_at').eq('id', comprovanteId).maybeSingle()
+    .select('id, aluno_id, telefone_aluno, foto_url, status, tipo, created_at').eq('id', comprovanteId).maybeSingle()
   if (!comp) return NextResponse.json({ error: 'comprovante não encontrado' }, { status: 404 })
   if (comp.status !== 'aprovado') return NextResponse.json({ error: 'comprovante ainda não foi aprovado pelo Matheus' }, { status: 409 })
   if (comp.tipo && comp.tipo !== 'mensalidade') return NextResponse.json({ error: `comprovante é de ${comp.tipo}, não de mensalidade` }, { status: 409 })
-  if (!comp.aluno_id) return NextResponse.json({ error: 'comprovante sem aluno ligado' }, { status: 409 })
+  // Aluno novo (06/11/2026, casos Sabrina/Marleide): o comprovante chega antes de o cadastro ficar
+  // ligado a ele. Procura o aluno pelo telefone de quem mandou e liga o comprovante.
+  if (!comp.aluno_id && comp.telefone_aluno) {
+    const tel = normalizarTelefone(String(comp.telefone_aluno))
+    const { data: porTel } = await sb.from('alunos').select('id').eq('telefone', tel).limit(2)
+    if (porTel && porTel.length === 1) {
+      comp.aluno_id = porTel[0].id
+      await sb.from('comprovante_pendente_autorizacao').update({ aluno_id: comp.aluno_id }).eq('id', comp.id)
+    }
+  }
+  if (!comp.aluno_id) return NextResponse.json({ error: 'não achei o cadastro de quem mandou o comprovante — confirme pelo painel (Pagamentos)' }, { status: 409 })
   if (Date.now() - new Date(comp.created_at).getTime() > 15 * 24 * 60 * 60 * 1000) {
     return NextResponse.json({ error: 'comprovante antigo demais (mais de 15 dias) — confirme pelo painel' }, { status: 409 })
   }
