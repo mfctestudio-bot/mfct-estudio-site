@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     await supabase.from('mensagens_automaticas').insert({ telefone: aluno.telefone, origem: 'cancelar-agendamento-individual' })
 
     try {
-      const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+      const resp = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
         body: JSON.stringify({ number: aluno.telefone, text: msg }),

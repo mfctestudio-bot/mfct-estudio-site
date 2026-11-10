@@ -46,7 +46,7 @@ const EVO_KEY = process.env.EVO_KEY || ''
 export async function enviarWhatsAppAluno(telefone: string | null | undefined, texto: string): Promise<void> {
   if (!telefone || !EVO_URL || !EVO_KEY) return
   try {
-    await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+    await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
       body: JSON.stringify({ number: telefone, text: texto }),
@@ -555,7 +555,7 @@ export async function notificarVencimentoManual(
 
   if (!EVO_URL || !EVO_KEY) throw new Error('WhatsApp (Evolution API) não está configurado no servidor')
 
-  const resposta = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+  const resposta = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
     body: JSON.stringify({ number: aluno.telefone, text: texto }),

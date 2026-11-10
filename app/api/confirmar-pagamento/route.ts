@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   // aluno -- as respostas caem direto na ficha dele (menu Alunos → Anamneses).
   if (!aluno.token_avaliacao) return NextResponse.json({ ok: true, anamnese: 'sem_token' })
   const texto = `Antes de começar a treinar, preciso que você preencha nossa ficha de anamnese. É rápido e importante para personalizarmos seu treino! 📋\n\nhttps://mfct-estudio-site.vercel.app/anamnese/${aluno.token_avaliacao}`
-  const envio = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+  const envio = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
     body: JSON.stringify({ number: phone, text: texto }),

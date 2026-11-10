@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   let whatsappEnviado = false
   let whatsappErro: string | null = null
   try {
-    const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+    const resp = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
       body: JSON.stringify({ number: telefone, text: msg }),

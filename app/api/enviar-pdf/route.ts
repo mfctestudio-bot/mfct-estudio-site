@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   // Avisa a Elen que essa mensagem é automática, pra ela não pausar achando que foi conversa humana.
   await servidor().from('mensagens_automaticas').insert({ telefone: r.aluno.telefone, origem: `enviar-pdf-${tipo}` })
 
-  const resp = await fetch(`${EVO_URL}/message/sendMedia/MFCT-ESTUDIO`, {
+  const resp = await fetch(`${EVO_URL}/message/sendMedia/Ellen%20Mfct`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
     body: JSON.stringify({

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const msg = `Oi ${nome}! Recebi sua anamnese, muito obrigada por responder ✅\n\nAgora, que tal fazer uma *avaliação física*? Com ela a gente vê seu ponto de partida (peso, gordura, massa muscular) e consegue acompanhar sua evolução. E com a avaliação e a anamnese dá até pra montar um plano alimentar pensado pra você 🍽️\n\nQuer marcar a sua?`
     try {
       await supabase.from('mensagens_automaticas').insert({ telefone: aluno.telefone, origem: 'anamnese-completa' })
-      const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+      const resp = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
         body: JSON.stringify({ number: aluno.telefone, text: msg }),

@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       await supabase.from('mensagens_automaticas').insert({ telefone: m.telefone, origem: 'mover-horario-dia' })
 
       try {
-        const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+        const resp = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
           body: JSON.stringify({ number: m.telefone, text: msg }),

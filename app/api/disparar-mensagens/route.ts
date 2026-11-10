@@ -39,7 +39,7 @@ async function disparar() {
     try {
       // Avisa a Elen que essa mensagem do número do estúdio é automática (não pausa o bot).
       await supabase.from('mensagens_automaticas').insert({ telefone: m.telefone, origem: 'mensagem-agendada' })
-      const resp = await fetch(`${EVO_URL}/message/sendText/MFCT-ESTUDIO`, {
+      const resp = await fetch(`${EVO_URL}/message/sendText/Ellen%20Mfct`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: EVO_KEY },
         body: JSON.stringify({ number: m.telefone, text: m.mensagem }),

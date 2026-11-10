@@ -10,7 +10,7 @@ const SUPA_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NE
 // pro Cloudfy antigo (ribbitingshoebill), abandonado, e a mensagem de aula cancelada vinha
 // falhando silenciosamente desde a migracao. Agora usa as mesmas EVO_URL/EVO_KEY.
 const EVOLUTION_URL = process.env.EVO_URL || ''
-const EVOLUTION_INSTANCE = 'MFCT-ESTUDIO'
+const EVOLUTION_INSTANCE = 'Ellen%20Mfct'
 const EVOLUTION_API_KEY = process.env.EVO_KEY || ''
 
 export async function POST(req: NextRequest) {

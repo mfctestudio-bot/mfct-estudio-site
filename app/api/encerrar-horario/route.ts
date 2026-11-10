@@ -11,7 +11,7 @@ const supabase = createClient(SUPA_URL, SERVICE_KEY)
 // essa mensagem vinha falhando silenciosamente desde a migracao. Agora usa as mesmas
 // variaveis de ambiente (EVO_URL/EVO_KEY) ja configuradas certinho no Vercel.
 const EVOLUTION_URL = process.env.EVO_URL || ''
-const EVOLUTION_INSTANCE = 'MFCT-ESTUDIO'
+const EVOLUTION_INSTANCE = 'Ellen%20Mfct'
 const EVOLUTION_API_KEY = process.env.EVO_KEY || ''
 
 const DIAS_NOMES = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
